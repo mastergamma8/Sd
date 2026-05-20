@@ -1,0 +1,462 @@
+/* ===== ЗАЩИТА ОТ КОПИРОВАНИЯ ===== */
+html {
+    overscroll-behavior-y: none;
+}
+
+* {
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+    user-select: none !important;
+    -webkit-touch-callout: none !important;
+}
+
+img {
+    -webkit-user-drag: none;
+    user-drag: none;
+    pointer-events: none;
+}
+
+body {
+    background: radial-gradient(circle at top left, #1e1b4b, #0f172a 40%, #020617 100%);
+    color: #f8fafc;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    padding-bottom: calc(110px + var(--tg-safe-area-inset-bottom, 0px));
+    min-height: 100vh;
+    margin: 0;
+    overflow-x: hidden;
+    overscroll-behavior-y: none;
+}
+
+header {
+    padding-top: calc(3rem + var(--tg-safe-area-inset-top, 0px)) !important;
+    padding-bottom: 1rem !important;
+}
+
+.glass {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+}
+.glass-panel {
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.glow-text { text-shadow: 0 0 15px rgba(96, 165, 250, 0.6); }
+.glow-box  { box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
+
+.btn-claim    { background: linear-gradient(135deg, #10b981, #059669); box-shadow: 0 4px 15px rgba(16,185,129,0.4); }
+.btn-withdraw { background: linear-gradient(135deg, #ef4444, #dc2626); box-shadow: 0 4px 15px rgba(239,68,68,0.4); }
+.btn-primary  { background: linear-gradient(135deg, #3b82f6, #6366f1); box-shadow: 0 4px 15px rgba(59,130,246,0.4); }
+
+.hidden-tab { display: none !important; }
+
+.progress-bar-fill {
+    background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+    box-shadow: 0 0 10px rgba(139, 92, 246, 0.6);
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+::-webkit-scrollbar { display: none; }
+
+.nav-item {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    color: rgba(255, 255, 255, 0.4);
+}
+.nav-item.active {
+    color: #60a5fa;
+    transform: scale(1.1);
+    text-shadow: 0 0 10px rgba(96, 165, 250, 0.5);
+}
+
+.earn-tab-btn { color: rgba(255,255,255,0.5); transition: all 0.3s ease; }
+.earn-tab-btn.active {
+    color: white;
+    background: rgba(255,255,255,0.1);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+/* ===== ОБНОВЛЕННЫЕ СТИЛИ ВКЛАДОК ЛИДЕРБОРДА ===== */
+.leaderboard-tab {
+    color: rgba(255,255,255,0.45);
+    background: transparent;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid transparent;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.leaderboard-tab::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0));
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+.leaderboard-tab.active-tab {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.25), rgba(139, 92, 246, 0.25));
+    color: #fff;
+    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.2), inset 0 1px 1px rgba(255,255,255,0.1);
+    border: 1px solid rgba(96, 165, 250, 0.3);
+    transform: translateY(-1px);
+}
+.leaderboard-tab.active-tab::before {
+    opacity: 1;
+}
+
+/* ===== АНИМАЦИИ ===== */
+@keyframes gradient-bg {
+    0%, 100% { background-position: 0% 50%; }
+    50%       { background-position: 100% 50%; }
+}
+.animate-gradient-btn {
+    background-size: 200% auto;
+    animation: gradient-bg 3s ease infinite;
+}
+
+.btn-spin:disabled, .btn-disabled {
+    animation: none !important;
+    transition: none !important;
+    opacity: 0.6 !important;
+    transform: scale(1) translateZ(0) !important;
+    cursor: not-allowed !important;
+    filter: grayscale(0.2) brightness(0.8) !important;
+    background-size: 100% 100% !important;
+}
+.btn-spin:disabled .active-overlay { display: none !important; }
+
+.fade-in { animation: fadeIn 0.3s ease-in-out; }
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+    from { transform: translateY(100%); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+}
+.animate-slide-up { animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+@keyframes customBounce {
+    0%, 100% { transform: translateY(-5%); animation-timing-function: cubic-bezier(0.8,0,1,1); }
+    50%       { transform: none;            animation-timing-function: cubic-bezier(0,0,0.2,1); }
+}
+.animate-custom-bounce { animation: customBounce 2s infinite; }
+
+/* Анимация кейса */
+@keyframes case-shake {
+    0% { transform: translate(1px, 1px) rotate(0deg) scale(1); }
+    10% { transform: translate(-1px, -2px) rotate(-2deg) scale(1.02); }
+    20% { transform: translate(-3px, 0px) rotate(2deg) scale(1.05); }
+    30% { transform: translate(3px, 2px) rotate(0deg) scale(1.02); }
+    40% { transform: translate(1px, -1px) rotate(2deg) scale(1.08); }
+    50% { transform: translate(-1px, 2px) rotate(-2deg) scale(1.05); }
+    60% { transform: translate(-3px, 1px) rotate(0deg) scale(1.1); }
+    70% { transform: translate(3px, 1px) rotate(-2deg) scale(1.08); }
+    80% { transform: translate(-1px, -1px) rotate(2deg) scale(1.12); }
+    90% { transform: translate(1px, 2px) rotate(0deg) scale(1.15); }
+    100% { transform: translate(1px, -2px) rotate(-2deg) scale(1.15); }
+}
+.animate-case-shake {
+    animation: case-shake 0.1s linear infinite;
+}
+
+@keyframes result-scale-up {
+    from { transform: scale(0); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+.scale-up-active {
+    animation: result-scale-up 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+/* ===== АНИМАЦИИ ДЛЯ РАКЕТЫ ===== */
+@keyframes rocketVibrate {
+    0% { transform: translate(0, 0) rotate(0deg); }
+    25% { transform: translate(-2px, 1px) rotate(-1deg); }
+    50% { transform: translate(1px, -1px) rotate(1deg); }
+    75% { transform: translate(-1px, -2px) rotate(0deg); }
+    100% { transform: translate(2px, 1px) rotate(-1deg); }
+}
+
+.rocket-idle {
+    transform: translateY(0);
+}
+
+.rocket-flying {
+    animation: rocketVibrate 0.1s linear infinite;
+    filter: drop-shadow(0 15px 15px rgba(239, 68, 68, 0.6));
+}
+
+.rocket-crashed {
+    transition: transform 0.4s cubic-bezier(0.4, 0, 1, 1), opacity 0.4s ease;
+    transform: translateY(-200vh) scale(0.5);
+    opacity: 0;
+}
+
+/* Бегущие звезды на фоне */
+@keyframes starsMove {
+    from { background-position: 0 0; }
+    to { background-position: 0 1000px; }
+}
+.bg-stars-moving {
+    background-image: radial-gradient(1px 1px at 20px 30px, #eee, rgba(0,0,0,0)),
+                      radial-gradient(1px 1px at 40px 70px, #fff, rgba(0,0,0,0)),
+                      radial-gradient(1.5px 1.5px at 50px 160px, #ddd, rgba(0,0,0,0)),
+                      radial-gradient(1px 1px at 90px 40px, #fff, rgba(0,0,0,0)),
+                      radial-gradient(2px 2px at 130px 80px, #fff, rgba(0,0,0,0));
+    background-repeat: repeat;
+    background-size: 200px 200px;
+    animation: starsMove 15s linear infinite;
+}
+.bg-stars-fast {
+    animation: starsMove 2s linear infinite;
+}
+/* ── Case Card Background Presets ─────────────────────────────────────────── */
+/* Green background */
+.case-bg-green {
+    background: linear-gradient(to bottom, rgba(34,197,94,0.18), rgba(0,0,0,0.40));
+    border: 1px solid rgba(34,197,94,0.35);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.4), 0 0 0 0 rgba(34,197,94,0);
+    transition: box-shadow 0.25s ease;
+}
+.case-bg-green:hover {
+    box-shadow: 0 0 25px rgba(34,197,94,0.45), 0 10px 20px rgba(0,0,0,0.4);
+}
+
+/* Gold background */
+.case-bg-gold {
+    background: linear-gradient(to bottom, rgba(234,179,8,0.18), rgba(0,0,0,0.40));
+    border: 1px solid rgba(234,179,8,0.35);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+    transition: box-shadow 0.25s ease;
+}
+.case-bg-gold:hover {
+    box-shadow: 0 0 25px rgba(234,179,8,0.45), 0 10px 20px rgba(0,0,0,0.4);
+}
+
+/* Purple background */
+.case-bg-purple {
+    background: linear-gradient(to bottom, rgba(168,85,247,0.18), rgba(0,0,0,0.40));
+    border: 1px solid rgba(168,85,247,0.35);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+    transition: box-shadow 0.25s ease;
+}
+.case-bg-purple:hover {
+    box-shadow: 0 0 25px rgba(168,85,247,0.45), 0 10px 20px rgba(0,0,0,0.4);
+}
+
+/* Modal header tinted backgrounds */
+#cd-modal-header.case-bg-green {
+    background: linear-gradient(to bottom, rgba(34,197,94,0.22), transparent);
+    border-color: rgba(34,197,94,0.20);
+}
+#cd-modal-header.case-bg-gold {
+    background: linear-gradient(to bottom, rgba(234,179,8,0.22), transparent);
+    border-color: rgba(234,179,8,0.20);
+}
+#cd-modal-header.case-bg-purple {
+    background: linear-gradient(to bottom, rgba(168,85,247,0.22), transparent);
+    border-color: rgba(168,85,247,0.20);
+}
+
+/* Case card expiry countdown */
+.case-card-timer {
+    font-size: 10px;
+    font-weight: 700;
+    font-family: ui-monospace, SFMono-Regular, monospace;
+    letter-spacing: 0.02em;
+    transition: color 0.3s ease;
+}
+
+/* Red background */
+.case-bg-red {
+    background: linear-gradient(to bottom, rgba(239,68,68,0.18), rgba(0,0,0,0.40));
+    border: 1px solid rgba(239,68,68,0.35);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+    transition: box-shadow 0.25s ease;
+}
+.case-bg-red:hover {
+    box-shadow: 0 0 25px rgba(239,68,68,0.45), 0 10px 20px rgba(0,0,0,0.4);
+}
+#cd-modal-header.case-bg-red {
+    background: linear-gradient(to bottom, rgba(239,68,68,0.22), transparent);
+    border-color: rgba(239,68,68,0.20);
+}
+
+/* ============================================================
+   SPACE DONUT PVP STYLES
+   ============================================================ */
+
+/* Tab active state */
+.pvp-tab-active {
+    background: linear-gradient(135deg, rgba(225,29,72,0.25), rgba(190,24,93,0.15));
+    border-bottom: 2px solid #e11d48;
+    color: #fff !important;
+}
+
+/* Winner pulse ring */
+.pvp-winner-pulse {
+    animation: pvpWinnerPulse 0.8s ease-in-out infinite;
+}
+@keyframes pvpWinnerPulse {
+    0%, 100% { box-shadow: 0 0 20px var(--color, #FFD700), 0 0 40px var(--color, #FFD700)44; }
+    50%       { box-shadow: 0 0 40px var(--color, #FFD700), 0 0 80px var(--color, #FFD700)66; }
+}
+
+/* Winner card pop animation — fade+slide only, no scale to prevent size change */
+@keyframes pvpWinnerPop {
+    0%   { opacity:0; transform: translateY(16px); }
+    60%  { opacity:1; transform: translateY(-4px); }
+    100% { opacity:1; transform: translateY(0); }
+}
+.animate-pvp-winner-pop {
+    animation: pvpWinnerPop 0.55s cubic-bezier(0.25,0.46,0.45,0.94) forwards;
+}
+
+/* Winner card — fills entire arena overlay, no growth */
+.pvp-winner-card {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    background: rgba(0, 0, 0, 0.88);
+    border-radius: 0;
+    box-shadow: inset 0 0 80px rgba(255, 215, 0, 0.12);
+    overflow: hidden;
+    justify-content: center;
+}
+
+.pvp-winner-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: 3px solid #FFD700;
+    overflow: hidden;
+    box-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+    animation: pvpWinnerPop 0.7s 0.2s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+
+/* Confetti fall */
+@keyframes pvpConfettiFall {
+    0%   { transform: translateY(0) rotate(0deg);   opacity: 1; }
+    100% { transform: translateY(200px) rotate(720deg); opacity: 0; }
+}
+
+/* Arena player z-index helper */
+#pvp-ball-trail { z-index: 15; }
+
+/* ── PVP Empty-arena waiting animation ── */
+.pvp-waiting-anim {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 5;
+    pointer-events: none;
+}
+
+/* Orbiting rings */
+.pvp-orbit-ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid rgba(244, 63, 94, 0.18);
+}
+.pvp-orbit-ring-1 {
+    width: 130px; height: 130px;
+    animation: pvpOrbitSpin 7s linear infinite;
+}
+.pvp-orbit-ring-2 {
+    width: 195px; height: 195px;
+    border-color: rgba(168, 85, 247, 0.13);
+    animation: pvpOrbitSpin 11s linear infinite reverse;
+}
+.pvp-orbit-ring-3 {
+    width: 255px; height: 255px;
+    border-color: rgba(59, 130, 246, 0.10);
+    animation: pvpOrbitSpin 16s linear infinite;
+}
+@keyframes pvpOrbitSpin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+
+/* Dots on rings */
+.pvp-orbit-dot {
+    position: absolute;
+    border-radius: 50%;
+    top: -5px; left: 50%; transform: translateX(-50%);
+}
+.pvp-orbit-dot-rose  { width:10px;height:10px;background:rgba(244,63,94,0.85);box-shadow:0 0 12px rgba(244,63,94,0.7); }
+.pvp-orbit-dot-violet{ width: 8px;height: 8px;background:rgba(168,85,247,0.85);box-shadow:0 0 10px rgba(168,85,247,0.7); }
+.pvp-orbit-dot-blue  { width: 6px;height: 6px;background:rgba(99,179,237,0.85);box-shadow:0 0  8px rgba(99,179,237,0.7); }
+
+/* Second dot on each ring, opposite side */
+.pvp-orbit-dot-b {
+    top: auto; bottom: -5px; left: 50%; transform: translateX(-50%);
+}
+
+/* Central icon */
+.pvp-waiting-icon-wrap {
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+    animation: pvpCenterPulse 2.4s ease-in-out infinite;
+}
+@keyframes pvpCenterPulse {
+    0%,100% { filter: drop-shadow(0 0 14px rgba(244,63,94,0.5)) drop-shadow(0 0 28px rgba(244,63,94,0.2)); transform: scale(1); }
+    50%      { filter: drop-shadow(0 0 24px rgba(244,63,94,0.85)) drop-shadow(0 0 48px rgba(244,63,94,0.35)); transform: scale(1.07); }
+}
+
+/* Waiting text below icon */
+.pvp-waiting-label {
+    margin-top: 18px;
+    font-size: 10px;
+    font-weight: 800;
+    color: rgba(255,255,255,0.45);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    animation: pvpLabelBlink 2.4s ease-in-out infinite;
+}
+@keyframes pvpLabelBlink {
+    0%,100% { opacity: 0.45; }
+    50%      { opacity: 0.85; }
+}
+
+/* Three bouncing dots loader */
+.pvp-dots-loader {
+    display: flex; gap: 5px; margin-top: 8px; align-items: center;
+}
+.pvp-dots-loader span {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: rgba(244,63,94,0.6);
+    animation: pvpDotBounce 1.2s ease-in-out infinite;
+}
+.pvp-dots-loader span:nth-child(2) { animation-delay: 0.2s; }
+.pvp-dots-loader span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes pvpDotBounce {
+    0%,80%,100% { transform: translateY(0);   opacity: 0.5; }
+    40%          { transform: translateY(-6px); opacity: 1;   }
+}
+
+/* ── PVP Bank pill badges ── */
+.pvp-pot-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-weight: 900;
+    line-height: 1;
+    font-size: 13px;
+}
+.pvp-pot-badge-stars  { background: rgba(234,179,8,0.15);   border: 1px solid rgba(234,179,8,0.3);   color: #fde047; }
+.pvp-pot-badge-donuts { background: rgba(249,115,22,0.15);  border: 1px solid rgba(249,115,22,0.3);  color: #fb923c; }
+.pvp-pot-badge-gift   { background: rgba(168,85,247,0.15);  border: 1px solid rgba(168,85,247,0.3);  color: #c4b5fd; }
+.pvp-pot-badge img    { width: 14px; height: 14px; object-fit: contain; flex-shrink: 0; }
