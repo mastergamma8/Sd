@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>Space Donut app</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="/static/styles.css?v=1.8">
+</head>
+<body class="relative">
+  <!-- ЭКРАН ТЕХНИЧЕСКОГО ОБСЛУЖИВАНИЯ -->
+  <div id="maintenance-screen" class="fixed inset-0 z-[9999] hidden flex-col items-center justify-center"
+       style="background: radial-gradient(ellipse at 50% 30%, #1a0a3b 0%, #020617 60%, #000 100%);">
+    <!-- Звёздный фон -->
+    <div class="absolute inset-0 overflow-hidden pointer-events-none">
+      <div class="absolute top-10 left-10 w-64 h-64 rounded-full bg-purple-600/10 blur-[80px]"></div>
+      <div class="absolute bottom-20 right-5 w-72 h-72 rounded-full bg-blue-600/10 blur-[100px]"></div>
+      <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full bg-fuchsia-700/10 blur-[120px]"></div>
+    </div>
+
+    <!-- Контент -->
+    <div class="relative z-10 flex flex-col items-center justify-center px-6 text-center max-w-md">
+      <!-- Иллюстрация -->
+      <div class="relative mb-8">
+        <div class="absolute inset-0 rounded-full bg-purple-500/20 blur-[50px] scale-110"></div>
+        <img src="/gifts/sd.png" alt="Space Donut"
+             class="relative w-56 h-56 object-contain drop-shadow-[0_0_40px_rgba(168,85,247,0.8)]"
+             onerror="this.src='/gifts/stars.png'">
+      </div>
+
+      <!-- Заголовок -->
+      <h1 class="text-2xl sm:text-3xl font-black text-white mb-3 leading-tight whitespace-nowrap"
+          style="text-shadow: 0 0 20px rgba(168,85,247,0.8);"
+          data-i18n="maintenance_title">
+        🔧 Технические работы
+      </h1>
+
+      <!-- Подпись -->
+      <p class="text-white/60 text-base leading-relaxed mb-8"
+         data-i18n="maintenance_desc">
+        Мы проводим техническое обслуживание.<br>
+        Совсем скоро всё заработает снова!
+      </p>
+
+      <!-- Блок с каналом -->
+      <div class="glass rounded-2xl px-5 py-4 border border-purple-500/30 w-full"
+           style="background: rgba(168,85,247,0.08);">
+        <p class="text-white/50 text-xs uppercase font-bold tracking-widest mb-2"
+           data-i18n="maintenance_follow">Следите за обновлениями</p>
+        <a href="https://t.me/Space_Donut" target="_blank"
+           class="flex items-center justify-center gap-2 text-purple-300 font-bold text-lg hover:text-purple-200 transition-colors">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.96 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+          </svg>
+          @Space_Donut
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- partials will be injected here -->
+  <div id="partial-loader-root">
+    <div data-partial="/partials/loader.html"></div>
+    <div data-partial="/partials/backgrounds.html"></div>
+    <div data-partial="/partials/header.html"></div>
+
+    <main id="app-content">
+      <div id="pages-root">
+        <!-- pages will be injected here -->
+        <div data-partial="/partials/pages/main.html"></div>
+        <div data-partial="/partials/pages/leaderboard.html"></div>
+        <div data-partial="/partials/pages/games.html"></div>
+        <div data-partial="/partials/pages/earn.html"></div>
+        <div data-partial="/partials/pages/shop.html"></div>
+        <div data-partial="/partials/pages/profile.html"></div>
+        <div data-partial="/partials/pages/roulette.html"></div>
+      </div>
+    </main>
+
+    <!-- NFT Галерея — вне основного потока, поверх всего -->
+    <div data-partial="/partials/pages/nft.html"></div>
+
+    <!-- modals -->
+    <div data-partial="/partials/modals.html"></div>
+
+    <!-- navigation -->
+    <div data-partial="/partials/nav.html"></div>
+  </div>
+
+  <!-- загрузчик partials -->
+  <script src="/static/js/partials-loader.js"></script>
+
+  <!-- оставляем остальные скрипты как у тебя -->
+  <script src="/static/js/globals.js?v=2.2"></script>
+  <script src="/static/js/i18n.js?v=2.9"></script>
+  <script src="/static/js/subscription.js"></script>
+  <script src="/static/js/nav.js?v=1.3"></script>
+  <script src="/static/js/main.js"></script>
+  <script src="/static/js/earn.js"></script>
+  <script src="/static/js/roulette.js?v=1.7"></script>
+  <script src="/static/js/games.js?v=1.3"></script>
+  <script src="/static/js/games-rocket.js?v=1.1"></script>
+  <script src="/static/js/games-cases.js?v=1.4"></script>
+  <script src="/static/js/games-pvp.js?v=5.1"></script>
+  <script src="/static/js/pvp-history.js?v=1.1"></script>
+  <script src="/static/js/tg-shop.js?v=1.1"></script>
+  <script src="/static/js/shop.js?v=2.4"></script>
+  <script src="/static/js/profile-core.js?v=1.2"></script>
+  <script src="/static/js/profile-withdraw.js"></script>
+  <script src="/static/js/profile-history.js?v=1.5"></script>
+  <script src="/static/js/leaderboard.js?v=2.2"></script>
+  <script src="/static/js/nft.js?v=1.0"></script>
+  <script src="/static/js/app.js?v=2.0"></script>
+</body>
+</html>
