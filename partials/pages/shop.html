@@ -1,0 +1,125 @@
+<!-- СТРАНИЦА: МАГАЗИН -->
+<div id="page-shop" class="px-5 pb-24 hidden-tab fade-in">
+    <h2 class="text-2xl font-bold mb-5 text-white text-center" data-i18n="shop_title">Магазин</h2>
+
+    <!-- ── Раздел: Лимитированные подарки ────────────────────── -->
+    <div id="shop-section-limited" class="mb-7">
+        <h3 class="text-base font-bold text-white/80 uppercase tracking-wider mb-3 flex items-center gap-2">
+            <span class="w-1 h-4 rounded-full bg-orange-500 inline-block"></span>
+            <span data-i18n="shop_limited_title">Лимитированные подарки</span>
+        </h3>
+        <!-- Баннер-превью (кликабельный), аналог старого в играх -->
+        <div id="shop-limited-banner"
+             onclick="openShopLimitedGifts()"
+             class="glass rounded-3xl p-4 flex items-center justify-between cursor-pointer mb-4
+                    active:scale-95 transition-transform
+                    bg-gradient-to-r from-orange-600/20 to-red-500/10
+                    border border-orange-500/30 overflow-hidden relative
+                    shadow-[0_0_30px_rgba(249,115,22,0.1)] group">
+            <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-20 pointer-events-none"></div>
+            <div class="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-orange-500/10 to-transparent blur-xl pointer-events-none"></div>
+            <div class="flex items-center gap-4 relative z-10">
+                <div class="w-[100px] h-[100px] flex items-center justify-center drop-shadow-[0_0_15px_rgba(249,115,22,0.8)]">
+                    <img src="/gifts/limitedgifts.png" class="w-full h-full object-contain" alt="Limited Gifts">
+                </div>
+                <div>
+                    <h4 class="text-xl font-bold text-white glow-text" data-i18n="shop_limited_title">Лимитированные подарки</h4>
+                    <p class="text-sm text-orange-200/80" data-i18n="shop_limited_banner_desc">Купи подарок и получи в Telegram!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Кастомные разделы (рендерятся JS) ─────────────────── -->
+    <div id="shop-custom-sections">
+        <!-- placeholder -->
+    </div>
+
+    <!-- ── Раздел лимитированных подарков (полный, показывается при клике) ── -->
+    <div id="shop-limited-full" class="hidden animate-slide-up pb-10">
+        <!-- Шапка -->
+        <div class="flex items-center gap-3 mb-5">
+            <button onclick="closeShopLimitedGifts()"
+                    class="w-10 h-10 glass rounded-full flex items-center justify-center
+                           active:scale-95 transition-transform border border-white/10 hover:bg-white/10">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                </svg>
+            </button>
+            <div class="flex-1">
+                <h3 class="text-xl font-bold text-white" data-i18n="shop_limited_title">Лимитированные подарки</h3>
+                <p id="shop-limited-header-desc" class="text-xs text-orange-300/70" data-i18n="shop_limited_header_desc">
+                    Получи подарок прямо в Telegram
+                </p>
+            </div>
+        </div>
+        <!-- Сетка -->
+        <div id="shop-limited-grid" class="grid grid-cols-3 gap-3">
+            <!-- Рендерится JS -->
+        </div>
+    </div>
+</div>
+
+<!-- ── Модальное окно покупки в магазине ─────────────────────── -->
+<div id="shop-buy-modal"
+     class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden flex items-end justify-center z-50 transition-opacity">
+    <div class="glass-panel w-full max-w-md rounded-t-3xl border border-white/10
+                shadow-[0_-10px_40px_rgba(0,0,0,0.5)] p-6 pb-10 relative overflow-hidden">
+
+        <!-- Декоративное свечение -->
+        <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[200%] h-32 bg-purple-500/10 blur-[50px] rounded-full pointer-events-none"></div>
+
+        <!-- Полоска для свайпа -->
+        <div class="w-12 h-1.5 bg-white/20 rounded-full mx-auto mb-5 relative z-10"></div>
+
+        <div class="flex flex-col items-center gap-3 mb-6 relative z-10">
+            <!-- Иконки товара (1 или сетка 2×2 — рендерится JS) -->
+            <div id="shop-buy-modal-icons"
+                 class="w-24 h-24 rounded-2xl bg-purple-500/10 border border-purple-400/20 overflow-hidden">
+            </div>
+            <!-- Таймер акции -->
+            <div id="shop-buy-modal-timer-wrap" class="hidden">
+                <span id="shop-buy-modal-timer"
+                      class="font-mono text-xs font-bold px-2 py-0.5 rounded-full bg-white/10">
+                </span>
+            </div>
+            <!-- Название -->
+            <div class="text-center">
+                <p class="text-lg font-bold text-white" id="shop-buy-modal-title"></p>
+                <p class="text-sm text-white/50" data-i18n="shop_modal_confirm_subtitle">Подтвердите покупку</p>
+            </div>
+        </div>
+
+        <!-- Детали стоимости -->
+        <div class="glass rounded-2xl p-4 mb-4 border border-white/10 flex flex-col gap-2.5 relative z-10">
+            <div class="flex justify-between items-center">
+                <span class="text-sm text-white/60" data-i18n="shop_modal_cost">Стоимость</span>
+                <span id="shop-buy-modal-cost" class="text-sm font-bold text-white"></span>
+            </div>
+            <div class="flex justify-between items-center">
+                <span class="text-sm text-white/60" data-i18n="shop_modal_you_get">Вы получаете</span>
+                <span id="shop-buy-modal-reward" class="text-sm font-bold text-yellow-300"></span>
+            </div>
+            <!-- Строка для рефералов -->
+            <div id="shop-buy-modal-referral-row" class="hidden flex justify-between items-center pt-1 border-t border-white/10">
+                <span class="text-sm text-white/60" data-i18n="shop_modal_available_refs">Доступно рефералов</span>
+                <span id="shop-buy-modal-refs-count" class="text-sm font-bold text-blue-300"></span>
+            </div>
+
+        </div>
+
+        <!-- Кнопки -->
+        <button id="shop-buy-confirm-btn"
+                onclick="confirmShopBuy()"
+                class="w-full py-3.5 rounded-2xl font-bold text-white text-base
+                       bg-gradient-to-r from-purple-600 to-pink-600
+                       shadow-[0_0_20px_rgba(168,85,247,0.4)]
+                       active:scale-95 transition-all mb-3 relative z-10">
+            <span id="shop-buy-confirm-label" data-i18n="shop_modal_confirm_btn">Купить</span>
+        </button>
+        <button onclick="closeShopBuyModal()"
+                class="w-full py-3 rounded-2xl font-semibold text-white/60 text-sm
+                       bg-white/5 border border-white/10 active:scale-95 transition-all relative z-10"
+                data-i18n="cancel">Отмена</button>
+    </div>
+</div>
