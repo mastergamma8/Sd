@@ -25,7 +25,7 @@ def kill_script(name):
 
 def main():
     print("🧹 Завершаем старые процессы...")
-    kill_port(8080)
+    kill_port(5000)
     kill_script("main.py")
     kill_script("support_bot.py")
     kill_script("bot.py")

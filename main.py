@@ -396,4 +396,4 @@ async def nft_admin_panel(request: Request):
 
 if __name__ == "__main__":
     # reload=False для продакшена — иначе воркеры не шарят состояние и памяти
-    uvicorn.run("main:app", host="0.0.0.0", port=int(os.getenv("PORT", 8080)))
+    uvicorn.run("main:app", host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
