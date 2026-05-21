@@ -14,6 +14,7 @@ from aiogram.types import (
 
 import config
 import database
+from db import db_nft
 from .admin_constants import (
     E_DONUT, E_GIFT, E_STAR, E_STOP, E_CHECK,
     E_PARTY, E_TIME, E_CROSS,
@@ -175,6 +176,66 @@ def register(dp: Dispatcher, bot: Bot):
 
             else:
                 await message.answer(f"Подарок с ID {gift_id} не найден в config.py.")
+
+        except ValueError:
+            await message.answer("Ошибка: ID и Количество должны быть числами.")
+
+    # ── /addnftstars ───────────────────────────────────────────────────────────
+
+    @dp.message(Command("addnftstars"))
+    async def cmd_add_nft_stars(message: Message):
+        if message.from_user.id != config.ADMIN_ID:
+            await message.answer(
+                f"{E_STOP} У вас нет прав. Ваш ID: {message.from_user.id}",
+                parse_mode="HTML",
+            )
+            return
+
+        args = message.text.split()
+        if len(args) != 3:
+            await message.answer(
+                "Использование: /addnftstars <ID пользователя> <Количество>\n"
+                "Пример: /addnftstars 123456789 100"
+            )
+            return
+
+        try:
+            user_id      = int(args[1])
+            stars_amount = int(args[2])
+
+            if stars_amount <= 0:
+                await message.answer("Количество NFT-звёзд должно быть больше нуля.")
+                return
+
+            new_balance = await db_nft.add_nft_stars(user_id, stars_amount)
+
+            await message.answer(
+                f"{E_CHECK} Успешно!\n"
+                f"Пользователю {user_id} начислено <b>{stars_amount}</b> NFT-звёзд.\n"
+                f"Новый NFT-баланс: <b>{new_balance}</b> {E_STAR}.",
+                parse_mode="HTML",
+            )
+
+            try:
+                star_markup = InlineKeyboardMarkup(inline_keyboard=[[
+                    InlineKeyboardButton(
+                        text="Открыть NFT Галерею",
+                        web_app=WebAppInfo(url=config.WEBAPP_URL),
+                        style=ButtonStyle.SUCCESS,
+                        icon_custom_emoji_id=ID_STAR,
+                    )
+                ]])
+                await bot.send_message(
+                    user_id,
+                    f"{E_STAR} <b>Вам начислены NFT-звёзды!</b>\n"
+                    f"Администратор выдал вам <b>{stars_amount} {E_STAR}</b> для NFT Галереи.",
+                    parse_mode="HTML",
+                    reply_markup=star_markup,
+                )
+            except Exception as e:
+                logging.warning(
+                    f"Не удалось отправить уведомление пользователю {user_id}: {e}"
+                )
 
         except ValueError:
             await message.answer("Ошибка: ID и Количество должны быть числами.")

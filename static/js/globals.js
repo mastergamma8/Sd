@@ -217,15 +217,37 @@ async function buyStars() {
         
         if (result.status === 'ok') {
             if (window.Telegram?.WebApp?.openInvoice) {
-                window.Telegram.WebApp.openInvoice(result.invoice_url, (payment_status) => {
+                window.Telegram.WebApp.openInvoice(result.invoice_url, async (payment_status) => {
                     if (payment_status === 'paid') {
                         closeModal('topup-stars-modal');
-                        myStars += amount; 
-                        updateUI();
-                        showNotify(i18n[currentLang]?.topup_success || 'Звезды успешно зачислены!', 'success');
+                        if (window.nftTopupMode) {
+                            // Кредитуем NFT-баланс, а не основной
+                            window.nftTopupMode = false;
+                            try {
+                                const r = await fetch('/api/nft/topup', {
+                                    method: 'POST',
+                                    headers: getApiHeaders(),
+                                    body: JSON.stringify({ telegram_payment_charge_id: 'tg_' + Date.now(), amount })
+                                });
+                                const d = await r.json();
+                                if (typeof nftStars !== 'undefined') {
+                                    nftStars = d.nft_stars || (nftStars + amount);
+                                    nftUpdateStarsUI();
+                                }
+                            } catch(e) {
+                                if (typeof nftStars !== 'undefined') { nftStars += amount; nftUpdateStarsUI(); }
+                            }
+                            showNotify('✨ NFT-звёзды зачислены!', 'success');
+                        } else {
+                            myStars += amount;
+                            updateUI();
+                            showNotify(i18n[currentLang]?.topup_success || 'Звезды успешно зачислены!', 'success');
+                        }
                     } else if (payment_status === 'cancelled') {
+                        window.nftTopupMode = false;
                         console.log('Оплата отменена пользователем');
                     } else {
+                        window.nftTopupMode = false;
                         showNotify(i18n[currentLang]?.err_payment || 'Ошибка оплаты', 'error');
                     }
                 });

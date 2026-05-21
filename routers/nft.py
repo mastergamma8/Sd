@@ -17,7 +17,6 @@ import json
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-import config
 from db import db_nft
 from handlers.security import get_current_user
 

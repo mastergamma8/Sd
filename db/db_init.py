@@ -253,13 +253,12 @@ async def init_rocket_games_table():
         """)
 
         # ── NFT Галерея ───────────────────────────────────────────────────────
-        # Отдельный баланс NFT-звёзд (не совпадает с основными stars)
+        # ADD COLUMN IF NOT EXISTS не ломает транзакцию при повторном запуске
         await db.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS nft_stars INTEGER DEFAULT 0")
 
-        # Картины (создаются администратором)
         await db.execute("""
             CREATE TABLE IF NOT EXISTS nft_paintings (
-                id           SERIAL  PRIMARY KEY,
+                id           BIGSERIAL PRIMARY KEY,
                 title        TEXT    NOT NULL,
                 description  TEXT    DEFAULT '',
                 image_url    TEXT    NOT NULL,
@@ -271,24 +270,20 @@ async def init_rocket_games_table():
             )
         """)
 
-        # Коллекция пользователей (владение картинами)
         await db.execute("""
             CREATE TABLE IF NOT EXISTS nft_owned (
-                id           BIGSERIAL PRIMARY KEY,
-                user_id      BIGINT  NOT NULL,
-                painting_id  INTEGER NOT NULL,
-                acquired_at  INTEGER NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW())::INTEGER),
+                id          BIGSERIAL PRIMARY KEY,
+                user_id     BIGINT  NOT NULL,
+                painting_id BIGINT  NOT NULL,
+                acquired_at INTEGER NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW())::INTEGER),
                 UNIQUE (user_id, painting_id)
             )
         """)
-        await db.execute("ALTER TABLE nft_owned ALTER COLUMN user_id TYPE BIGINT")
-        await db.execute("""
-            CREATE INDEX IF NOT EXISTS idx_nft_owned_user
-            ON nft_owned (user_id)
-        """)
-        await db.execute("""
-            CREATE INDEX IF NOT EXISTS idx_nft_owned_painting
-            ON nft_owned (painting_id)
-        """)
+        await db.execute(
+            "CREATE INDEX IF NOT EXISTS idx_nft_owned_user ON nft_owned (user_id)"
+        )
+        await db.execute(
+            "CREATE INDEX IF NOT EXISTS idx_nft_owned_painting ON nft_owned (painting_id)"
+        )
 
         await db.commit()

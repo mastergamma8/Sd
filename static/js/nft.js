@@ -426,18 +426,18 @@ async function nftBuyFromModal() {
     }
 }
 
-// ─── Пополнение NFT-звёзд ─────────────────────────────────────────────────────
+// ─── Пополнение NFT-звёзд ────────────────────────────────────────────────────
+// Открываем стандартную модалку (topup-stars-modal) с флагом nftTopupMode.
+// globals.js::buyStars() проверяет этот флаг и при успехе кредитует NFT-баланс.
 
 function openNFTTopup() {
-    vibrate('light');
-    document.getElementById('nft-topup-amount').value = '';
-    document.getElementById('nft-topup-modal').classList.remove('hidden');
+    vibrate('medium');
+    window.nftTopupMode = true;
+    document.getElementById('custom-topup-amount').value = '';
+    openModal('topup-stars-modal');
 }
 
-function setNFTTopupAmount(amount) {
-    document.getElementById('nft-topup-amount').value = amount;
-}
-
+// Оставлено для обратной совместимости (не используется)
 async function buyNFTStars() {
     const input  = document.getElementById('nft-topup-amount');
     const amount = parseInt(input.value);
@@ -526,8 +526,7 @@ window.nftSwitchTab        = nftSwitchTab;
 window.nftOpenPainting     = nftOpenPainting;
 window.nftBuyFromModal     = nftBuyFromModal;
 window.openNFTTopup        = openNFTTopup;
-window.setNFTTopupAmount   = setNFTTopupAmount;
-window.buyNFTStars         = buyNFTStars;
+// setNFTTopupAmount / buyNFTStars removed — topup now uses main modal
 window.closeNFTModal       = closeNFTModal;
 window.nftViewUserGallery  = nftViewUserGallery;
 window.nftGalleryBackToList = nftGalleryBackToList;
