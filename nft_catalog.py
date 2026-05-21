@@ -57,7 +57,7 @@ PAINTINGS = [
          "is_active":    True,
      },
      {
-         "title":        "Space NFT",
+         "title":        "Space NFT 1",
          "description":  "TEST",
          "image_url":    "https://cdn.changes.tg/gifts/models/Pool Float/png/Original.png",
          "price":        10,

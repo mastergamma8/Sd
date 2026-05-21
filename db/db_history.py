@@ -30,13 +30,13 @@ async def mark_task_completed(user_id: int, task_id: int):
 # ИСТОРИЯ ДЕЙСТВИЙ
 # ==========================================
 
-async def add_history_entry(user_id: int, action_type: str, description: str, amount: float):
+async def add_history_entry(user_id: int, action_type: str, description: str, amount: float, ref_id: int = None):
     import time
     async with aiosqlite.connect(DB_NAME) as db:
         await db.execute("""
-            INSERT INTO user_history (user_id, action_type, description, amount, created_at)
-            VALUES (?, ?, ?, ?, ?)
-        """, (user_id, action_type, description, amount, int(time.time())))
+            INSERT INTO user_history (user_id, action_type, description, amount, created_at, ref_id)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (user_id, action_type, description, amount, int(time.time()), ref_id))
         await db.commit()
 
 async def log_action(user_id: int, action_type: str, description: str, amount: float):

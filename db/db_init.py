@@ -291,4 +291,14 @@ async def init_rocket_games_table():
             ALTER TABLE nft_owned ADD COLUMN IF NOT EXISTS serial_number INTEGER DEFAULT 0
         """)
 
+        # Migration: allow multiple copies of the same painting per user
+        await db.execute("""
+            ALTER TABLE nft_owned DROP CONSTRAINT IF EXISTS nft_owned_user_id_painting_id_key
+        """)
+
+        # Migration: add ref_id to user_history (links nft_buy entries to painting)
+        await db.execute("""
+            ALTER TABLE user_history ADD COLUMN IF NOT EXISTS ref_id BIGINT DEFAULT NULL
+        """)
+
         await db.commit()

@@ -53,12 +53,15 @@ async def nft_shop(current_user: dict = Depends(get_current_user)):
     user_id = current_user["id"]
     paintings = await db_nft.get_active_paintings()
 
-    # Отмечаем, какие картины уже куплены пользователем
+    # Отмечаем, какие картины уже куплены пользователем и сколько копий
     owned = await db_nft.get_user_gallery(user_id)
-    owned_ids = {p["id"] for p in owned}
+    owned_counts: dict[int, int] = {}
+    for p in owned:
+        owned_counts[p["id"]] = owned_counts.get(p["id"], 0) + 1
 
     for p in paintings:
-        p["owned"] = p["id"] in owned_ids
+        p["owned_count"] = owned_counts.get(p["id"], 0)
+        p["owned"] = p["owned_count"] > 0
 
     return {"paintings": paintings}
 
@@ -73,7 +76,6 @@ async def nft_buy(
 
     if not success:
         errors = {
-            "already_owned":      "Вы уже владеете этой картиной",
             "not_found":          "Картина не найдена или недоступна",
             "sold_out":           "Картина распродана",
             "not_enough_stars":   "Недостаточно NFT-звёзд",
@@ -84,13 +86,16 @@ async def nft_buy(
     gallery = await db_nft.get_user_gallery(user_id)
 
     # Логируем покупку в историю
-    painting = next((p for p in gallery if p["id"] == req.painting_id), None)
+    # Берём последнюю купленную копию этой картины (самый большой serial_number)
+    copies = [p for p in gallery if p["id"] == req.painting_id]
+    painting = max(copies, key=lambda p: p.get("serial_number", 0)) if copies else None
     title = painting["title"] if painting else f"Картина #{req.painting_id}"
     serial = painting.get("serial_number", 0) if painting else 0
     await add_history_entry(
         user_id, "nft_buy",
         f"Куплена картина «{title}» #{serial}",
         painting["price"] if painting else 0,
+        ref_id=req.painting_id,
     )
 
     return {

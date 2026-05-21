@@ -99,14 +99,6 @@ async def get_active_paintings() -> list[dict]:
 
 async def buy_painting(user_id: int, painting_id: int) -> tuple[bool, str]:
     async with aiosqlite.connect(DB_NAME) as db:
-        # Уже куплено?
-        async with db.execute(
-            "SELECT id FROM nft_owned WHERE user_id=? AND painting_id=?",
-            (user_id, painting_id),
-        ) as cur:
-            if await cur.fetchone():
-                return False, "already_owned"
-
         # Картина существует?
         db.row_factory = aiosqlite.Row
         async with db.execute(
@@ -199,10 +191,12 @@ async def get_nft_history(user_id: int, limit: int = 40, offset: int = 0) -> lis
     async with aiosqlite.connect(DB_NAME) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
-            """SELECT id, action_type, description, amount, created_at
-               FROM user_history
-               WHERE user_id = ? AND action_type IN ('nft_buy', 'nft_topup', 'nft_stars_topup')
-               ORDER BY created_at DESC
+            """SELECT h.id, h.action_type, h.description, h.amount, h.created_at,
+                      h.ref_id, p.image_url AS painting_image
+               FROM user_history h
+               LEFT JOIN nft_paintings p ON p.id = h.ref_id
+               WHERE h.user_id = ? AND h.action_type IN ('nft_buy', 'nft_topup', 'nft_stars_topup')
+               ORDER BY h.created_at DESC
                LIMIT ? OFFSET ?""",
             (user_id, limit, offset),
         ) as cur:
