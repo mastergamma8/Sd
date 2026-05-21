@@ -10,11 +10,7 @@ GET  /api/nft/gallery/{user_id}     — коллекция другого пол
 GET  /api/nft/galleries             — топ коллекционеров
 POST /api/nft/topup                 — пополнить NFT-звёзды (через Telegram Stars)
 
---- Эндпоинты для администратора ---
-GET  /api/nft/admin/paintings        — все картины
-POST /api/nft/admin/paintings        — создать картину
-PATCH /api/nft/admin/paintings/{id}  — включить / выключить
-DELETE /api/nft/admin/paintings/{id} — удалить картину
+Картины управляются через nft_catalog.py + publish_nft.py
 """
 
 import json
@@ -37,24 +33,6 @@ class BuyRequest(BaseModel):
 class TopupRequest(BaseModel):
     telegram_payment_charge_id: str
     amount: int
-
-
-class CreatePaintingRequest(BaseModel):
-    title: str
-    description: str = ""
-    image_url: str
-    price: int
-    total_supply: int = 0  # 0 = безлимитно
-
-
-class TogglePaintingRequest(BaseModel):
-    is_active: bool
-
-
-# ─── Вспомогательные функции ──────────────────────────────────────────────────
-
-def _is_admin(user_id: int) -> bool:
-    return user_id == config.ADMIN_ID
 
 
 # ─── Публичные эндпоинты ──────────────────────────────────────────────────────
@@ -148,61 +126,3 @@ async def nft_topup(
     user_id = current_user["id"]
     new_balance = await db_nft.add_nft_stars(user_id, req.amount)
     return {"status": "ok", "nft_stars": new_balance}
-
-
-# ─── Эндпоинты администратора ─────────────────────────────────────────────────
-
-@router.get("/admin/paintings")
-async def admin_get_paintings(current_user: dict = Depends(get_current_user)):
-    if not _is_admin(current_user["id"]):
-        raise HTTPException(status_code=403, detail="Нет доступа")
-    paintings = await db_nft.get_all_paintings_admin()
-    return {"paintings": paintings}
-
-
-@router.post("/admin/paintings")
-async def admin_create_painting(
-    req: CreatePaintingRequest,
-    current_user: dict = Depends(get_current_user),
-):
-    if not _is_admin(current_user["id"]):
-        raise HTTPException(status_code=403, detail="Нет доступа")
-
-    if not req.title.strip():
-        raise HTTPException(status_code=400, detail="Название обязательно")
-    if not req.image_url.strip():
-        raise HTTPException(status_code=400, detail="URL изображения обязателен")
-    if req.price <= 0:
-        raise HTTPException(status_code=400, detail="Цена должна быть > 0")
-
-    painting = await db_nft.create_painting(
-        title=req.title.strip(),
-        description=req.description.strip(),
-        image_url=req.image_url.strip(),
-        price=req.price,
-        total_supply=req.total_supply,
-    )
-    return {"status": "ok", "painting": painting}
-
-
-@router.patch("/admin/paintings/{painting_id}")
-async def admin_toggle_painting(
-    painting_id: int,
-    req: TogglePaintingRequest,
-    current_user: dict = Depends(get_current_user),
-):
-    if not _is_admin(current_user["id"]):
-        raise HTTPException(status_code=403, detail="Нет доступа")
-    await db_nft.toggle_painting(painting_id, req.is_active)
-    return {"status": "ok"}
-
-
-@router.delete("/admin/paintings/{painting_id}")
-async def admin_delete_painting(
-    painting_id: int,
-    current_user: dict = Depends(get_current_user),
-):
-    if not _is_admin(current_user["id"]):
-        raise HTTPException(status_code=403, detail="Нет доступа")
-    await db_nft.delete_painting(painting_id)
-    return {"status": "ok"}

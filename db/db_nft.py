@@ -2,10 +2,71 @@
 db/db_nft.py
 Функции базы данных для NFT Галереи.
 Отдельный баланс NFT-звёзд, картины, коллекция пользователя.
+
+Используется синтаксис "?" (SQLite-стиль), который db_async._translate_sql
+автоматически конвертирует в "%s" для psycopg3.
+Методы: db.execute() + .fetchone()/.fetchall() — db.fetch/fetchrow не существуют.
 """
 
 from db import db_async as aiosqlite
 from db.db_core import DB_NAME
+
+
+# ─── Синхронизация каталога при старте ───────────────────────────────────────
+
+async def sync_catalog(paintings: list[dict]) -> None:
+    """
+    Вызывается при старте сервера.
+    Каждая запись из nft_catalog.py добавляется или обновляется в БД.
+    sold_count у существующих картин не сбрасывается.
+    """
+    if not paintings:
+        return
+    async with aiosqlite.connect(DB_NAME) as db:
+        for p in paintings:
+            if not p.get("title") or not p.get("image_url") or not p.get("price"):
+                continue
+            async with db.execute(
+                "SELECT id FROM nft_paintings WHERE title = ?", (p["title"],)
+            ) as cur:
+                existing = await cur.fetchone()
+            if existing:
+                await db.execute(
+                    """
+                    UPDATE nft_paintings
+                    SET description  = ?,
+                        image_url    = ?,
+                        price        = ?,
+                        total_supply = ?,
+                        is_active    = ?
+                    WHERE title = ?
+                    """,
+                    (
+                        p.get("description", ""),
+                        p["image_url"],
+                        p["price"],
+                        p.get("total_supply", 0),
+                        p.get("is_active", True),
+                        p["title"],
+                    ),
+                )
+            else:
+                await db.execute(
+                    """
+                    INSERT INTO nft_paintings
+                        (title, description, image_url, price, total_supply, is_active)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        p["title"],
+                        p.get("description", ""),
+                        p["image_url"],
+                        p["price"],
+                        p.get("total_supply", 0),
+                        p.get("is_active", True),
+                    ),
+                )
+        await db.commit()
 
 
 # ─── NFT Баланс ───────────────────────────────────────────────────────────────

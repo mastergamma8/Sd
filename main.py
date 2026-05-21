@@ -145,6 +145,12 @@ async def lifespan(app: FastAPI):
         await database.init_beta_testers_table()
         await _init_rate_limit_table()
 
+        # Синхронизация NFT-каталога: все картины из nft_catalog.py
+        # автоматически появляются в магазине при каждом запуске.
+        from db.db_nft import sync_catalog
+        from nft_catalog import PAINTINGS
+        await sync_catalog(PAINTINGS)
+
         print("Инициализация обновления цен подарков (API Portals)...")
         config.update_base_gifts_prices()
 
@@ -175,18 +181,22 @@ async def lifespan(app: FastAPI):
         webhook_base = config.WEBAPP_URL.rstrip("/")
 
         if webhook_base.startswith("https://"):
-            secret = WEBHOOK_SECRET or None
-            await main_bot.set_webhook(
-                url=f"{webhook_base}/webhook/main",
-                secret_token=secret,
-                drop_pending_updates=True,
-            )
-            await support_bot.set_webhook(
-                url=f"{webhook_base}/webhook/support",
-                secret_token=secret,
-                drop_pending_updates=True,
-            )
-            print(f"✅ Webhooks зарегистрированы: {webhook_base}/webhook/main, /webhook/support")
+            try:
+                secret = WEBHOOK_SECRET or None
+                await main_bot.set_webhook(
+                    url=f"{webhook_base}/webhook/main",
+                    secret_token=secret,
+                    drop_pending_updates=True,
+                )
+                await support_bot.set_webhook(
+                    url=f"{webhook_base}/webhook/support",
+                    secret_token=secret,
+                    drop_pending_updates=True,
+                )
+                print(f"✅ Webhooks зарегистрированы: {webhook_base}/webhook/main, /webhook/support")
+            except Exception as e:
+                print(f"⚠️ Не удалось зарегистрировать webhook: {e}")
+                print("⚠️ Бот работает без webhook — обновите WEBAPP_URL на рабочий публичный адрес")
         else:
             print("⚠️ Локальный режим: webhook пропущен, потому что WEBAPP_URL не https://")
 
@@ -383,14 +393,7 @@ async def read_root(request: Request):
     context={"request": request}
     )
 
-@app.get("/nft-admin", response_class=HTMLResponse)
-async def nft_admin_panel(request: Request):
-    return templates.TemplateResponse(
-    request=request,
-    name="nft_admin.html",
-    context={"request": request}
-    )
-    
+
 
 # ── Entrypoint ────────────────────────────────────────────────────────────────
 
