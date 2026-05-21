@@ -39,12 +39,12 @@ PAINTINGS = [
 
     # ── Пример 3: скрытая — выйдет позже ────────────────────────
     {
-        "title":        "Golden Hour",
-        "description":  "Готовится к выходу. Скоро в магазине.",
-        "image_url":    "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800",
+        "title":        "Sakura Flower",
+        "description":  "Настоящий шедевр исскуства",
+        "image_url":    "https://cdn.changes.tg/gifts/models/Sakura Flower/png/Original.png",
         "price":        300,
         "total_supply": 5,
-        "is_active":    False,  # не видна в магазине до публикации
+        "is_active":    True,  # не видна в магазине до публикации
     },
 
     # ── Добавляйте свои картины ниже ────────────────────────────
