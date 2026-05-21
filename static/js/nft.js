@@ -179,14 +179,14 @@ function nftRenderShop() {
         list.innerHTML = `
             <div class="text-center py-12">
                 <div class="w-16 h-16 mx-auto mb-3 rounded-3xl flex items-center justify-center"
-                     style="background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.2);">
-                    <svg class="w-8 h-8 text-purple-400/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     style="background:rgba(201,162,39,0.08);border:1px solid rgba(201,162,39,0.18);">
+                    <svg class="w-8 h-8 text-yellow-700/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                               d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                     </svg>
                 </div>
-                <p class="text-purple-300/50 text-sm">Нет доступных картин</p>
-                <p class="text-purple-300/30 text-xs mt-1">Скоро появятся новые работы</p>
+                <p class="text-yellow-600/50 text-sm">Нет доступных картин</p>
+                <p class="text-yellow-600/30 text-xs mt-1">Скоро появятся новые работы</p>
             </div>`;
         return;
     }
@@ -202,7 +202,7 @@ function nftShopCardHTML(p) {
 
     const badgeHTML = limited
         ? `<div class="absolute top-2 left-2 px-2 py-0.5 rounded-lg text-[10px] font-bold text-white"
-                style="background:rgba(168,85,247,0.85);">
+                style="background:rgba(201,162,39,0.85);">
                ${isSoldOut ? '🔴 Распродано' : `🔥 ${remain} из ${p.total_supply}`}
            </div>`
         : `<div class="absolute top-2 left-2 px-2 py-0.5 rounded-lg text-[10px] font-bold text-white"
@@ -226,7 +226,7 @@ function nftShopCardHTML(p) {
         </div>
         <div class="p-3">
             <h4 class="text-white font-bold text-sm leading-tight mb-1 truncate">${escapeHtml(p.title)}</h4>
-            ${p.description ? `<p class="text-purple-300/50 text-xs mb-2 line-clamp-2">${escapeHtml(p.description)}</p>` : ''}
+            ${p.description ? `<p class="text-yellow-600/50 text-xs mb-2 line-clamp-2">${escapeHtml(p.description)}</p>` : ''}
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-1">
                     <img src="/gifts/stars.png" class="w-3.5 h-3.5 object-contain" onerror="this.style.display='none'">
@@ -236,7 +236,7 @@ function nftShopCardHTML(p) {
                     ? `<span class="text-xs font-bold px-2 py-1 rounded-lg" style="background:rgba(16,185,129,0.15);color:#34d399;">Куплено</span>`
                     : isSoldOut
                     ? `<span class="text-xs font-bold px-2 py-1 rounded-lg" style="background:rgba(239,68,68,0.15);color:#f87171;">Нет в наличии</span>`
-                    : `<span class="text-xs font-bold px-2 py-1 rounded-lg" style="background:rgba(168,85,247,0.15);color:#c084fc;">Купить</span>`
+                    : `<span class="text-xs font-bold px-2 py-1 rounded-lg" style="background:rgba(201,162,39,0.12);color:#c9a227;">Купить</span>`
                 }
             </div>
         </div>
@@ -282,7 +282,7 @@ function nftRenderCollectors(collectors) {
 
     container.innerHTML = `
         <div class="mb-3">
-            <h3 class="text-white font-bold text-sm mb-2" style="color:rgba(168,85,247,0.9);">
+            <h3 class="text-white font-bold text-sm mb-2" style="color:rgba(201,162,39,0.9);">
                 🌐 Галереи коллекционеров
             </h3>
             <div class="space-y-2">
@@ -292,17 +292,17 @@ function nftRenderCollectors(collectors) {
                         : (c.first_name || c.username || `User ${c.tg_id}`);
                     return `
                     <div class="flex items-center justify-between p-2.5 rounded-2xl cursor-pointer active:scale-[0.98] transition-all"
-                         style="background:rgba(168,85,247,0.07);border:1px solid rgba(168,85,247,0.12);"
+                         style="background:rgba(201,162,39,0.06);border:1px solid rgba(201,162,39,0.15);"
                          onclick="nftViewUserGallery(${c.tg_id}, '${escapeHtml(name)}')">
                         <div class="flex items-center gap-2.5">
                             <div class="w-6 h-6 rounded-lg flex items-center justify-center text-xs font-black"
-                                 style="background:rgba(168,85,247,0.2);color:#a855f7;">${i + 1}</div>
+                                 style="background:rgba(201,162,39,0.18);color:#c9a227;">${i + 1}</div>
                             <div>
                                 <p class="text-white text-xs font-semibold">${escapeHtml(name)}</p>
-                                <p class="text-purple-300/50 text-[10px]">${c.collection_size} картин</p>
+                                <p class="text-yellow-600/50 text-[10px]">${c.collection_size} картин</p>
                             </div>
                         </div>
-                        <svg class="w-4 h-4 text-purple-400/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-4 h-4 text-yellow-700/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                         </svg>
                     </div>`;
@@ -310,7 +310,7 @@ function nftRenderCollectors(collectors) {
             </div>
         </div>
         <div class="mb-3">
-            <h3 class="text-white font-bold text-sm mb-2" style="color:rgba(168,85,247,0.9);">
+            <h3 class="text-white font-bold text-sm mb-2" style="color:rgba(201,162,39,0.9);">
                 🖼 Моя коллекция
             </h3>
         </div>`;
@@ -369,8 +369,8 @@ function nftOpenPainting(paintingId, fromGallery = false) {
     } else {
         buyBtn.textContent = `Купить за ${painting.price} ⭐`;
         buyBtn.disabled    = false;
-        buyBtn.style.background = 'linear-gradient(135deg, #7c3aed, #a855f7)';
-        buyBtn.style.boxShadow  = '0 0 20px rgba(168,85,247,0.4)';
+        buyBtn.style.background = 'linear-gradient(135deg, #92400e, #c9a227)';
+        buyBtn.style.boxShadow  = '0 0 20px rgba(201,162,39,0.35)';
     }
 
     document.getElementById('nft-painting-modal').classList.remove('hidden');
@@ -515,7 +515,7 @@ function nftLoadingHTML() {
     return `
         <div class="flex items-center justify-center py-12">
             <div class="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
-                 style="border-color:rgba(168,85,247,0.4);border-top-color:transparent;"></div>
+                 style="border-color:rgba(201,162,39,0.35);border-top-color:transparent;"></div>
         </div>`;
 }
 
