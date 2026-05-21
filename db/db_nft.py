@@ -134,11 +134,15 @@ async def buy_painting(user_id: int, painting_id: int) -> tuple[bool, str]:
         if cur2.rowcount != 1:
             return False, "not_enough_stars"
 
-        # Добавляем в коллекцию
+        # Добавляем в коллекцию c серийным номером
         try:
             await db.execute(
-                "INSERT INTO nft_owned (user_id, painting_id, acquired_at) VALUES (?,?,?)",
-                (user_id, painting_id, int(time.time())),
+                """INSERT INTO nft_owned (user_id, painting_id, acquired_at, serial_number)
+                   VALUES (?, ?, ?, (
+                       SELECT COALESCE(MAX(serial_number), 0) + 1
+                       FROM nft_owned WHERE painting_id = ?
+                   ))""",
+                (user_id, painting_id, int(time.time()), painting_id),
             )
         except Exception:
             # Если гонка — откатываем списание
@@ -162,7 +166,8 @@ async def get_user_gallery(user_id: int) -> list[dict]:
         db.row_factory = aiosqlite.Row
         async with db.execute(
             """SELECT p.id, p.title, p.description, p.image_url,
-                      p.price, p.total_supply, p.sold_count, o.acquired_at
+                      p.price, p.total_supply, p.sold_count, o.acquired_at,
+                      o.serial_number
                FROM nft_owned o JOIN nft_paintings p ON p.id = o.painting_id
                WHERE o.user_id=? ORDER BY o.acquired_at DESC""",
             (user_id,),
@@ -182,6 +187,24 @@ async def get_all_galleries(limit: int = 50) -> list[dict]:
                GROUP BY u.tg_id, u.username, u.first_name, u.is_anonymous
                ORDER BY collection_size DESC LIMIT ?""",
             (limit,),
+        ) as cur:
+            rows = await cur.fetchall()
+    return [dict(r) for r in rows]
+
+
+# ─── История NFT-действий ─────────────────────────────────────────────────────
+
+async def get_nft_history(user_id: int, limit: int = 40, offset: int = 0) -> list[dict]:
+    """Возвращает историю NFT-операций пользователя из общей таблицы user_history."""
+    async with aiosqlite.connect(DB_NAME) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            """SELECT id, action_type, description, amount, created_at
+               FROM user_history
+               WHERE user_id = ? AND action_type IN ('nft_buy', 'nft_topup', 'nft_stars_topup')
+               ORDER BY created_at DESC
+               LIMIT ? OFFSET ?""",
+            (user_id, limit, offset),
         ) as cur:
             rows = await cur.fetchall()
     return [dict(r) for r in rows]

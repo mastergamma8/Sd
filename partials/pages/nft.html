@@ -135,6 +135,52 @@
       </div>
     </div>
 
+    <!-- ── СТРАНИЦА: ГАЛЕРЕИ (все коллекционеры) ──────────────────────────── -->
+    <div id="nft-page-galleries" class="px-4 pb-32 pt-3 hidden">
+
+      <div class="mb-5">
+        <div class="flex items-center gap-3 mb-1">
+          <div class="nft-ornament-line flex-1"></div>
+          <h2 class="nft-section-title font-black text-base tracking-[0.15em] uppercase" style="font-family:'Georgia',serif;">
+            🌐 Галереи
+          </h2>
+          <div class="nft-ornament-line flex-1"></div>
+        </div>
+        <p class="text-center text-[10px] tracking-widest uppercase nft-section-sub">Коллекции других пользователей</p>
+      </div>
+
+      <!-- Назад к списку (когда смотрим чужую галерею) -->
+      <div id="nft-galleries-back-row" class="hidden mb-3">
+        <button onclick="nftGalleriesBackToList()"
+                class="flex items-center gap-2 px-3 py-2 rounded-xl active:scale-95 transition-all nft-back-btn">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:#c9a227;">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+          </svg>
+          <span class="text-xs font-semibold" style="color:#c9a227;">Все коллекционеры</span>
+        </button>
+      </div>
+
+      <!-- Список коллекционеров или их галерея -->
+      <div id="nft-galleries-content"></div>
+    </div>
+
+    <!-- ── СТРАНИЦА: ИСТОРИЯ NFT ──────────────────────────────────────────── -->
+    <div id="nft-page-history" class="px-4 pb-32 pt-3 hidden">
+
+      <div class="mb-5">
+        <div class="flex items-center gap-3 mb-1">
+          <div class="nft-ornament-line flex-1"></div>
+          <h2 class="nft-section-title font-black text-base tracking-[0.15em] uppercase" style="font-family:'Georgia',serif;">
+            📜 История
+          </h2>
+          <div class="nft-ornament-line flex-1"></div>
+        </div>
+        <p class="text-center text-[10px] tracking-widest uppercase nft-section-sub">Операции с NFT-галереей</p>
+      </div>
+
+      <div id="nft-history-list" class="space-y-2"></div>
+    </div>
+
   </div>
 
   <!-- ══ NFT НАВИГАЦИЯ ═══════════════════════════════════════════════════ -->
@@ -142,42 +188,63 @@
        id="nft-nav-wrapper"
        style="bottom:calc(1.5rem + var(--tg-safe-area-inset-bottom, 0px));">
 
-    <nav class="pointer-events-auto rounded-[2rem] w-full max-w-md flex justify-around items-center p-2 nft-nav-bar">
+    <nav class="pointer-events-auto rounded-[2rem] w-full max-w-md flex justify-around items-center p-1.5 nft-nav-bar">
 
       <!-- Магазин -->
       <button onclick="nftSwitchTab('shop')" id="nft-nav-shop"
-              class="nft-nav-item active flex flex-col items-center justify-center w-14 h-14 rounded-2xl transition-all">
-        <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              class="nft-nav-item active flex flex-col items-center justify-center w-12 h-12 rounded-2xl transition-all">
+        <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
         </svg>
-        <span class="text-[9px] font-semibold tracking-wider uppercase">Магазин</span>
+        <span class="text-[8px] font-semibold tracking-wide uppercase">Магазин</span>
+      </button>
+
+      <!-- Галереи -->
+      <button onclick="nftSwitchTab('galleries')" id="nft-nav-galleries"
+              class="nft-nav-item flex flex-col items-center justify-center w-12 h-12 rounded-2xl transition-all">
+        <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+        <span class="text-[8px] font-semibold tracking-wide uppercase">Галереи</span>
       </button>
 
       <!-- Кнопка Назад (центральная) -->
       <button onclick="closeNFTSection()"
-              class="flex flex-col items-center justify-center w-16 h-16 rounded-2xl active:scale-95 transition-all nft-back-center-btn">
-        <svg class="w-7 h-7 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:#1a0e04;">
+              class="flex flex-col items-center justify-center w-14 h-14 rounded-2xl active:scale-95 transition-all nft-back-center-btn">
+        <svg class="w-6 h-6 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:#1a0e04;">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/>
         </svg>
         <span class="text-[8px] font-bold tracking-wide" style="color:#1a0e04;">Назад</span>
       </button>
 
+      <!-- История -->
+      <button onclick="nftSwitchTab('history')" id="nft-nav-history"
+              class="nft-nav-item flex flex-col items-center justify-center w-12 h-12 rounded-2xl transition-all">
+        <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <span class="text-[8px] font-semibold tracking-wide uppercase">История</span>
+      </button>
+
       <!-- Галерея -->
       <button onclick="nftSwitchTab('gallery')" id="nft-nav-gallery"
-              class="nft-nav-item flex flex-col items-center justify-center w-14 h-14 rounded-2xl transition-all">
-        <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              class="nft-nav-item flex flex-col items-center justify-center w-12 h-12 rounded-2xl transition-all">
+        <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
         </svg>
-        <span class="text-[9px] font-semibold tracking-wider uppercase">Галерея</span>
+        <span class="text-[8px] font-semibold tracking-wide uppercase">Моя</span>
       </button>
 
     </nav>
   </div>
 
 </div>
+
 
 
 <!-- ══ МОДАЛЬНОЕ ОКНО: ДЕТАЛИ КАРТИНЫ ════════════════════════════════════ -->

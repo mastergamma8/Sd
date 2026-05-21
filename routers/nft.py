@@ -18,6 +18,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from db import db_nft
+from db.db_history import add_history_entry
 from handlers.security import get_current_user
 
 router = APIRouter(prefix="/api/nft", tags=["nft"])
@@ -81,6 +82,17 @@ async def nft_buy(
 
     nft_stars = await db_nft.get_nft_stars(user_id)
     gallery = await db_nft.get_user_gallery(user_id)
+
+    # Логируем покупку в историю
+    painting = next((p for p in gallery if p["id"] == req.painting_id), None)
+    title = painting["title"] if painting else f"Картина #{req.painting_id}"
+    serial = painting.get("serial_number", 0) if painting else 0
+    await add_history_entry(
+        user_id, "nft_buy",
+        f"Куплена картина «{title}» #{serial}",
+        painting["price"] if painting else 0,
+    )
+
     return {
         "status": "ok",
         "nft_stars": nft_stars,
@@ -124,4 +136,19 @@ async def nft_topup(
 
     user_id = current_user["id"]
     new_balance = await db_nft.add_nft_stars(user_id, req.amount)
+
+    # Логируем пополнение в историю
+    await add_history_entry(
+        user_id, "nft_topup",
+        f"Пополнение NFT-звёзд на {req.amount} ⭐",
+        req.amount,
+    )
+
     return {"status": "ok", "nft_stars": new_balance}
+
+
+@router.get("/history")
+async def nft_history(current_user: dict = Depends(get_current_user)):
+    user_id = current_user["id"]
+    entries = await db_nft.get_nft_history(user_id)
+    return {"history": entries}

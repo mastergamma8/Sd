@@ -48,13 +48,21 @@ PAINTINGS = [
     },
 
     # ── Добавляйте свои картины ниже ────────────────────────────
-    # {
-    #     "title":        "Название",
-    #     "description":  "Описание",
-    #     "image_url":    "https://...",
-    #     "price":        100,
-    #     "total_supply": 0,
-    #     "is_active":    True,
-    # },
+     {
+         "title":        "Space NFT",
+         "description":  "TEST",
+         "image_url":    "https://cdn.changes.tg/gifts/models/Plush Pepe/png/Original.png",
+         "price":        100,
+         "total_supply": 1,
+         "is_active":    True,
+     },
+     {
+         "title":        "Space NFT",
+         "description":  "TEST",
+         "image_url":    "https://cdn.changes.tg/gifts/models/Pool Float/png/Original.png",
+         "price":        10,
+         "total_supply": 10,
+         "is_active":    True,
+     },
 
 ]

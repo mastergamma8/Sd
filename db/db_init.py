@@ -286,4 +286,9 @@ async def init_rocket_games_table():
             "CREATE INDEX IF NOT EXISTS idx_nft_owned_painting ON nft_owned (painting_id)"
         )
 
+        # Migration: add serial_number to nft_owned (unique copy number per painting)
+        await db.execute("""
+            ALTER TABLE nft_owned ADD COLUMN IF NOT EXISTS serial_number INTEGER DEFAULT 0
+        """)
+
         await db.commit()
