@@ -74,7 +74,7 @@ async def get_active_paintings() -> list[dict]:
         async with db.execute(
             """SELECT id, title, description, image_url, price,
                       total_supply, sold_count, created_at
-               FROM nft_paintings WHERE is_active=1 ORDER BY created_at DESC"""
+               FROM nft_paintings WHERE is_active=TRUE ORDER BY created_at DESC"""
         ) as cur:
             rows = await cur.fetchall()
     result = []
