@@ -301,4 +301,55 @@ async def init_rocket_games_table():
             ALTER TABLE user_history ADD COLUMN IF NOT EXISTS ref_id BIGINT DEFAULT NULL
         """)
 
+
+        # ── NFT owned: поле статуса ('held' | 'for_sale' | 'in_auction') ──────
+        await db.execute("""
+            ALTER TABLE nft_owned ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'held'
+        """)
+
+        # ── Маркетплейс (фиксированная цена) ─────────────────────────────────
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS nft_market_listings (
+                id           BIGSERIAL PRIMARY KEY,
+                seller_id    BIGINT  NOT NULL,
+                nft_owned_id BIGINT  NOT NULL,
+                painting_id  BIGINT  NOT NULL,
+                price        INTEGER NOT NULL,
+                status       TEXT    NOT NULL DEFAULT 'active',
+                buyer_id     BIGINT  DEFAULT NULL,
+                created_at   INTEGER NOT NULL,
+                sold_at      INTEGER DEFAULT NULL
+            )
+        """)
+        await db.execute(
+            "CREATE INDEX IF NOT EXISTS idx_nft_listings_status ON nft_market_listings (status)"
+        )
+        await db.execute(
+            "CREATE INDEX IF NOT EXISTS idx_nft_listings_seller ON nft_market_listings (seller_id)"
+        )
+
+        # ── Аукционы ─────────────────────────────────────────────────────────
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS nft_auctions (
+                id              BIGSERIAL PRIMARY KEY,
+                seller_id       BIGINT  NOT NULL,
+                nft_owned_id    BIGINT  NOT NULL,
+                painting_id     BIGINT  NOT NULL,
+                start_price     INTEGER NOT NULL,
+                current_price   INTEGER NOT NULL,
+                current_bidder  BIGINT  DEFAULT NULL,
+                status          TEXT    NOT NULL DEFAULT 'active',
+                ends_at         INTEGER NOT NULL,
+                created_at      INTEGER NOT NULL,
+                ended_at        INTEGER DEFAULT NULL
+            )
+        """)
+        await db.execute(
+            "CREATE INDEX IF NOT EXISTS idx_nft_auctions_status "
+            "ON nft_auctions (status, ends_at)"
+        )
+        await db.execute(
+            "CREATE INDEX IF NOT EXISTS idx_nft_auctions_seller ON nft_auctions (seller_id)"
+        )
+
         await db.commit()

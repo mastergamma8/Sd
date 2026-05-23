@@ -19,6 +19,7 @@ from routers import users, gifts, games, tasks, bank
 from routers import tg_shop
 from routers import shop
 from routers import nft
+from routers import nft_market
 from db.db_core import DB_NAME
 
 # Секрет для верификации webhook-запросов от Telegram.
@@ -354,6 +355,7 @@ app.include_router(bank.router)
 app.include_router(tg_shop.router)
 app.include_router(shop.router)
 app.include_router(nft.router)
+app.include_router(nft_market.router)
 
 
 # ── Webhook endpoints для Telegram ───────────────────────────────────────────

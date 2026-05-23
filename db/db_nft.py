@@ -159,7 +159,7 @@ async def get_user_gallery(user_id: int) -> list[dict]:
         async with db.execute(
             """SELECT p.id, p.title, p.description, p.image_url,
                       p.price, p.total_supply, p.sold_count, o.acquired_at,
-                      o.serial_number
+                      o.serial_number, o.id as owned_id, o.status
                FROM nft_owned o JOIN nft_paintings p ON p.id = o.painting_id
                WHERE o.user_id=? ORDER BY o.acquired_at DESC""",
             (user_id,),

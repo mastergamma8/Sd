@@ -64,7 +64,7 @@ function nftSwitchTab(tab) {
     const activeBtn = document.getElementById(`nft-nav-${tab}`);
     if (activeBtn) activeBtn.classList.add('active');
 
-    ['shop', 'gallery', 'galleries', 'history'].forEach(t => {
+    ['shop', 'gallery', 'galleries', 'history', 'market', 'auction'].forEach(t => {
         const el = document.getElementById(`nft-page-${t}`);
         if (el) el.classList.add('hidden');
     });
@@ -78,6 +78,8 @@ function nftSwitchTab(tab) {
     if (tab === 'gallery')   nftLoadGallery();
     if (tab === 'galleries') nftLoadGalleriesPage();
     if (tab === 'history')   nftLoadHistory();
+    if (tab === 'market')    nftLoadMarket();
+    if (tab === 'auction')   nftLoadAuctions();
 }
 
 // ─── Загрузка данных ──────────────────────────────────────────────────────────
@@ -489,15 +491,44 @@ function nftGalleryCardHTML(p, isOwner) {
         ? `<span style="color:#fbbf24;"> #${serial}</span>`
         : '';
     const viewOnly = !isOwner;
+    const ownedId  = p.owned_id || 0;
+    const status   = p.status || 'held';  // 'held' | 'for_sale' | 'in_auction'
+
+    // Бейдж статуса для картин, выставленных на продажу или торги
+    let statusBadge = '';
+    if (isOwner && status === 'for_sale') {
+        statusBadge = `<div class="nft-status-badge nft-status-for-sale">На продаже</div>`;
+    } else if (isOwner && status === 'in_auction') {
+        statusBadge = `<div class="nft-status-badge nft-status-in-auction">На аукционе</div>`;
+    }
+
+    // Кнопки действий — только для своих свободных картин
+    let actionStrip = '';
+    if (isOwner && status === 'held' && ownedId > 0) {
+        actionStrip = `
+        <div class="nft-card-actions">
+          <button onclick="event.stopPropagation(); nftOpenListModal(${ownedId}, '${escapeHtml(p.title)}', '${escapeHtml(p.image_url)}')"
+                  class="flex-1 py-1.5 rounded-lg text-[9px] font-bold active:scale-95 transition-all"
+                  style="background:rgba(251,191,36,0.82);color:#0d0601;">
+            🏷 Продать
+          </button>
+          <button onclick="event.stopPropagation(); nftOpenAuctionCreateModal(${ownedId}, '${escapeHtml(p.title)}', '${escapeHtml(p.image_url)}')"
+                  class="flex-1 py-1.5 rounded-lg text-[9px] font-bold active:scale-95 transition-all"
+                  style="background:rgba(239,68,68,0.75);color:#fff;">
+            🔨 Аукцион
+          </button>
+        </div>`;
+    }
 
     return `
-    <div class="nft-gallery-card cursor-pointer" onclick="nftOpenPainting(${p.id}, true, ${viewOnly}, ${serial})">
+    <div class="nft-gallery-card cursor-pointer relative" onclick="nftOpenPainting(${p.id}, true, ${viewOnly}, ${serial})">
         <div class="relative w-full" style="padding-top:100%;">
             <img src="${escapeHtml(p.image_url)}" alt="${escapeHtml(p.title)}"
                  class="absolute inset-0 w-full h-full object-cover"
                  onerror="this.src='https://via.placeholder.com/300x300?text=NFT'">
             <div class="absolute inset-0" style="background:linear-gradient(to bottom,transparent 30%,rgba(8,4,0,0.96) 100%);"></div>
-            <div class="absolute bottom-2 left-2 right-2">
+            ${statusBadge}
+            <div class="absolute bottom-2 left-2 right-2" style="z-index:1;">
                 <p class="text-white font-bold text-xs truncate leading-tight">${escapeHtml(p.title)}${serialLabel}</p>
                 <div class="flex items-center gap-1 mt-1">
                     <img src="/gifts/stars.png" class="w-3 h-3 object-contain" onerror="this.style.display='none'">
@@ -505,6 +536,7 @@ function nftGalleryCardHTML(p, isOwner) {
                     <span class="text-[9px]" style="color:rgba(251,191,36,0.5);">звёзд</span>
                 </div>
             </div>
+            ${actionStrip}
         </div>
     </div>`;
 }
