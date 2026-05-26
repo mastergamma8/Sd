@@ -221,7 +221,10 @@ function nftOpenListingDetail(listingId) {
     const supplyText = document.getElementById('nft-modal-supply-text');
     if (supplyRow && supplyText) {
         if (l.total_supply > 0) {
-            supplyText.textContent = `${l.sold_count || 0} / ${l.total_supply}`;
+            const remaining = (l.available !== null && l.available !== undefined)
+                ? l.available
+                : (l.total_supply - (l.sold_count || 0));
+            supplyText.textContent = `${remaining} из ${l.total_supply}`;
             supplyRow.classList.remove('hidden');
             supplyRow.style.display = 'flex';
         } else {
@@ -664,7 +667,10 @@ function nftOpenAuctionDetail(auctionId) {
     const supplyTextA = document.getElementById('nft-modal-supply-text');
     if (supplyRowA && supplyTextA) {
         if (a.total_supply > 0) {
-            supplyTextA.textContent = `${a.sold_count || 0} / ${a.total_supply}`;
+            const remainingA = (a.available !== null && a.available !== undefined)
+                ? a.available
+                : (a.total_supply - (a.sold_count || 0));
+            supplyTextA.textContent = `${remainingA} из ${a.total_supply}`;
             supplyRowA.classList.remove('hidden');
             supplyRowA.style.display = 'flex';
         } else {

@@ -216,6 +216,10 @@ async function nftOpenUserGalleryPage(userId, name) {
         const data     = await res.json();
         const paintings = data.gallery || [];
 
+        // БАГ-ФИX: обновляем nftGalleryData данными чужой галереи,
+        // иначе nftOpenPainting ищет по старым данным и не находит картину
+        nftGalleryData = paintings;
+
         const headerHtml = `
             <div class="mb-4">
                 <p class="font-black text-base" style="color:#fde68a;font-family:'Georgia',serif;">${escapeHtml(name)}</p>
@@ -244,6 +248,9 @@ async function nftOpenUserGalleryPage(userId, name) {
 function nftGalleriesBackToList() {
     vibrate('light');
     document.getElementById('nft-galleries-back-row')?.classList.add('hidden');
+    // БАГ-ФИX: сбрасываем nftGalleryData при возврате к списку, чтобы старые данные
+    // чужой галереи не мешали последующим кликам по другим разделам
+    nftGalleryData = [];
     nftLoadGalleriesPage();
 }
 
@@ -283,39 +290,52 @@ function nftRenderHistory(entries) {
         return;
     }
 
-    list.innerHTML = entries.map(e => {
-        const isBuy   = e.action_type === 'nft_buy';
-        const isTopup = e.action_type === 'nft_topup' || e.action_type === 'nft_stars_topup';
+    // Типы, при которых деньги тратятся (знак минус, красный)
+    const SPEND_TYPES = new Set([
+        'nft_buy', 'nft_market_buy', 'nft_auction_bid',
+    ]);
+    // Типы, при которых деньги поступают (знак плюс, зелёный)
+    const EARN_TYPES = new Set([
+        'nft_topup', 'nft_stars_topup',
+        'nft_market_sold', 'nft_auction_sold',
+        'nft_auction_won', 'nft_auction_outbid',
+    ]);
 
-        const color     = isBuy ? 'rgba(239,68,68,0.18)' : 'rgba(16,185,129,0.18)';
-        const textColor = isBuy ? '#f87171' : '#34d399';
-        const sign      = isBuy ? '−' : '+';
+    // Иконки для типов без картинки
+    const TYPE_ICON = {
+        'nft_topup':         { emoji: '⭐', bg: 'rgba(16,185,129,0.18)',  color: '#34d399' },
+        'nft_stars_topup':   { emoji: '⭐', bg: 'rgba(16,185,129,0.18)',  color: '#34d399' },
+        'nft_market_sold':   { emoji: '🏷', bg: 'rgba(16,185,129,0.18)',  color: '#34d399' },
+        'nft_auction_sold':  { emoji: '🔨', bg: 'rgba(16,185,129,0.18)',  color: '#34d399' },
+        'nft_auction_won':   { emoji: '🏆', bg: 'rgba(251,191,36,0.18)',  color: '#fbbf24' },
+        'nft_auction_outbid':{ emoji: '↩️', bg: 'rgba(16,185,129,0.18)',  color: '#34d399' },
+        'nft_auction_bid':   { emoji: '🔨', bg: 'rgba(239,68,68,0.18)',   color: '#f87171' },
+        'nft_buy':           { emoji: '🎨', bg: 'rgba(239,68,68,0.18)',   color: '#f87171' },
+        'nft_market_buy':    { emoji: '🎨', bg: 'rgba(239,68,68,0.18)',   color: '#f87171' },
+    };
+
+    list.innerHTML = entries.map(e => {
+        const isSpend = SPEND_TYPES.has(e.action_type);
+        const isEarn  = EARN_TYPES.has(e.action_type);
+
+        const textColor = isSpend ? '#f87171' : '#34d399';
+        const sign      = isSpend ? '−' : '+';
 
         const date    = new Date(e.created_at * 1000);
         const dateStr = date.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' })
                       + ' ' + date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
+        // Если есть картинка — показываем её; иначе эмодзи-иконка
         let iconHTML;
-        if (isBuy && e.painting_image) {
+        if (e.painting_image) {
             iconHTML = `<img src="${escapeHtml(e.painting_image)}" alt=""
                              class="w-10 h-10 rounded-xl object-cover flex-shrink-0 border"
                              style="border-color:rgba(251,191,36,0.3);"
-                             onerror="this.outerHTML='<div class=\\'w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0\\' style=\\'background:rgba(239,68,68,0.18);\\'>&#127912;</div>'">`;
-        } else if (isBuy) {
-            iconHTML = `<div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                              style="background:${color};">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:#f87171;">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                          d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                </svg>
-            </div>`;
+                             onerror="this.outerHTML='<div class=\\'w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0\\' style=\\'background:rgba(251,191,36,0.12);font-size:20px;\\'>🎨</div>'">`;
         } else {
-            iconHTML = `<div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                              style="background:${color};">
-                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" style="color:#34d399;">
-                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                </svg>
-            </div>`;
+            const ic = TYPE_ICON[e.action_type] || { emoji: '📋', bg: 'rgba(251,191,36,0.12)', color: '#fbbf24' };
+            iconHTML = `<div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-xl"
+                              style="background:${ic.bg};">${ic.emoji}</div>`;
         }
 
         return `

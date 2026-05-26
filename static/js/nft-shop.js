@@ -84,11 +84,9 @@ function nftRenderShop() {
 // ─── Карточка магазина ────────────────────────────────────────────────────────
 
 function nftShopCardHTML(p) {
-    const ownedCount = p.owned_count || 0;
-    const isOwned    = ownedCount > 0;
-    const isSoldOut  = p.available !== null && p.available <= 0;
-    const limited    = p.total_supply > 0;
-    const remain     = p.available;
+    const isSoldOut = p.available !== null && p.available <= 0;
+    const limited   = p.total_supply > 0;
+    const remain    = p.available;
 
     const badgeHTML = limited
         ? `<div class="absolute top-2 left-2 px-2 py-0.5 rounded-xl text-[10px] font-bold"
@@ -98,13 +96,8 @@ function nftShopCardHTML(p) {
         : `<div class="absolute top-2 left-2 px-2 py-0.5 rounded-xl text-[10px] font-bold"
                 style="background:rgba(99,102,241,0.78);color:#fff;backdrop-filter:blur(8px);">♾ Неограниченный</div>`;
 
-    const myPaintingBadge = isOwned
-        ? `<div class="absolute top-2 right-2 px-2 py-0.5 rounded-xl text-[10px] font-bold"
-                style="background:rgba(16,185,129,0.85);color:#fff;backdrop-filter:blur(8px);">✦ Моя картина</div>`
-        : '';
-
     return `
-    <div class="nft-card${isOwned ? ' owned' : ''} cursor-pointer"
+    <div class="nft-card cursor-pointer"
          onclick="nftOpenPainting(${p.id})">
         <div class="relative w-full" style="padding-top:65%;">
             <img src="${escapeHtml(p.image_url)}" alt="${escapeHtml(p.title)}"
@@ -112,7 +105,6 @@ function nftShopCardHTML(p) {
                  onerror="this.src='https://via.placeholder.com/400x260?text=NFT'">
             <div class="absolute inset-0" style="background:linear-gradient(to bottom,transparent 45%,rgba(8,4,0,0.95) 100%);"></div>
             ${badgeHTML}
-            ${myPaintingBadge}
         </div>
         <div class="p-3">
             <h4 class="text-white font-bold text-sm leading-tight mb-1 truncate">${escapeHtml(p.title)}</h4>

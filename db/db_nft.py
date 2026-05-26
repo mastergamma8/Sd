@@ -159,13 +159,28 @@ async def get_user_gallery(user_id: int) -> list[dict]:
         async with db.execute(
             """SELECT p.id, p.title, p.description, p.image_url,
                       p.price, p.total_supply, p.sold_count, o.acquired_at,
-                      o.serial_number, o.id as owned_id, o.status
-               FROM nft_owned o JOIN nft_paintings p ON p.id = o.painting_id
+                      o.serial_number, o.id as owned_id, o.status,
+                      ml.id   as listing_id,
+                      au.id   as auction_id,
+                      CASE WHEN au.current_bidder IS NOT NULL THEN 1 ELSE 0 END as has_bids
+               FROM nft_owned o
+               JOIN nft_paintings p ON p.id = o.painting_id
+               LEFT JOIN nft_market_listings ml
+                      ON ml.nft_owned_id = o.id AND ml.status = 'active'
+               LEFT JOIN nft_auctions au
+                      ON au.nft_owned_id = o.id AND au.status = 'active'
                WHERE o.user_id=? ORDER BY o.acquired_at DESC""",
             (user_id,),
         ) as cur:
             rows = await cur.fetchall()
-    return [dict(r) for r in rows]
+    result = []
+    for r in rows:
+        d = dict(r)
+        ts = d.get("total_supply") or 0
+        sc = d.get("sold_count") or 0
+        d["available"] = (ts - sc) if ts > 0 else None
+        result.append(d)
+    return result
 
 
 async def get_all_galleries(limit: int = 50) -> list[dict]:
@@ -192,10 +207,54 @@ async def get_nft_history(user_id: int, limit: int = 40, offset: int = 0) -> lis
         db.row_factory = aiosqlite.Row
         async with db.execute(
             """SELECT h.id, h.action_type, h.description, h.amount, h.created_at,
-                      h.ref_id, p.image_url AS painting_image
+                      h.ref_id,
+                      -- Для nft_buy: ref_id = painting_id → прямой JOIN
+                      -- Для market/auction: ref_id = listing/auction id → через подзапросы
+                      CASE h.action_type
+                        WHEN 'nft_buy' THEN (
+                            SELECT image_url FROM nft_paintings WHERE id = h.ref_id
+                        )
+                        WHEN 'nft_market_buy' THEN (
+                            SELECT p.image_url FROM nft_market_listings ml
+                            JOIN nft_paintings p ON p.id = ml.painting_id
+                            WHERE ml.id = h.ref_id
+                        )
+                        WHEN 'nft_market_sold' THEN (
+                            SELECT p.image_url FROM nft_market_listings ml
+                            JOIN nft_paintings p ON p.id = ml.painting_id
+                            WHERE ml.id = h.ref_id
+                        )
+                        WHEN 'nft_auction_won' THEN (
+                            SELECT p.image_url FROM nft_auctions a
+                            JOIN nft_paintings p ON p.id = a.painting_id
+                            WHERE a.id = h.ref_id
+                        )
+                        WHEN 'nft_auction_sold' THEN (
+                            SELECT p.image_url FROM nft_auctions a
+                            JOIN nft_paintings p ON p.id = a.painting_id
+                            WHERE a.id = h.ref_id
+                        )
+                        WHEN 'nft_auction_bid' THEN (
+                            SELECT p.image_url FROM nft_auctions a
+                            JOIN nft_paintings p ON p.id = a.painting_id
+                            WHERE a.id = h.ref_id
+                        )
+                        WHEN 'nft_auction_outbid' THEN (
+                            SELECT p.image_url FROM nft_auctions a
+                            JOIN nft_paintings p ON p.id = a.painting_id
+                            WHERE a.id = h.ref_id
+                        )
+                        ELSE NULL
+                      END AS painting_image
                FROM user_history h
-               LEFT JOIN nft_paintings p ON p.id = h.ref_id
-               WHERE h.user_id = ? AND h.action_type IN ('nft_buy', 'nft_topup', 'nft_stars_topup')
+               WHERE h.user_id = ?
+                 AND h.action_type IN (
+                     'nft_buy',
+                     'nft_topup', 'nft_stars_topup',
+                     'nft_market_buy', 'nft_market_sold',
+                     'nft_auction_bid', 'nft_auction_won',
+                     'nft_auction_sold', 'nft_auction_outbid'
+                 )
                ORDER BY h.created_at DESC
                LIMIT ? OFFSET ?""",
             (user_id, limit, offset),

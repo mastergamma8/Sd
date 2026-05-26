@@ -63,7 +63,12 @@ function nftOpenPainting(paintingId, fromGallery = false, viewOnly = false, seri
     // Бейдж лимита
     const badge = document.getElementById('nft-modal-badge');
     if (painting.total_supply > 0) {
-        badge.textContent  = `${painting.sold_count} / ${painting.total_supply}`;
+        const rawRemaining = painting.available !== null && painting.available !== undefined
+            ? painting.available
+            : (painting.total_supply - (painting.sold_count || 0));
+        // Распродано — показываем total/total (например 10 из 10), иначе остаток
+        const displayRemaining = rawRemaining <= 0 ? painting.total_supply : rawRemaining;
+        badge.textContent  = `${displayRemaining} из ${painting.total_supply}`;
         badge.style.display = '';
     } else {
         badge.style.display = 'none';
@@ -74,7 +79,12 @@ function nftOpenPainting(paintingId, fromGallery = false, viewOnly = false, seri
     const supplyText = document.getElementById('nft-modal-supply-text');
     if (supplyRow && supplyText) {
         if (painting.total_supply > 0) {
-            supplyText.textContent = `${painting.sold_count || 0} / ${painting.total_supply}`;
+            const rawRemaining = painting.available !== null && painting.available !== undefined
+                ? painting.available
+                : (painting.total_supply - (painting.sold_count || 0));
+            // Распродано — показываем total/total (например 10 из 10), иначе остаток
+            const displayRemaining = rawRemaining <= 0 ? painting.total_supply : rawRemaining;
+            supplyText.textContent = `${displayRemaining} из ${painting.total_supply}`;
             supplyRow.classList.remove('hidden');
             supplyRow.style.display = 'flex';
         } else {
@@ -113,7 +123,9 @@ function nftOpenPainting(paintingId, fromGallery = false, viewOnly = false, seri
     const ownerActions = document.getElementById('nft-modal-owner-actions');
 
     const st          = painting.status || 'held';
+    // Картина «в руках» у владельца (не выставлена)
     const isOwnHeld   = fromGallery && !viewOnly && st === 'held';
+    // Картина уже выставлена на маркете или аукционе — кнопки Продать/Аукцион скрыты
     const isOwnListed = fromGallery && !viewOnly && (st === 'for_sale' || st === 'in_auction');
 
     // ── Кнопки владельца ──

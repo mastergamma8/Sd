@@ -16,23 +16,27 @@ ALLOWED_DURATIONS = (1, 3, 6, 12, 24, 48)
 
 # ─── Внутренний хелпер ────────────────────────────────────────────────────────
 
-async def _finalize_expired(db) -> None:
+async def _finalize_expired(db) -> list[dict]:
     """
     Завершить все аукционы с истёкшим сроком внутри уже открытого соединения.
     Победитель получает NFT, продавец — звёзды. Если ставок не было — NFT
     возвращается продавцу.
+    Возвращает список завершённых аукционов с деталями для уведомлений.
     """
     now = int(time.time())
     db.row_factory = aiosqlite.Row
     async with db.execute(
-        """SELECT id, seller_id, nft_owned_id, current_price, current_bidder
-           FROM nft_auctions
-           WHERE status = 'active' AND ends_at <= ?""",
+        """SELECT a.id, a.seller_id, a.nft_owned_id, a.current_price, a.current_bidder,
+                  p.title
+           FROM nft_auctions a
+           JOIN nft_paintings p ON p.id = a.painting_id
+           WHERE a.status = 'active' AND a.ends_at <= ?""",
         (now,),
     ) as cur:
         expired = await cur.fetchall()
     db.row_factory = None
 
+    finalized = []
     for a in expired:
         owned_id = a["nft_owned_id"]
         if a["current_bidder"]:
@@ -56,9 +60,27 @@ async def _finalize_expired(db) -> None:
             "UPDATE nft_auctions SET status = 'ended', ended_at = ? WHERE id = ?",
             (now, a["id"]),
         )
+        finalized.append({
+            "auction_id":    a["id"],
+            "seller_id":     a["seller_id"],
+            "winner_id":     a["current_bidder"],
+            "final_price":   a["current_price"],
+            "title":         a["title"],
+        })
 
     if expired:
         await db.commit()
+
+    return finalized
+
+
+async def get_and_clear_finalized_auctions() -> list[dict]:
+    """
+    Публичный хелпер: завершает просроченные аукционы и возвращает список
+    только что завершённых лотов (для отправки уведомлений в боте).
+    """
+    async with aiosqlite.connect(DB_NAME) as db:
+        return await _finalize_expired(db)
 
 
 # ─── Маркетплейс (фиксированная цена) ────────────────────────────────────────
@@ -146,12 +168,15 @@ async def cancel_listing(listing_id: int, seller_id: int) -> tuple[bool, str]:
         return True, "ok"
 
 
-async def buy_listing(listing_id: int, buyer_id: int) -> tuple[bool, str]:
+async def buy_listing(listing_id: int, buyer_id: int) -> tuple[bool, str | dict]:
     async with aiosqlite.connect(DB_NAME) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
-            """SELECT id, seller_id, nft_owned_id, painting_id, price, status
-               FROM nft_market_listings WHERE id = ?""",
+            """SELECT ml.id, ml.seller_id, ml.nft_owned_id, ml.painting_id, ml.price,
+                      ml.status, p.title
+               FROM nft_market_listings ml
+               JOIN nft_paintings p ON p.id = ml.painting_id
+               WHERE ml.id = ?""",
             (listing_id,),
         ) as cur:
             listing = await cur.fetchone()
@@ -167,6 +192,7 @@ async def buy_listing(listing_id: int, buyer_id: int) -> tuple[bool, str]:
         price     = listing["price"]
         seller_id = listing["seller_id"]
         owned_id  = listing["nft_owned_id"]
+        title     = listing["title"]
 
         # Атомарное списание звёзд у покупателя
         cur2 = await db.execute(
@@ -193,7 +219,7 @@ async def buy_listing(listing_id: int, buyer_id: int) -> tuple[bool, str]:
             (buyer_id, int(time.time()), listing_id),
         )
         await db.commit()
-        return True, "ok"
+        return True, {"price": price, "seller_id": seller_id, "title": title}
 
 
 # ─── Аукционы ─────────────────────────────────────────────────────────────────
@@ -266,14 +292,16 @@ async def create_auction(
         return True, "ok"
 
 
-async def place_bid(auction_id: int, bidder_id: int, amount: int) -> tuple[bool, str]:
+async def place_bid(auction_id: int, bidder_id: int, amount: int) -> tuple[bool, str | dict]:
     async with aiosqlite.connect(DB_NAME) as db:
         await _finalize_expired(db)
         db.row_factory = aiosqlite.Row
         async with db.execute(
-            """SELECT id, seller_id, nft_owned_id, current_price,
-                      current_bidder, status, ends_at
-               FROM nft_auctions WHERE id = ?""",
+            """SELECT a.id, a.seller_id, a.nft_owned_id, a.current_price,
+                      a.current_bidder, a.status, a.ends_at, p.title
+               FROM nft_auctions a
+               JOIN nft_paintings p ON p.id = a.painting_id
+               WHERE a.id = ?""",
             (auction_id,),
         ) as cur:
             auction = await cur.fetchone()
@@ -292,6 +320,7 @@ async def place_bid(auction_id: int, bidder_id: int, amount: int) -> tuple[bool,
 
         prev_bidder = auction["current_bidder"]
         prev_price  = auction["current_price"]
+        title       = auction["title"]
 
         # Атомарное списание у нового участника
         cur2 = await db.execute(
@@ -314,7 +343,12 @@ async def place_bid(auction_id: int, bidder_id: int, amount: int) -> tuple[bool,
             (amount, bidder_id, auction_id),
         )
         await db.commit()
-        return True, "ok"
+        return True, {
+            "title":       title,
+            "prev_bidder": prev_bidder,
+            "prev_price":  prev_price,
+            "new_amount":  amount,
+        }
 
 
 async def cancel_auction(auction_id: int, seller_id: int) -> tuple[bool, str]:
