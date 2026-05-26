@@ -1,27 +1,22 @@
 <!-- ═══════════════════════════════════════════════════════════
-     NFT ГАЛЕРЕЯ — Секция (v2)
+     NFT ГАЛЕРЕЯ — Секция (v2 - Updated with iOS 26 Design)
      Структура: главная секция + навигация
-     Модальные окна → nft-modals.html
-     Стили         → nft-styles.html
 ═══════════════════════════════════════════════════════════ -->
 
 <div id="nft-section" class="fixed inset-0 z-[60] hidden overflow-hidden"
-     style="background: radial-gradient(ellipse at 20% 0%, #1c0d00 0%, #0d0601 50%, #080400 100%);">
+     style="background: radial-gradient(circle at 50% 0%, #150f07 0%, #0a0704 60%, #050302 100%);">
 
   <!-- ══ ДЕКОРАТИВНЫЙ ФОН ══ -->
   <div class="absolute inset-0 pointer-events-none overflow-hidden">
-    <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[32rem] h-72 opacity-20"
-         style="background: radial-gradient(ellipse at 50% 0%, #fbbf24 0%, transparent 70%); filter: blur(60px);"></div>
-    <div class="absolute top-1/3 -left-24 w-72 h-72 opacity-[0.07]"
-         style="background: radial-gradient(circle, #f59e0b 0%, transparent 70%); filter: blur(80px);"></div>
-    <div class="absolute bottom-1/3 -right-24 w-64 h-64 opacity-[0.07]"
-         style="background: radial-gradient(circle, #d97706 0%, transparent 70%); filter: blur(80px);"></div>
-    <!-- Тонкая сетка -->
-    <div class="absolute inset-0 opacity-[0.018]"
-         style="background-image: linear-gradient(rgba(251,191,36,0.8) 1px, transparent 1px), linear-gradient(90deg, rgba(251,191,36,0.8) 1px, transparent 1px); background-size: 52px 52px;"></div>
-    <!-- Верхняя золотая линия -->
-    <div class="absolute top-0 left-0 right-0 h-[1px] opacity-30"
-         style="background: linear-gradient(90deg, transparent, #fbbf24 30%, #fde68a 50%, #fbbf24 70%, transparent);"></div>
+    <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[36rem] h-96 opacity-25"
+         style="background: radial-gradient(ellipse at 50% 0%, #fcd34d 0%, transparent 75%); filter: blur(80px);"></div>
+    <div class="absolute top-1/4 -left-36 w-96 h-96 opacity-[0.05]"
+         style="background: radial-gradient(circle, #f59e0b 0%, transparent 70%); filter: blur(100px);"></div>
+    <div class="absolute bottom-1/4 -right-36 w-96 h-96 opacity-[0.05]"
+         style="background: radial-gradient(circle, #d97706 0%, transparent 70%); filter: blur(100px);"></div>
+    <!-- Сетка в стиле Cyber-iOS -->
+    <div class="absolute inset-0 opacity-[0.015]"
+         style="background-image: linear-gradient(rgba(252,211,77,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(252,211,77,0.5) 1px, transparent 1px); background-size: 40px 40px;"></div>
   </div>
 
   <!-- ══ КОНТЕНТ (скроллится) ══ -->
@@ -30,22 +25,22 @@
 
     <!-- ══ ПЛАВАЮЩИЙ ХЭДЕР ══ -->
     <header class="sticky top-0 z-20 px-4 flex justify-between items-center bg-transparent transition-all duration-300"
-            style="padding-top: calc(3rem + var(--tg-safe-area-inset-top, 0px)); padding-bottom: 1rem;">
+            style="padding-top: calc(1.5rem + var(--tg-safe-area-inset-top, 0px)); padding-bottom: 1rem;">
 
       <!-- Иконка NFT галереи -->
-      <div class="nft-island-title flex items-center justify-center rounded-full w-12 h-12 flex-shrink-0 hover:scale-105 transition-transform">
-        <img src="/gifts/gallery.png" class="w-8 h-8 object-contain drop-shadow-md" onerror="this.style.display='none'">
+      <div class="nft-island-title flex items-center justify-center rounded-2xl w-11 h-11 flex-shrink-0 hover:scale-105 active:scale-95 transition-all">
+        <img src="/gifts/gallery.png" class="w-7 h-7 object-contain drop-shadow-md" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' stroke=\'%23fcd34d\' viewBox=\'0 0 24 24\' class=\'w-6 h-6\'><path stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z\'/></svg>'">
       </div>
 
       <!-- Баланс звёзд -->
-      <div class="nft-balance-island flex items-center rounded-full">
-        <div class="px-3 py-2 flex items-center gap-1.5">
-          <img src="/gifts/stars.png" class="w-4 h-4 object-contain drop-shadow-md" onerror="this.style.display='none'">
-          <span id="nft-stars-amount" class="text-sm font-bold nft-balance-amount">0</span>
+      <div class="nft-balance-island flex items-center rounded-2xl">
+        <div class="px-3.5 py-2 flex items-center gap-2">
+          <img src="/gifts/stars.png" class="w-4 h-4 object-contain drop-shadow-md" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'%23fcd34d\' class=\'w-4 h-4\'><path d=\'M12 .587l3.668 7.431 8.2 1.191-5.934 5.787 1.4 8.168L12 18.896l-7.334 3.857 1.4-8.168L.132 9.209l8.2-1.191L12 .587z\'/></svg>'">
+          <span id="nft-stars-amount" class="text-xs font-black tracking-wide" style="color:#ffffff;">0</span>
         </div>
         <button onclick="openNFTTopup()"
-                class="nft-topup-btn rounded-r-full pl-2 pr-3 py-2 border-l active:scale-95 transition-all flex items-center justify-center">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                class="nft-topup-btn rounded-r-2xl px-3 py-2 border-l active:scale-95 transition-all flex items-center justify-center">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4"/>
           </svg>
         </button>
@@ -53,87 +48,87 @@
     </header>
 
     <!-- ── СТРАНИЦА: МАГАЗИН ─────────────────────────────────────────── -->
-    <div id="nft-page-shop" class="px-4 pb-32 pt-2">
-      <div class="flex flex-col items-center mb-5">
-        <div class="nft-section-island flex items-center gap-2 px-4 py-2 rounded-2xl mb-1.5">
+    <div id="nft-page-shop" class="px-4 pb-36 pt-2">
+      <div class="flex flex-col items-center mb-6">
+        <div class="nft-section-island flex items-center gap-2.5 px-4 py-2 rounded-2xl mb-2">
           <span class="nft-island-ornament text-xs">✦</span>
-          <h2 class="text-sm font-black tracking-[0.12em] uppercase nft-island-heading">Магазин картин</h2>
+          <h2 class="text-xs font-black tracking-[0.14em] uppercase nft-island-heading">Магазин картин</h2>
           <span class="nft-island-ornament text-xs">✦</span>
         </div>
-        <p class="text-[9px] tracking-[0.22em] uppercase nft-section-hint">Лимитированные NFT-работы</p>
+        <p class="text-[9px] tracking-[0.24em] uppercase nft-section-hint">Лимитированные NFT-работы</p>
       </div>
 
-      <div id="nft-shop-list" class="space-y-3">
-        <div class="text-center py-14">
+      <div id="nft-shop-list" class="space-y-4">
+        <div class="text-center py-16">
           <div class="nft-empty-frame w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center">
-            <svg class="w-8 h-8 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:#fbbf24;">
+            <svg class="w-7 h-7 opacity-50 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:#fcd34d;">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                     d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
             </svg>
           </div>
-          <p class="text-sm nft-muted-text">Загрузка картин...</p>
+          <p class="text-xs nft-muted-text">Загрузка картин...</p>
         </div>
       </div>
     </div>
 
     <!-- ── СТРАНИЦА: МОЯ ГАЛЕРЕЯ ─────────────────────────────────────── -->
-    <div id="nft-page-gallery" class="px-4 pb-32 pt-2 hidden">
+    <div id="nft-page-gallery" class="px-4 pb-36 pt-2 hidden">
 
-      <div id="nft-gallery-header" class="mb-5 flex items-center gap-2">
+      <div id="nft-gallery-header" class="mb-6 flex items-center gap-3">
         <button id="nft-gallery-back-btn" onclick="nftGalleryBackToList()"
-                class="hidden w-8 h-8 rounded-xl flex items-center justify-center active:scale-95 transition-all nft-back-btn">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:#fbbf24;">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                class="hidden w-10 h-10 rounded-2xl flex items-center justify-center active:scale-95 transition-all nft-back-btn">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:#fcd34d;">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/>
           </svg>
         </button>
 
         <div class="flex-1 flex flex-col items-center">
-          <div class="nft-section-island flex items-center gap-2 px-4 py-2 rounded-2xl mb-1.5">
-            <h2 id="nft-gallery-title" class="text-sm font-black tracking-[0.1em] uppercase nft-island-heading">Моя Галерея</h2>
+          <div class="nft-section-island flex items-center gap-2 px-4 py-2 rounded-2xl mb-2">
+            <h2 id="nft-gallery-title" class="text-xs font-black tracking-[0.12em] uppercase nft-island-heading">Моя Галерея</h2>
           </div>
-          <p id="nft-gallery-subtitle" class="text-[9px] tracking-[0.22em] uppercase nft-section-hint">Ваша коллекция NFT</p>
+          <p id="nft-gallery-subtitle" class="text-[9px] tracking-[0.24em] uppercase nft-section-hint">Ваша коллекция NFT</p>
         </div>
       </div>
 
       <div id="nft-collectors-list" class="space-y-2 mb-4"></div>
-      <div id="nft-gallery-grid" class="grid grid-cols-2 gap-3"></div>
+      <div id="nft-gallery-grid" class="grid grid-cols-2 gap-3.5"></div>
 
       <!-- Пустая галерея -->
-      <div id="nft-gallery-empty" class="hidden text-center py-14">
-        <div class="nft-empty-frame w-20 h-20 mx-auto mb-4 rounded-2xl flex items-center justify-center">
-          <svg class="w-10 h-10 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:#fbbf24;">
+      <div id="nft-gallery-empty" class="hidden text-center py-16">
+        <div class="nft-empty-frame w-20 h-20 mx-auto mb-4 rounded-3xl flex items-center justify-center">
+          <svg class="w-9 h-9 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:#fcd34d;">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                   d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
           </svg>
         </div>
-        <p class="nft-muted-text text-sm font-medium mb-1">Галерея пуста</p>
+        <p class="nft-muted-text text-sm font-bold mb-1">Галерея пуста</p>
         <p class="nft-muted-text text-xs opacity-60 mt-1">Купите первую картину в Магазине</p>
         <button onclick="nftSwitchTab('shop')"
-                class="mt-5 px-6 py-2.5 rounded-xl text-sm font-bold active:scale-95 transition-all nft-cta-btn">
+                class="mt-6 px-6 py-3 rounded-2xl text-xs font-black active:scale-95 transition-all nft-cta-btn">
           Перейти в магазин
         </button>
       </div>
     </div>
 
     <!-- ── СТРАНИЦА: ГАЛЕРЕИ ─────────────────────────────────────────── -->
-    <div id="nft-page-galleries" class="px-4 pb-32 pt-2 hidden">
+    <div id="nft-page-galleries" class="px-4 pb-36 pt-2 hidden">
 
-      <div class="flex flex-col items-center mb-5">
-        <div class="nft-section-island flex items-center gap-2 px-4 py-2 rounded-2xl mb-1.5">
+      <div class="flex flex-col items-center mb-6">
+        <div class="nft-section-island flex items-center gap-2 px-4 py-2 rounded-2xl mb-2">
           <span class="nft-island-ornament text-xs">✦</span>
-          <h2 class="text-sm font-black tracking-[0.12em] uppercase nft-island-heading">Галереи</h2>
+          <h2 class="text-xs font-black tracking-[0.14em] uppercase nft-island-heading">Галереи</h2>
           <span class="nft-island-ornament text-xs">✦</span>
         </div>
-        <p class="text-[9px] tracking-[0.22em] uppercase nft-section-hint">Коллекции других пользователей</p>
+        <p class="text-[9px] tracking-[0.24em] uppercase nft-section-hint">Коллекции других пользователей</p>
       </div>
 
-      <div id="nft-galleries-back-row" class="hidden mb-3">
+      <div id="nft-galleries-back-row" class="hidden mb-4">
         <button onclick="nftGalleriesBackToList()"
-                class="flex items-center gap-2 px-3 py-2 rounded-xl active:scale-95 transition-all nft-back-btn">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:#fbbf24;">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                class="flex items-center gap-2 px-3.5 py-2.5 rounded-xl active:scale-95 transition-all nft-back-btn">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:#fcd34d;">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/>
           </svg>
-          <span class="text-xs font-semibold" style="color:#fbbf24;">Все коллекционеры</span>
+          <span class="text-[11px] font-bold tracking-wide" style="color:#fcd34d;">Все коллекционеры</span>
         </button>
       </div>
 
@@ -141,45 +136,45 @@
     </div>
 
     <!-- ── СТРАНИЦА: ИСТОРИЯ ─────────────────────────────────────────── -->
-    <div id="nft-page-history" class="px-4 pb-32 pt-2 hidden">
+    <div id="nft-page-history" class="px-4 pb-36 pt-2 hidden">
 
-      <div class="flex flex-col items-center mb-5">
-        <div class="nft-section-island flex items-center gap-2 px-4 py-2 rounded-2xl mb-1.5">
+      <div class="flex flex-col items-center mb-6">
+        <div class="nft-section-island flex items-center gap-2 px-4 py-2 rounded-2xl mb-2">
           <span class="nft-island-ornament text-xs">✦</span>
-          <h2 class="text-sm font-black tracking-[0.12em] uppercase nft-island-heading">История</h2>
+          <h2 class="text-xs font-black tracking-[0.14em] uppercase nft-island-heading">История</h2>
           <span class="nft-island-ornament text-xs">✦</span>
         </div>
-        <p class="text-[9px] tracking-[0.22em] uppercase nft-section-hint">Операции с NFT-галереей</p>
+        <p class="text-[9px] tracking-[0.24em] uppercase nft-section-hint">Операции с NFT-галереей</p>
       </div>
 
       <div id="nft-history-list" class="space-y-2"></div>
     </div>
 
     <!-- ── СТРАНИЦА: МАРКЕТПЛЕЙС ─────────────────────────────────────── -->
-    <div id="nft-page-market" class="px-4 pb-32 pt-2 hidden">
+    <div id="nft-page-market" class="px-4 pb-36 pt-2 hidden">
 
-      <div class="flex flex-col items-center mb-5">
-        <div class="nft-section-island flex items-center gap-2 px-4 py-2 rounded-2xl mb-1.5">
+      <div class="flex flex-col items-center mb-6">
+        <div class="nft-section-island flex items-center gap-2 px-4 py-2 rounded-2xl mb-2">
           <span class="nft-island-ornament text-xs">✦</span>
-          <h2 class="text-sm font-black tracking-[0.12em] uppercase nft-island-heading">Маркетплейс</h2>
+          <h2 class="text-xs font-black tracking-[0.14em] uppercase nft-island-heading">Маркетплейс</h2>
           <span class="nft-island-ornament text-xs">✦</span>
         </div>
-        <p class="text-[9px] tracking-[0.22em] uppercase nft-section-hint">Картины от других коллекционеров</p>
+        <p class="text-[9px] tracking-[0.24em] uppercase nft-section-hint">Картины от других коллекционеров</p>
       </div>
 
       <div id="nft-market-list" class="space-y-0"></div>
     </div>
 
     <!-- ── СТРАНИЦА: АУКЦИОНЫ ────────────────────────────────────────── -->
-    <div id="nft-page-auction" class="px-4 pb-32 pt-2 hidden">
+    <div id="nft-page-auction" class="px-4 pb-36 pt-2 hidden">
 
-      <div class="flex flex-col items-center mb-5">
-        <div class="nft-section-island flex items-center gap-2 px-4 py-2 rounded-2xl mb-1.5">
+      <div class="flex flex-col items-center mb-6">
+        <div class="nft-section-island flex items-center gap-2 px-4 py-2 rounded-2xl mb-2">
           <span class="nft-island-ornament text-xs">✦</span>
-          <h2 class="text-sm font-black tracking-[0.12em] uppercase nft-island-heading">Аукционы</h2>
+          <h2 class="text-xs font-black tracking-[0.14em] uppercase nft-island-heading">Аукционы</h2>
           <span class="nft-island-ornament text-xs">✦</span>
         </div>
-        <p class="text-[9px] tracking-[0.22em] uppercase nft-section-hint">Торги в реальном времени</p>
+        <p class="text-[9px] tracking-[0.24em] uppercase nft-section-hint">Торги в реальном времени</p>
       </div>
 
       <div id="nft-auction-list" class="space-y-0"></div>
@@ -187,75 +182,75 @@
 
   </div><!-- /nft-content-area -->
 
-  <!-- ══ NFT НАВИГАЦИЯ ══ -->
+  <!-- ══ NFT НАВИГАЦИЯ (Premium Telegram Dock) ══ -->
   <div class="fixed left-0 w-full flex justify-center z-[70] pointer-events-none px-4"
        id="nft-nav-wrapper"
-       style="bottom:calc(1.5rem + var(--tg-safe-area-inset-bottom, 0px));">
+       style="bottom: calc(1rem + var(--tg-safe-area-inset-bottom, 0px));">
 
-    <nav class="pointer-events-auto rounded-[2rem] w-full max-w-md flex justify-around items-center p-1.5 nft-nav-bar">
+    <nav class="pointer-events-auto rounded-[2rem] w-full max-w-md flex justify-around items-center p-2 nft-nav-bar">
 
       <button onclick="nftSwitchTab('shop')" id="nft-nav-shop"
-              class="nft-nav-item active flex flex-col items-center justify-center w-10 h-10 rounded-2xl transition-all flex-shrink-0">
+              class="nft-nav-item active flex flex-col items-center justify-center w-11 h-11 rounded-2xl transition-all flex-shrink-0">
         <svg class="w-4 h-4 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
         </svg>
-        <span class="text-[7px] font-semibold tracking-wide uppercase">Магазин</span>
+        <span class="text-[7px] font-bold tracking-wide uppercase">Магазин</span>
       </button>
 
       <button onclick="nftSwitchTab('market')" id="nft-nav-market"
-              class="nft-nav-item flex flex-col items-center justify-center w-10 h-10 rounded-2xl transition-all flex-shrink-0">
+              class="nft-nav-item flex flex-col items-center justify-center w-11 h-11 rounded-2xl transition-all flex-shrink-0">
         <svg class="w-4 h-4 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
         </svg>
-        <span class="text-[7px] font-semibold tracking-wide uppercase">Маркет</span>
+        <span class="text-[7px] font-bold tracking-wide uppercase">Маркет</span>
       </button>
 
       <button onclick="nftSwitchTab('auction')" id="nft-nav-auction"
-              class="nft-nav-item flex flex-col items-center justify-center w-10 h-10 rounded-2xl transition-all flex-shrink-0">
+              class="nft-nav-item flex flex-col items-center justify-center w-11 h-11 rounded-2xl transition-all flex-shrink-0">
         <svg class="w-4 h-4 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M15 10l4.553-2.069A1 1 0 0121 8.87V15.13a1 1 0 01-1.447.9L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
         </svg>
-        <span class="text-[7px] font-semibold tracking-wide uppercase">Торги</span>
+        <span class="text-[7px] font-bold tracking-wide uppercase">Торги</span>
       </button>
 
       <!-- Кнопка Назад (центр) -->
       <button onclick="closeNFTSection()"
-              class="flex flex-col items-center justify-center w-14 h-14 rounded-full active:scale-95 transition-all nft-back-center-btn flex-shrink-0">
-        <svg class="w-6 h-6 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:#0d0601;">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              class="flex flex-col items-center justify-center w-14 h-14 rounded-full active:scale-90 transition-all nft-back-center-btn flex-shrink-0">
+        <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:#0a0704;">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
                 d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/>
         </svg>
-        <span class="text-[8px] font-bold tracking-wide" style="color:#0d0601;">Назад</span>
+        <span class="text-[8px] font-black tracking-wide" style="color:#0a0704;">Назад</span>
       </button>
 
       <button onclick="nftSwitchTab('galleries')" id="nft-nav-galleries"
-              class="nft-nav-item flex flex-col items-center justify-center w-10 h-10 rounded-2xl transition-all flex-shrink-0">
+              class="nft-nav-item flex flex-col items-center justify-center w-11 h-11 rounded-2xl transition-all flex-shrink-0">
         <svg class="w-4 h-4 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
         </svg>
-        <span class="text-[7px] font-semibold tracking-wide uppercase">Галереи</span>
+        <span class="text-[7px] font-bold tracking-wide uppercase">Галереи</span>
       </button>
 
       <button onclick="nftSwitchTab('history')" id="nft-nav-history"
-              class="nft-nav-item flex flex-col items-center justify-center w-10 h-10 rounded-2xl transition-all flex-shrink-0">
+              class="nft-nav-item flex flex-col items-center justify-center w-11 h-11 rounded-2xl transition-all flex-shrink-0">
         <svg class="w-4 h-4 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
         </svg>
-        <span class="text-[7px] font-semibold tracking-wide uppercase">История</span>
+        <span class="text-[7px] font-bold tracking-wide uppercase">История</span>
       </button>
 
       <button onclick="nftSwitchTab('gallery')" id="nft-nav-gallery"
-              class="nft-nav-item flex flex-col items-center justify-center w-10 h-10 rounded-2xl transition-all flex-shrink-0">
+              class="nft-nav-item flex flex-col items-center justify-center w-11 h-11 rounded-2xl transition-all flex-shrink-0">
         <svg class="w-4 h-4 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
         </svg>
-        <span class="text-[7px] font-semibold tracking-wide uppercase">Моя</span>
+        <span class="text-[7px] font-bold tracking-wide uppercase">Моя</span>
       </button>
 
     </nav>

@@ -234,6 +234,7 @@ async def get_active_auctions(limit: int = 50) -> list[dict]:
                       a.start_price, a.current_price,
                       a.current_bidder, a.status, a.ends_at, a.created_at,
                       p.title, p.description, p.image_url,
+                      p.total_supply, p.sold_count,
                       o.serial_number,
                       u.username, u.first_name,
                       COALESCE(u.is_anonymous, 0) AS is_anonymous

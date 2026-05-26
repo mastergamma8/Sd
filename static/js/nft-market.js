@@ -7,12 +7,11 @@
 
 let nftMarketListings  = [];
 let nftAuctions        = [];
-let nftMarketPendingId = null;  // listing_id, ожидающий подтверждения покупки
-let nftAuctionPending  = null;  // { id, current_price } для подтверждения ставки
-let nftSellTarget      = null;  // { owned_id } для создания листинга
-let nftAuctionTarget   = null;  // { owned_id } для создания аукциона
+let nftMarketPendingId = null;  
+let nftAuctionPending  = null;  
+let nftSellTarget      = null;  
+let nftAuctionTarget   = null;  
 
-// БАГ-ФИX: хранить ID интервалов (а не setTimeout), чтобы корректно очищать
 let _auctionIntervalIds = [];
 
 
@@ -39,15 +38,15 @@ function nftRenderMarket() {
 
     if (nftMarketListings.length === 0) {
         wrap.innerHTML = `
-        <div class="text-center py-14">
+        <div class="text-center py-16">
           <div class="nft-empty-frame w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center">
-            <svg class="w-8 h-8 opacity-35" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:#fbbf24;">
+            <svg class="w-8 h-8 opacity-35" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:#fcd34d;">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                     d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
             </svg>
           </div>
-          <p class="nft-muted-text text-sm font-medium">Маркетплейс пуст</p>
-          <p class="nft-muted-text text-xs opacity-60 mt-1">Выставьте свою картину на продажу из «Моей галереи»</p>
+          <p class="nft-muted-text text-sm font-bold">Маркетплейс пуст</p>
+          <p class="nft-muted-text text-xs opacity-65 mt-1.5 leading-relaxed">Выставьте свою картину на продажу из «Моей галереи»</p>
         </div>`;
         return;
     }
@@ -57,7 +56,7 @@ function nftRenderMarket() {
 
 function nftListingCardHTML(l) {
     const serial     = l.serial_number > 0
-        ? ` <span style="color:#fbbf24;">#${l.serial_number}</span>` : '';
+        ? ` <span style="color:#fcd34d;">#${l.serial_number}</span>` : '';
     const sellerName = l.is_anonymous
         ? 'Аноним'
         : (l.username ? `@${escapeHtml(l.username)}` : escapeHtml(l.first_name || ''));
@@ -65,37 +64,38 @@ function nftListingCardHTML(l) {
 
     const actionBtn = l.is_mine
         ? `<button onclick="nftCancelListing(${l.id})"
-                   class="flex-1 py-2.5 rounded-xl text-xs font-bold active:scale-95 transition-all"
-                   style="background:rgba(239,68,68,0.15);color:rgba(239,68,68,0.8);border:1px solid rgba(239,68,68,0.25);">
+                   class="w-full py-3.5 rounded-2xl text-xs font-black active:scale-[0.97] transition-all"
+                   style="background:rgba(239,68,68,0.12);color:rgba(239,68,68,0.9);border:1px solid rgba(239,68,68,0.25);">
              Снять с продажи
            </button>`
         : `<button onclick="nftConfirmBuyListing(${l.id}, ${l.price}, '${escapeHtml(l.title)}')"
-                   class="flex-1 py-2.5 rounded-xl text-xs font-bold active:scale-95 transition-all nft-buy-btn">
+                   class="w-full py-3.5 rounded-2xl text-xs font-black active:scale-[0.97] transition-all nft-buy-btn">
              Купить
            </button>`;
 
     return `
-    <div class="nft-card mb-3">
-      <div class="flex gap-3 p-3 cursor-pointer active:bg-white/5 transition-colors rounded-t-[1.25rem]"
+    <div class="nft-card mb-4">
+      <div class="flex gap-3.5 p-4 cursor-pointer active:bg-white/[0.03] transition-colors rounded-t-3xl"
            onclick="nftOpenListingDetail(${l.id})">
-        <div class="flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden"
-             style="border:1px solid rgba(251,191,36,0.18);">
+        <div class="flex-shrink-0 w-20 h-20 rounded-2xl overflow-hidden"
+             style="border:1px solid rgba(252,211,77,0.15);">
           <img src="${escapeHtml(l.image_url)}" alt="${escapeHtml(l.title)}"
                class="w-full h-full object-cover"
                onerror="this.src='https://via.placeholder.com/80x80?text=NFT'">
         </div>
-        <div class="flex-1 min-w-0">
-          <p class="font-bold text-sm truncate" style="color:#fdf4e3;">${escapeHtml(l.title)}${serial}</p>
-          <p class="text-[10px] mt-0.5 truncate" style="color:rgba(251,191,36,0.5);">${sellerName} · ${ago}</p>
-          <div class="flex items-center gap-1 mt-1.5">
-            <img src="/gifts/stars.png" class="w-4 h-4 object-contain" onerror="this.style.display='none'">
-            <span class="font-black text-base" style="color:#fbbf24;">${l.price}</span>
-            <span class="text-[10px]" style="color:rgba(251,191,36,0.5);">NFT-звёзд</span>
+        <div class="flex-1 min-w-0 flex flex-col justify-between">
+          <div>
+            <p class="font-bold text-sm truncate text-white">${escapeHtml(l.title)}${serial}</p>
+            <p class="text-[10px] mt-0.5 truncate font-bold" style="color:rgba(255,255,255,0.4);">${sellerName} · ${ago}</p>
           </div>
-          <p class="text-[9px] mt-1" style="color:rgba(251,191,36,0.35);">Нажмите для подробностей</p>
+          <div class="flex items-center gap-1.5 mt-1.5">
+            <img src="/gifts/stars.png" class="w-4 h-4 object-contain" onerror="this.style.display='none'">
+            <span class="font-black text-base" style="color:#fcd34d;">${l.price}</span>
+            <span class="text-[10px] font-bold" style="color:rgba(255,255,255,0.45);">NFT-звёзд</span>
+          </div>
         </div>
       </div>
-      <div class="px-3 pb-3">${actionBtn}</div>
+      <div class="px-4 pb-4">${actionBtn}</div>
     </div>`;
 }
 
@@ -175,12 +175,11 @@ function nftOpenListingDetail(listingId) {
     const titleEl = document.getElementById('nft-modal-title');
     const serial  = l.serial_number;
     if (serial && serial > 0) {
-        titleEl.innerHTML = `${escapeHtml(l.title)} <span style="color:#fbbf24;font-size:0.75em;">#${serial}</span>`;
+        titleEl.innerHTML = `${escapeHtml(l.title)} <span style="color:#fcd34d;font-size:0.75em;">#${serial}</span>`;
     } else {
         titleEl.textContent = l.title;
     }
 
-    // Строка серийного номера
     const serialRow = document.getElementById('nft-modal-serial-row');
     const serialNum = document.getElementById('nft-modal-serial-num');
     if (serialRow && serialNum) {
@@ -194,7 +193,6 @@ function nftOpenListingDetail(listingId) {
         }
     }
 
-    // Продавец
     const sellerRow  = document.getElementById('nft-modal-seller-row');
     const sellerName = document.getElementById('nft-modal-seller-name');
     if (sellerRow && sellerName) {
@@ -206,7 +204,6 @@ function nftOpenListingDetail(listingId) {
         sellerRow.style.display = 'flex';
     }
 
-    // Статус-бейдж
     const statusBadgeEl = document.getElementById('nft-modal-status-badge');
     if (statusBadgeEl) {
         statusBadgeEl.innerHTML = `<span class="nft-status-badge nft-status-for-sale">На продаже</span>`;
@@ -216,7 +213,6 @@ function nftOpenListingDetail(listingId) {
     const badge = document.getElementById('nft-modal-badge');
     if (badge) badge.style.display = 'none';
 
-    // Тираж
     const supplyRow  = document.getElementById('nft-modal-supply-row');
     const supplyText = document.getElementById('nft-modal-supply-text');
     if (supplyRow && supplyText) {
@@ -246,10 +242,9 @@ function nftOpenListingDetail(listingId) {
         buyBtn.style.display    = '';
         buyBtn.disabled         = false;
         buyBtn.innerHTML        = `Купить за ${l.price} <img src="/gifts/stars.png" class="w-4 h-4 inline-block align-middle ml-1 object-contain" onerror="this.style.display='none'">`;
-        buyBtn.style.background = 'linear-gradient(135deg, #b45309 0%, #fbbf24 50%, #f59e0b 100%)';
-        buyBtn.style.boxShadow  = '0 4px 30px rgba(251,191,36,0.35)';
-        // БАГ-ФИX: явно сбрасываем color, чтобы не унаследовать «зелёный» цвет от экрана аукциона
-        buyBtn.style.color      = '#0d0601';
+        buyBtn.style.background = 'linear-gradient(135deg, #fcd34d 0%, #f59e0b 100%)';
+        buyBtn.style.boxShadow  = '0 10px 24px -4px rgba(245,158,11,0.4)';
+        buyBtn.style.color      = '#0a0704';
         buyBtn.onclick = () => {
             closeNFTModal('nft-painting-modal');
             nftConfirmBuyListing(l.id, l.price, l.title);
@@ -303,7 +298,6 @@ async function nftSubmitListing() {
     } catch (e) {
         showNotify('Ошибка соединения', 'error');
     } finally {
-        // БАГ-ФИX: восстанавливаем полный текст кнопки
         btn.textContent = 'Выставить на продажу';
         btn.disabled    = false;
     }
@@ -316,7 +310,6 @@ async function nftLoadAuctions() {
     const wrap = document.getElementById('nft-auction-list');
     if (!wrap) return;
 
-    // БАГ-ФИX: clearInterval вместо clearTimeout — интервалы живут бесконечно
     _auctionIntervalIds.forEach(clearInterval);
     _auctionIntervalIds = [];
 
@@ -337,28 +330,27 @@ function nftRenderAuctions() {
 
     if (nftAuctions.length === 0) {
         wrap.innerHTML = `
-        <div class="text-center py-14">
+        <div class="text-center py-16">
           <div class="nft-empty-frame w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center">
-            <svg class="w-8 h-8 opacity-35" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:#fbbf24;">
+            <svg class="w-8 h-8 opacity-35" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:#fcd34d;">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                     d="M15 10l4.553-2.069A1 1 0 0121 8.87V15.13a1 1 0 01-1.447.9L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
             </svg>
           </div>
-          <p class="nft-muted-text text-sm font-medium">Нет активных аукционов</p>
-          <p class="nft-muted-text text-xs opacity-60 mt-1">Запустите торги из «Моей галереи»</p>
+          <p class="nft-muted-text text-sm font-bold">Нет активных аукционов</p>
+          <p class="nft-muted-text text-xs opacity-65 mt-1.5 leading-relaxed">Запустите торги из «Моей галереи»</p>
         </div>`;
         return;
     }
 
     wrap.innerHTML = nftAuctions.map(a => nftAuctionCardHTML(a)).join('');
 
-    // БАГ-ФИX: setInterval вместо цепочки setTimeout — таймеры корректно очищаются при смене вкладки
     nftAuctions.forEach(a => nftStartCountdown(a.id, a.ends_at));
 }
 
 function nftAuctionCardHTML(a) {
     const serial     = a.serial_number > 0
-        ? ` <span style="color:#fbbf24;">#${a.serial_number}</span>` : '';
+        ? ` <span style="color:#fcd34d;">#${a.serial_number}</span>` : '';
     const sellerName = a.is_anonymous
         ? 'Аноним'
         : (a.username ? `@${escapeHtml(a.username)}` : escapeHtml(a.first_name || ''));
@@ -367,67 +359,79 @@ function nftAuctionCardHTML(a) {
     let actionBtn;
     if (a.is_mine && !hasBids) {
         actionBtn = `<button onclick="nftCancelAuction(${a.id})"
-                             class="flex-1 py-2.5 rounded-xl text-xs font-bold active:scale-95 transition-all"
-                             style="background:rgba(239,68,68,0.15);color:rgba(239,68,68,0.8);border:1px solid rgba(239,68,68,0.25);">
+                             class="w-full py-3.5 rounded-2xl text-xs font-black active:scale-[0.97] transition-all"
+                             style="background:rgba(239,68,68,0.12);color:rgba(239,68,68,0.9);border:1px solid rgba(239,68,68,0.25);">
                        Отменить
                      </button>`;
     } else if (a.is_mine) {
-        actionBtn = `<div class="flex-1 py-2.5 rounded-xl text-xs font-bold text-center"
-                          style="background:rgba(251,191,36,0.07);color:rgba(251,191,36,0.5);border:1px solid rgba(251,191,36,0.15);">
+        actionBtn = `<div class="w-full py-3.5 rounded-2xl text-xs font-black text-center"
+                          style="background:rgba(252,211,77,0.06);color:rgba(252,211,77,0.5);border:1px solid rgba(252,211,77,0.15);">
                        Ваш аукцион
                      </div>`;
     } else if (a.is_leading) {
         actionBtn = `<button onclick="nftOpenBidModal(${a.id}, ${a.current_price}, '${escapeHtml(a.title)}')"
-                             class="flex-1 py-2.5 rounded-xl text-xs font-bold active:scale-95 transition-all"
-                             style="background:rgba(34,197,94,0.18);color:rgba(34,197,94,0.9);border:1px solid rgba(34,197,94,0.3);">
+                             class="w-full py-3.5 rounded-2xl text-xs font-black active:scale-[0.97] transition-all"
+                             style="background:rgba(16,185,129,0.15);color:rgba(16,185,129,0.9);border:1px solid rgba(16,185,129,0.3);">
                        ✓ Вы лидируете · Перебить
                      </button>`;
     } else {
         actionBtn = `<button onclick="nftOpenBidModal(${a.id}, ${a.current_price}, '${escapeHtml(a.title)}')"
-                             class="flex-1 py-2.5 rounded-xl text-xs font-bold active:scale-95 transition-all nft-buy-btn">
+                             class="w-full py-3.5 rounded-2xl text-xs font-black active:scale-[0.97] transition-all nft-buy-btn">
                        🔨 Сделать ставку
                      </button>`;
     }
 
     const bidInfo = hasBids
-        ? `<span class="text-[9px]" style="color:rgba(251,191,36,0.5);">Текущая ставка</span>`
-        : `<span class="text-[9px]" style="color:rgba(251,191,36,0.5);">Начальная цена</span>`;
+        ? `<span class="text-[9px] font-bold" style="color:rgba(255,255,255,0.455);">Текущая ставка</span>`
+        : `<span class="text-[9px] font-bold" style="color:rgba(255,255,255,0.455);">Начальная цена</span>`;
+
+    const supplyLine = a.total_supply > 0
+        ? `<div class="flex items-center gap-1 mt-1">
+             <span class="text-[9px] font-bold" style="color:rgba(252,211,77,0.45);">Тираж:</span>
+             <span class="text-[9px] font-black" style="color:rgba(252,211,77,0.75);">${a.total_supply - (a.sold_count || 0)} / ${a.total_supply}</span>
+           </div>`
+        : `<div class="flex items-center gap-1 mt-1">
+             <span class="text-[9px] font-bold" style="color:rgba(252,211,77,0.45);">Тираж:</span>
+             <span class="text-[9px] font-black" style="color:rgba(252,211,77,0.75);">∞</span>
+           </div>`;
 
     return `
-    <div class="nft-card mb-3">
-      <div class="flex gap-3 p-3 cursor-pointer active:bg-white/5 transition-colors rounded-t-[1.25rem]"
+    <div class="nft-card mb-4">
+      <div class="flex gap-3.5 p-4 cursor-pointer active:bg-white/[0.03] transition-colors rounded-t-3xl"
            onclick="nftOpenAuctionDetail(${a.id})">
-        <div class="flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden relative"
-             style="border:1px solid rgba(251,191,36,0.18);">
+        <div class="flex-shrink-0 w-20 h-20 rounded-2xl overflow-hidden relative"
+             style="border:1px solid rgba(252,211,77,0.15);">
           <img src="${escapeHtml(a.image_url)}" alt="${escapeHtml(a.title)}"
                class="w-full h-full object-cover"
                onerror="this.src='https://via.placeholder.com/80x80?text=NFT'">
-          <div class="absolute top-1 left-1 px-1.5 py-0.5 rounded-md text-[8px] font-bold"
-               style="background:rgba(251,191,36,0.85);color:#0d0601;">ТОРГИ</div>
+          <div class="absolute top-1.5 left-1.5 px-2 py-0.5 rounded-lg text-[8px] font-black"
+               style="background:rgba(252,211,77,0.95);color:#0a0704;box-shadow:0 2px 6px rgba(0,0,0,0.35);">ТОРГИ</div>
         </div>
-        <div class="flex-1 min-w-0">
-          <p class="font-bold text-sm truncate" style="color:#fdf4e3;">${escapeHtml(a.title)}${serial}</p>
-          <p class="text-[10px] mt-0.5 truncate" style="color:rgba(251,191,36,0.5);">${sellerName}</p>
-          <div class="flex items-center gap-1 mt-1.5">
+        <div class="flex-1 min-w-0 flex flex-col justify-between">
+          <div>
+            <p class="font-bold text-sm truncate text-white">${escapeHtml(a.title)}${serial}</p>
+            <p class="text-[10px] mt-0.5 truncate font-bold" style="color:rgba(255,255,255,0.4);">${sellerName}</p>
+          </div>
+          <div class="flex items-center gap-1.5 mt-1">
             <img src="/gifts/stars.png" class="w-4 h-4 object-contain" onerror="this.style.display='none'">
-            <span class="font-black text-base" style="color:#fbbf24;">${a.current_price}</span>
+            <span class="font-black text-base" style="color:#fcd34d;">${a.current_price}</span>
             ${bidInfo}
           </div>
-          <div class="flex items-center gap-1 mt-1">
-            <svg class="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:#fbbf24;">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          ${supplyLine}
+          <div class="flex items-center gap-1.5 mt-1">
+            <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:#fcd34d;">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
             </svg>
-            <span id="auction-timer-${a.id}" class="text-[10px] font-semibold" style="color:rgba(251,191,36,0.65);">…</span>
+            <span id="auction-timer-${a.id}" class="text-[10px] font-bold" style="color:rgba(252,211,77,0.75);">…</span>
           </div>
-          <p class="text-[9px] mt-1" style="color:rgba(251,191,36,0.35);">Нажмите для подробностей</p>
         </div>
       </div>
-      <div class="px-3 pb-3">${actionBtn}</div>
+      <div class="px-4 pb-4">${actionBtn}</div>
     </div>`;
 }
 
 
-// ─── Обратный отсчёт (setInterval, без утечек) ───────────────────────────────
+// ─── Обратный отсчёт (setInterval) ───────────────────────────────
 
 function nftStartCountdown(auctionId, endsAt) {
     const el = document.getElementById(`auction-timer-${auctionId}`);
@@ -438,10 +442,8 @@ function nftStartCountdown(auctionId, endsAt) {
         if (secs <= 0) {
             el.textContent = 'Завершён';
             el.style.color = 'rgba(239,68,68,0.7)';
-            // Перезагружаем список через 2 сек и прекращаем тикать
             const reloadId = setTimeout(() => nftLoadAuctions(), 2000);
             _auctionIntervalIds.push(reloadId);
-            // Останавливаем конкретный интервал
             clearInterval(intervalId);
             return;
         }
@@ -451,10 +453,10 @@ function nftStartCountdown(auctionId, endsAt) {
         el.textContent = h > 0
             ? `${h}ч ${String(m).padStart(2, '0')}м`
             : `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-        el.style.color = secs < 300 ? 'rgba(239,68,68,0.85)' : 'rgba(251,191,36,0.65)';
+        el.style.color = secs < 300 ? 'rgba(239,68,68,0.9)' : 'rgba(252,211,77,0.75)';
     }
 
-    tick(); // первый вызов сразу
+    tick(); 
     const intervalId = setInterval(tick, 1000);
     _auctionIntervalIds.push(intervalId);
 }
@@ -521,7 +523,6 @@ async function nftSubmitAuction() {
     } catch (e) {
         showNotify('Ошибка соединения', 'error');
     } finally {
-        // БАГ-ФИX: восстанавливаем полный текст кнопки с эмодзи
         btn.textContent = '🔨 Запустить аукцион';
         btn.disabled    = false;
     }
@@ -575,7 +576,6 @@ async function nftSubmitBid() {
     } catch (e) {
         showNotify('Ошибка соединения', 'error');
     } finally {
-        // БАГ-ФИX: восстанавливаем текст с эмодзи
         btn.textContent = '🔨 Поставить';
         btn.disabled    = false;
     }
@@ -617,12 +617,11 @@ function nftOpenAuctionDetail(auctionId) {
     const titleEl = document.getElementById('nft-modal-title');
     const serial  = a.serial_number;
     if (serial && serial > 0) {
-        titleEl.innerHTML = `${escapeHtml(a.title)} <span style="color:#fbbf24;font-size:0.75em;">#${serial}</span>`;
+        titleEl.innerHTML = `${escapeHtml(a.title)} <span style="color:#fcd34d;font-size:0.75em;">#${serial}</span>`;
     } else {
         titleEl.textContent = a.title;
     }
 
-    // Серийный номер
     const serialRow = document.getElementById('nft-modal-serial-row');
     const serialNum = document.getElementById('nft-modal-serial-num');
     if (serialRow && serialNum) {
@@ -636,7 +635,6 @@ function nftOpenAuctionDetail(auctionId) {
         }
     }
 
-    // Продавец
     const sellerRow  = document.getElementById('nft-modal-seller-row');
     const sellerName = document.getElementById('nft-modal-seller-name');
     if (sellerRow && sellerName) {
@@ -648,21 +646,18 @@ function nftOpenAuctionDetail(auctionId) {
         sellerRow.style.display = 'flex';
     }
 
-    // Статус-бейдж
     const statusBadgeEl = document.getElementById('nft-modal-status-badge');
     if (statusBadgeEl) {
         statusBadgeEl.innerHTML = `<span class="nft-status-badge nft-status-in-auction">На аукционе</span>`;
         statusBadgeEl.classList.remove('hidden');
     }
 
-    // Лейбл цены
     const priceLabel = document.querySelector('.nft-price-block .nft-price-label');
     if (priceLabel) priceLabel.textContent = a.current_bidder ? 'Текущая ставка' : 'Начальная цена';
 
     const badge = document.getElementById('nft-modal-badge');
     if (badge) badge.style.display = 'none';
 
-    // Тираж
     const supplyRowA  = document.getElementById('nft-modal-supply-row');
     const supplyTextA = document.getElementById('nft-modal-supply-text');
     if (supplyRowA && supplyTextA) {
@@ -692,9 +687,9 @@ function nftOpenAuctionDetail(auctionId) {
         buyBtn.style.display    = '';
         buyBtn.disabled         = false;
         buyBtn.innerHTML        = `✓ Вы лидируете · Перебить`;
-        buyBtn.style.background = 'rgba(34,197,94,0.25)';
-        buyBtn.style.boxShadow  = '0 4px 20px rgba(34,197,94,0.15)';
-        buyBtn.style.color      = 'rgba(34,197,94,0.95)';
+        buyBtn.style.background = 'rgba(16,185,129,0.22)';
+        buyBtn.style.boxShadow  = '0 8px 20px rgba(16,185,129,0.15)';
+        buyBtn.style.color      = '#ffffff';
         buyBtn.onclick = () => {
             closeNFTModal('nft-painting-modal');
             nftOpenBidModal(a.id, a.current_price, a.title);
@@ -703,9 +698,9 @@ function nftOpenAuctionDetail(auctionId) {
         buyBtn.style.display    = '';
         buyBtn.disabled         = false;
         buyBtn.innerHTML        = `Сделать ставку`;
-        buyBtn.style.background = 'linear-gradient(135deg, #b45309 0%, #fbbf24 50%, #f59e0b 100%)';
-        buyBtn.style.boxShadow  = '0 4px 30px rgba(251,191,36,0.35)';
-        buyBtn.style.color      = '#0d0601';
+        buyBtn.style.background = 'linear-gradient(135deg, #fcd34d 0%, #f59e0b 100%)';
+        buyBtn.style.boxShadow  = '0 10px 24px -4px rgba(245,158,11,0.4)';
+        buyBtn.style.color      = '#0a0704';
         buyBtn.onclick = () => {
             closeNFTModal('nft-painting-modal');
             nftOpenBidModal(a.id, a.current_price, a.title);
@@ -714,7 +709,6 @@ function nftOpenAuctionDetail(auctionId) {
 
     document.getElementById('nft-painting-modal').classList.remove('hidden');
 }
-
 
 // ─── Утилиты ──────────────────────────────────────────────────────────────────
 
@@ -725,7 +719,6 @@ function nftTimeAgo(ts) {
     if (diff < 86400) return `${Math.floor(diff / 3600)} ч назад`;
     return `${Math.floor(diff / 86400)} д назад`;
 }
-
 
 // ─── Экспорт ──────────────────────────────────────────────────────────────────
 
