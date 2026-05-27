@@ -159,7 +159,8 @@ function nftGalleryCardHTML(p, isOwner) {
                 <p class="text-white font-bold text-xs truncate leading-tight">
                     ${escapeHtml(p.title)}${serialLabel}
                 </p>
-                <div class="flex items-center gap-1 mt-1.5">
+                <p class="text-[9px] font-bold truncate mt-0.5" style="color:rgba(255,255,255,0.38);">by @${escapeHtml((p.author||'Space_Donut').replace(/^@/,''))}</p>
+                <div class="flex items-center gap-1 mt-1">
                     <img src="/gifts/stars.png" class="w-3 h-3 object-contain" onerror="this.style.display='none'">
                     <span class="text-[11px] font-black" style="color:#fcd34d;">${p.price}</span>
                     <span class="text-[9px] font-bold" style="color:rgba(255,255,255,0.4);">звёзд</span>

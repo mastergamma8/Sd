@@ -86,7 +86,7 @@ function nftListingCardHTML(l) {
         <div class="flex-1 min-w-0 flex flex-col justify-between">
           <div>
             <p class="font-bold text-sm truncate text-white">${escapeHtml(l.title)}${serial}</p>
-            <p class="text-[10px] mt-0.5 truncate font-bold" style="color:rgba(255,255,255,0.4);">${sellerName} · ${ago}</p>
+            <p class="text-[10px] mt-0.5 truncate font-bold" style="color:rgba(255,255,255,0.4);">by @${escapeHtml((l.author||'Space_Donut').replace(/^@/,''))} · ${sellerName} · ${ago}</p>
           </div>
           <div class="flex items-center gap-1.5 mt-1.5">
             <img src="/gifts/stars.png" class="w-4 h-4 object-contain" onerror="this.style.display='none'">
@@ -180,6 +180,13 @@ function nftOpenListingDetail(listingId) {
         titleEl.textContent = l.title;
     }
 
+    const authorEl = document.getElementById('nft-modal-author');
+    if (authorEl) {
+        const handle = (l.author || 'Space_Donut').replace(/^@/, '');
+        authorEl.innerHTML = `by <a href="https://t.me/${encodeURIComponent(handle)}" target="_blank"
+            style="color:rgba(255,255,255,0.55);text-decoration:none;font-weight:700;">@${escapeHtml(handle)}</a>`;
+    }
+
     const serialRow = document.getElementById('nft-modal-serial-row');
     const serialNum = document.getElementById('nft-modal-serial-num');
     if (serialRow && serialNum) {
@@ -230,7 +237,13 @@ function nftOpenListingDetail(listingId) {
     }
 
     const ownerActions = document.getElementById('nft-modal-owner-actions');
-    if (ownerActions) ownerActions.classList.add('hidden');
+    // ⚠️ ВАЖНО: сбросить inline style.display, иначе Tailwind .hidden не сработает
+    if (ownerActions) {
+        ownerActions.innerHTML            = '';
+        ownerActions.style.display        = 'none';
+        ownerActions.style.gridTemplateColumns = '';
+        ownerActions.classList.add('hidden');
+    }
 
     const priceBlock = document.getElementById('nft-modal-price')?.closest('.nft-price-block');
     const buyBtn     = document.getElementById('nft-modal-buy-btn');
@@ -238,6 +251,18 @@ function nftOpenListingDetail(listingId) {
 
     if (l.is_mine) {
         buyBtn.style.display = 'none';
+        // Показываем кнопку отмены листинга в ownerActions
+        if (ownerActions) {
+            ownerActions.style.display        = 'flex';
+            ownerActions.style.gridTemplateColumns = '';
+            ownerActions.innerHTML = `
+                <button onclick="nftCancelListing(${l.id})"
+                        class="w-full py-3.5 rounded-2xl text-xs font-black active:scale-[0.97] transition-all"
+                        style="background:rgba(239,68,68,0.12);color:rgba(239,68,68,0.9);border:1px solid rgba(239,68,68,0.25);">
+                  ✕ Снять с продажи
+                </button>`;
+            ownerActions.classList.remove('hidden');
+        }
     } else {
         buyBtn.style.display    = '';
         buyBtn.disabled         = false;
@@ -361,12 +386,12 @@ function nftAuctionCardHTML(a) {
         actionBtn = `<button onclick="nftCancelAuction(${a.id})"
                              class="w-full py-3.5 rounded-2xl text-xs font-black active:scale-[0.97] transition-all"
                              style="background:rgba(239,68,68,0.12);color:rgba(239,68,68,0.9);border:1px solid rgba(239,68,68,0.25);">
-                       Отменить
+                       Отменить аукцион
                      </button>`;
     } else if (a.is_mine) {
         actionBtn = `<div class="w-full py-3.5 rounded-2xl text-xs font-black text-center"
                           style="background:rgba(252,211,77,0.06);color:rgba(252,211,77,0.5);border:1px solid rgba(252,211,77,0.15);">
-                       Ваш аукцион
+                       🔨 Ваш аукцион · Идут торги
                      </div>`;
     } else if (a.is_leading) {
         actionBtn = `<button onclick="nftOpenBidModal(${a.id}, ${a.current_price}, '${escapeHtml(a.title)}')"
@@ -385,16 +410,6 @@ function nftAuctionCardHTML(a) {
         ? `<span class="text-[9px] font-bold" style="color:rgba(255,255,255,0.455);">Текущая ставка</span>`
         : `<span class="text-[9px] font-bold" style="color:rgba(255,255,255,0.455);">Начальная цена</span>`;
 
-    const supplyLine = a.total_supply > 0
-        ? `<div class="flex items-center gap-1 mt-1">
-             <span class="text-[9px] font-bold" style="color:rgba(252,211,77,0.45);">Тираж:</span>
-             <span class="text-[9px] font-black" style="color:rgba(252,211,77,0.75);">${a.total_supply - (a.sold_count || 0)} / ${a.total_supply}</span>
-           </div>`
-        : `<div class="flex items-center gap-1 mt-1">
-             <span class="text-[9px] font-bold" style="color:rgba(252,211,77,0.45);">Тираж:</span>
-             <span class="text-[9px] font-black" style="color:rgba(252,211,77,0.75);">∞</span>
-           </div>`;
-
     return `
     <div class="nft-card mb-4">
       <div class="flex gap-3.5 p-4 cursor-pointer active:bg-white/[0.03] transition-colors rounded-t-3xl"
@@ -410,14 +425,13 @@ function nftAuctionCardHTML(a) {
         <div class="flex-1 min-w-0 flex flex-col justify-between">
           <div>
             <p class="font-bold text-sm truncate text-white">${escapeHtml(a.title)}${serial}</p>
-            <p class="text-[10px] mt-0.5 truncate font-bold" style="color:rgba(255,255,255,0.4);">${sellerName}</p>
+            <p class="text-[10px] mt-0.5 truncate font-bold" style="color:rgba(255,255,255,0.4);">by @${escapeHtml((a.author||'Space_Donut').replace(/^@/,''))} · ${sellerName}</p>
           </div>
           <div class="flex items-center gap-1.5 mt-1">
             <img src="/gifts/stars.png" class="w-4 h-4 object-contain" onerror="this.style.display='none'">
             <span class="font-black text-base" style="color:#fcd34d;">${a.current_price}</span>
             ${bidInfo}
           </div>
-          ${supplyLine}
           <div class="flex items-center gap-1.5 mt-1">
             <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:#fcd34d;">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -675,7 +689,13 @@ function nftOpenAuctionDetail(auctionId) {
     }
 
     const ownerActions = document.getElementById('nft-modal-owner-actions');
-    if (ownerActions) ownerActions.classList.add('hidden');
+    // ⚠️ ВАЖНО: сбросить inline style.display, иначе Tailwind .hidden не сработает
+    if (ownerActions) {
+        ownerActions.innerHTML            = '';
+        ownerActions.style.display        = 'none';
+        ownerActions.style.gridTemplateColumns = '';
+        ownerActions.classList.add('hidden');
+    }
 
     const priceBlock = document.getElementById('nft-modal-price')?.closest('.nft-price-block');
     const buyBtn     = document.getElementById('nft-modal-buy-btn');
@@ -683,6 +703,26 @@ function nftOpenAuctionDetail(auctionId) {
 
     if (a.is_mine) {
         buyBtn.style.display = 'none';
+        // Показываем кнопку отмены аукциона в ownerActions
+        if (ownerActions) {
+            ownerActions.style.display        = 'flex';
+            ownerActions.style.gridTemplateColumns = '';
+            if (!a.current_bidder) {
+                ownerActions.innerHTML = `
+                    <button onclick="nftCancelAuction(${a.id})"
+                            class="w-full py-3.5 rounded-2xl text-xs font-black active:scale-[0.97] transition-all"
+                            style="background:rgba(239,68,68,0.12);color:rgba(239,68,68,0.95);border:1px solid rgba(239,68,68,0.25);">
+                      🔨 Отменить аукцион
+                    </button>`;
+            } else {
+                ownerActions.innerHTML = `
+                    <div class="w-full py-3.5 rounded-2xl text-[10px] font-bold text-center"
+                         style="background:rgba(255,255,255,0.02);color:rgba(255,255,255,0.3);border:1px solid rgba(255,255,255,0.06);">
+                      Есть ставки — отмена невозможна
+                    </div>`;
+            }
+            ownerActions.classList.remove('hidden');
+        }
     } else if (a.is_leading) {
         buyBtn.style.display    = '';
         buyBtn.disabled         = false;
@@ -697,7 +737,7 @@ function nftOpenAuctionDetail(auctionId) {
     } else {
         buyBtn.style.display    = '';
         buyBtn.disabled         = false;
-        buyBtn.innerHTML        = `Сделать ставку`;
+        buyBtn.innerHTML        = `🔨 Сделать ставку`;
         buyBtn.style.background = 'linear-gradient(135deg, #fcd34d 0%, #f59e0b 100%)';
         buyBtn.style.boxShadow  = '0 10px 24px -4px rgba(245,158,11,0.4)';
         buyBtn.style.color      = '#0a0704';

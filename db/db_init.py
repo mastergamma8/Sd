@@ -375,4 +375,9 @@ async def init_rocket_games_table():
             ALTER TABLE nft_packs ADD COLUMN IF NOT EXISTS archived_at INTEGER DEFAULT NULL
         """)
 
+        # ── Автор картины ─────────────────────────────────────────────────────
+        await db.execute("""
+            ALTER TABLE nft_paintings ADD COLUMN IF NOT EXISTS author TEXT DEFAULT 'Space_Donut'
+        """)
+
         await db.commit()

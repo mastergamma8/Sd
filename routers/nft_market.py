@@ -73,6 +73,9 @@ async def market_listings(current_user: dict = Depends(get_current_user)):
     listings = await db_nft_market.get_active_listings()
     for item in listings:
         item["is_mine"] = (item["seller_id"] == user_id)
+        ts = item.get("total_supply") or 0
+        sc = item.get("sold_count") or 0
+        item["available"] = (ts - sc) if ts > 0 else None
     return {"listings": listings}
 
 
@@ -204,6 +207,9 @@ async def auction_list(current_user: dict = Depends(get_current_user)):
     for item in auctions:
         item["is_mine"]    = (item["seller_id"]      == user_id)
         item["is_leading"] = (item["current_bidder"] == user_id)
+        ts = item.get("total_supply") or 0
+        sc = item.get("sold_count") or 0
+        item["available"] = (ts - sc) if ts > 0 else None
     return {"auctions": auctions}
 
 

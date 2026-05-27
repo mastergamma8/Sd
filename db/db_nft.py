@@ -63,21 +63,23 @@ async def sync_packs(packs_data: list[dict]) -> None:
                     await db.execute(
                         """UPDATE nft_paintings
                            SET description=?, image_url=?, price=?,
-                               total_supply=?, is_active=?, pack_id=?
+                               total_supply=?, is_active=?, pack_id=?, author=?
                            WHERE title=?""",
                         (p.get("description", ""), p["image_url"], p["price"],
                          p.get("total_supply", 0), bool(p.get("is_active", True)),
-                         pack_id, p["title"]),
+                         pack_id, p.get("author", "Space_Donut") or "Space_Donut",
+                         p["title"]),
                     )
                 else:
                     await db.execute(
                         """INSERT INTO nft_paintings
                              (title, description, image_url, price, total_supply,
-                              is_active, pack_id, created_at)
-                           VALUES (?,?,?,?,?,?,?,?)""",
+                              is_active, pack_id, author, created_at)
+                           VALUES (?,?,?,?,?,?,?,?,?)""",
                         (p["title"], p.get("description", ""), p["image_url"], p["price"],
                          p.get("total_supply", 0), bool(p.get("is_active", True)),
-                         pack_id, int(time.time())),
+                         pack_id, p.get("author", "Space_Donut") or "Space_Donut",
+                         int(time.time())),
                     )
         await db.commit()
 
@@ -96,7 +98,7 @@ async def get_packs_with_paintings() -> list[dict]:
             pack_id = pk["id"]
             async with db.execute(
                 """SELECT id, title, description, image_url, price,
-                          total_supply, sold_count, created_at
+                          total_supply, sold_count, author, created_at
                    FROM nft_paintings
                    WHERE pack_id=? AND is_active=TRUE
                    ORDER BY created_at ASC""",
@@ -119,6 +121,7 @@ async def get_packs_with_paintings() -> list[dict]:
                     "sold_count":   sc,
                     "available":    available,
                     "pack_id":      pack_id,
+                    "author":       r["author"] or "Space_Donut",
                 })
 
             cover = pk["cover_image_url"] or (paintings[0]["image_url"] if paintings else "")
@@ -146,19 +149,21 @@ async def sync_catalog(paintings: list[dict]) -> None:
             if row:
                 await db.execute(
                     """UPDATE nft_paintings
-                       SET description=?, image_url=?, price=?, total_supply=?, is_active=?
+                       SET description=?, image_url=?, price=?, total_supply=?, is_active=?, author=?
                        WHERE title=?""",
                     (p.get("description",""), p["image_url"], p["price"],
                      p.get("total_supply", 0), bool(p.get("is_active", True)),
+                     p.get("author", "Space_Donut") or "Space_Donut",
                      p["title"]),
                 )
             else:
                 await db.execute(
                     """INSERT INTO nft_paintings
-                         (title, description, image_url, price, total_supply, is_active, created_at)
-                       VALUES (?,?,?,?,?,?,?)""",
+                         (title, description, image_url, price, total_supply, is_active, author, created_at)
+                       VALUES (?,?,?,?,?,?,?,?)""",
                     (p["title"], p.get("description",""), p["image_url"], p["price"],
                      p.get("total_supply", 0), bool(p.get("is_active", True)),
+                     p.get("author", "Space_Donut") or "Space_Donut",
                      int(time.time())),
                 )
         await db.commit()
@@ -196,7 +201,7 @@ async def get_active_paintings() -> list[dict]:
         db.row_factory = aiosqlite.Row
         async with db.execute(
             """SELECT id, title, description, image_url, price,
-                      total_supply, sold_count, created_at
+                      total_supply, sold_count, author, created_at
                FROM nft_paintings WHERE is_active=TRUE AND pack_id IS NULL ORDER BY created_at DESC"""
         ) as cur:
             rows = await cur.fetchall()
@@ -214,6 +219,7 @@ async def get_active_paintings() -> list[dict]:
             "total_supply": ts,
             "sold_count":   sc,
             "available":    available,
+            "author":       r["author"] or "Space_Donut",
         })
     return result
 
@@ -268,7 +274,7 @@ async def get_archived_packs() -> list[dict]:
             pack_id = pk["id"]
             async with db.execute(
                 """SELECT id, title, description, image_url, price,
-                          total_supply, sold_count
+                          total_supply, sold_count, author
                    FROM nft_paintings
                    WHERE pack_id = ?
                    ORDER BY created_at ASC""",
@@ -288,6 +294,7 @@ async def get_archived_packs() -> list[dict]:
                     "sold_count":   r["sold_count"],
                     "available":    0,
                     "pack_id":      pack_id,
+                    "author":       r["author"] or "Space_Donut",
                 })
 
             cover = pk["cover_image_url"] or (paintings[0]["image_url"] if paintings else "")
@@ -371,7 +378,7 @@ async def get_user_gallery(user_id: int) -> list[dict]:
         db.row_factory = aiosqlite.Row
         async with db.execute(
             """SELECT p.id, p.title, p.description, p.image_url,
-                      p.price, p.total_supply, p.sold_count, o.acquired_at,
+                      p.price, p.total_supply, p.sold_count, p.author, o.acquired_at,
                       o.serial_number, o.id as owned_id, o.status,
                       ml.id   as listing_id,
                       au.id   as auction_id,

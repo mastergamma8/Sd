@@ -42,6 +42,13 @@ function nftOpenPainting(paintingId, fromGallery = false, viewOnly = false, seri
         titleEl.textContent = painting.title;
     }
 
+    const authorEl = document.getElementById('nft-modal-author');
+    if (authorEl) {
+        const handle = (painting.author || 'Space_Donut').replace(/^@/, '');
+        authorEl.innerHTML = `by <a href="https://t.me/${encodeURIComponent(handle)}" target="_blank"
+            style="color:rgba(255,255,255,0.55);text-decoration:none;font-weight:700;">@${escapeHtml(handle)}</a>`;
+    }
+
     const serialRow = document.getElementById('nft-modal-serial-row');
     if (serialRow) {
         serialRow.classList.add('hidden');
@@ -110,13 +117,7 @@ function nftOpenPainting(paintingId, fromGallery = false, viewOnly = false, seri
     const buyBtn       = document.getElementById('nft-modal-buy-btn');
     const ownerActions = document.getElementById('nft-modal-owner-actions');
 
-    // Determine effective status, using auction_id/listing_id as authoritative fallback
-    // to prevent stale or missing status field from showing wrong owner buttons
-    let st = painting.status || 'held';
-    if (st === 'held') {
-        if (painting.auction_id && painting.auction_id > 0) st = 'in_auction';
-        else if (painting.listing_id && painting.listing_id > 0) st = 'for_sale';
-    }
+    const st          = painting.status || 'held';
     const isOwnHeld   = fromGallery && !viewOnly && st === 'held';
     const isOwnListed = fromGallery && !viewOnly && (st === 'for_sale' || st === 'in_auction');
 

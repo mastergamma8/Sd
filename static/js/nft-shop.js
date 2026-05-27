@@ -8,6 +8,17 @@ let nftArchivedPacksData = [];   // архивные паки (все карти
 let nftCurrentPackModal  = null; // открытый пак в модальном окне
 let nftPackSelectedIdx   = 0;    // индекс выбранной картины в паке
 
+// ─── Автор картины ────────────────────────────────────────────────────────────
+
+function nftAuthorTag(author) {
+    const handle = (author || 'Space_Donut').replace(/^@/, '');
+    return `<a href="https://t.me/${encodeURIComponent(handle)}"
+               onclick="event.stopPropagation()"
+               target="_blank"
+               class="text-[10px] font-bold"
+               style="color:rgba(255,255,255,0.4);text-decoration:none;">by @${escapeHtml(handle)}</a>`;
+}
+
 // ─── Загрузка магазина ────────────────────────────────────────────────────────
 
 async function nftLoadShop() {
@@ -159,7 +170,8 @@ function nftShopCarouselCardHTML(p) {
             ${badgeHTML}
         </div>
         <div class="p-4 relative z-10">
-            <h4 class="text-white font-bold text-sm leading-tight mb-1 truncate">${escapeHtml(p.title)}</h4>
+            <h4 class="text-white font-bold text-sm leading-tight mb-0.5 truncate">${escapeHtml(p.title)}</h4>
+            <div class="mb-1.5">${nftAuthorTag(p.author)}</div>
             ${p.description ? `<p class="text-xs mb-2.5 line-clamp-2" style="color:rgba(255,255,255,0.45);">${escapeHtml(p.description)}</p>` : ''}
             <div class="flex items-center gap-1.5">
                 <img src="/gifts/stars.png" class="w-4 h-4 object-contain" onerror="this.style.display='none'">
@@ -320,7 +332,10 @@ function _nftRenderPackSelected(idx) {
 
     info.innerHTML = `
         <div class="flex items-start justify-between gap-2 mb-1.5">
-            <h4 class="font-black text-base text-white leading-tight">${escapeHtml(p.title)}</h4>
+            <div>
+                <h4 class="font-black text-base text-white leading-tight">${escapeHtml(p.title)}</h4>
+                <div class="mt-0.5">${nftAuthorTag(p.author)}</div>
+            </div>
             ${supplyBadge}
         </div>
         ${p.description ? `<p class="text-xs mb-3 leading-relaxed" style="color:rgba(255,255,255,0.5);">${escapeHtml(p.description)}</p>` : ''}
@@ -372,6 +387,7 @@ function nftArchivedPackCardHTML(pack) {
             </div>
             <div class="flex-1 min-w-0">
                 <p class="text-[11px] font-bold truncate" style="color:rgba(255,255,255,0.55);">${escapeHtml(p.title)}</p>
+                <div>${nftAuthorTag(p.author)}</div>
             </div>
             <div class="flex-shrink-0 text-[10px] font-black px-2 py-0.5 rounded-lg"
                  style="background:rgba(239,68,68,0.12);color:#f87171;">

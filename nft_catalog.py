@@ -11,6 +11,7 @@
 #    price        (int)  — цена в NFT-звёздах
 #    total_supply (int)  — лимит тиража; 0 = неограниченный
 #    is_active    (bool) — True = видна сразу, False = скрыта
+#    author       (str)  — юзернейм автора БЕЗ @, по умолчанию "Space_Donut"
 #
 #  Поля пака:
 #    name             (str)  — название пака
@@ -30,6 +31,7 @@ PAINTINGS = [
         "price":        50,
         "total_supply": 100,
         "is_active":    True,
+        "author":       "Space_Donut",   # юзернейм без @; пусто = Space_Donut
     },
 
     {
@@ -39,6 +41,7 @@ PAINTINGS = [
         "price":        50,
         "total_supply": 20,
         "is_active":    True,
+        "author":       "Space_Donut",
     },
 
 ]
@@ -49,32 +52,32 @@ PAINTINGS = [
 PACKS = [
 
     {
-        "name":             "Space Collection 23",
+        "name":             "Space Collection",
         "description":      "Коллекция из 3 космических работ. Каждая картина имеет свой лимит.",
         "cover_image_url":  "",   # пусто — используется изображение первой картины
         "paintings": [
             {
-                "title":        "Sakura Flowersaa",
+                "title":        "Sakura Flower",
                 "description":  "Цветение сакуры в стиле цифровой живописи.",
                 "image_url":    "https://cdn.changes.tg/gifts/models/Sakura Flower/png/Original.png",
                 "price":        150,
-                "total_supply": 6,
+                "total_supply": 5,
                 "is_active":    True,
             },
             {
-                "title":        "Plush Pepesaa",
+                "title":        "Plush Pepe",
                 "description":  "Культовый персонаж в уникальном исполнении.",
                 "image_url":    "https://cdn.changes.tg/gifts/models/Plush Pepe/png/Original.png",
                 "price":        101,
-                "total_supply": 4,
+                "total_supply": 3,
                 "is_active":    True,
             },
             {
-                "title":        "Pool Floatsaa",
+                "title":        "Pool Float",
                 "description":  "Летнее настроение в каждом пикселе.",
                 "image_url":    "https://cdn.changes.tg/gifts/models/Pool Float/png/Original.png",
                 "price":        102,
-                "total_supply": 11,
+                "total_supply": 10,
                 "is_active":    True,
             },
         ],
