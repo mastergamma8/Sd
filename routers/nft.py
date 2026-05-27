@@ -51,9 +51,10 @@ async def nft_info(current_user: dict = Depends(get_current_user)):
 @router.get("/shop")
 async def nft_shop(current_user: dict = Depends(get_current_user)):
     user_id = current_user["id"]
-    paintings = await db_nft.get_active_paintings()
+    paintings      = await db_nft.get_active_paintings()
+    packs          = await db_nft.get_packs_with_paintings()
+    archived_packs = await db_nft.get_archived_packs()
 
-    # Отмечаем, какие картины уже куплены пользователем и сколько копий
     owned = await db_nft.get_user_gallery(user_id)
     owned_counts: dict[int, int] = {}
     for p in owned:
@@ -63,7 +64,17 @@ async def nft_shop(current_user: dict = Depends(get_current_user)):
         p["owned_count"] = owned_counts.get(p["id"], 0)
         p["owned"] = p["owned_count"] > 0
 
-    return {"paintings": paintings}
+    for pack in packs:
+        for p in pack["paintings"]:
+            p["owned_count"] = owned_counts.get(p["id"], 0)
+            p["owned"] = p["owned_count"] > 0
+
+    for pack in archived_packs:
+        for p in pack["paintings"]:
+            p["owned_count"] = owned_counts.get(p["id"], 0)
+            p["owned"] = p["owned_count"] > 0
+
+    return {"paintings": paintings, "packs": packs, "archived_packs": archived_packs}
 
 
 @router.post("/buy")

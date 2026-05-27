@@ -51,9 +51,9 @@ async function nftLoadGallery(userId = null) {
     }
 }
 
-function nftGalleryBackToList() {
-    nftLoadGallery(null);
-}
+// ─── Состояние просмотра пака в галерее ──────────────────────────────────────
+
+let nftGalleryPackView = null; // текущий пак открытый в галерее
 
 // ─── Рендер грида галереи ─────────────────────────────────────────────────────
 
@@ -62,6 +62,8 @@ function nftRenderGalleryGrid(items, isOwner = false) {
     const empty = document.getElementById('nft-gallery-empty');
     if (!grid) return;
 
+    nftGalleryPackView = null;
+
     if (items.length === 0) {
         grid.innerHTML = '';
         empty.classList.remove('hidden');
@@ -69,7 +71,56 @@ function nftRenderGalleryGrid(items, isOwner = false) {
     }
 
     empty.classList.add('hidden');
-    grid.innerHTML = items.map(p => nftGalleryCardHTML(p, isOwner)).join('');
+
+    // Группируем по пакам
+    const packsMap = {};
+    const standalone = [];
+
+    for (const p of items) {
+        if (p.pack_id) {
+            if (!packsMap[p.pack_id]) {
+                packsMap[p.pack_id] = {
+                    pack_id:   p.pack_id,
+                    pack_name: p.pack_name  || 'Пак',
+                    pack_cover: p.pack_cover || p.image_url,
+                    paintings: [],
+                };
+            }
+            packsMap[p.pack_id].paintings.push(p);
+        } else {
+            standalone.push(p);
+        }
+    }
+
+    const packs       = Object.values(packsMap);
+    const hasPacks    = packs.length > 0;
+    const hasStandalone = standalone.length > 0;
+
+    let html = '';
+
+    // Строки паков (полная ширина)
+    if (hasPacks) {
+        html += `<div class="col-span-2 space-y-3 mb-4">`;
+        html += packs.map(pack => nftPackGalleryRowHTML(pack, isOwner)).join('');
+        html += `</div>`;
+    }
+
+    // Разделитель
+    if (hasPacks && hasStandalone) {
+        html += `
+        <div class="col-span-2 flex items-center gap-2 mb-3">
+            <div class="flex-1 h-px" style="background:rgba(255,255,255,0.06);"></div>
+            <span class="text-[9px] font-black tracking-widest uppercase" style="color:rgba(255,255,255,0.2);">Отдельные картины</span>
+            <div class="flex-1 h-px" style="background:rgba(255,255,255,0.06);"></div>
+        </div>`;
+    }
+
+    // Грид одиночных картин
+    if (hasStandalone) {
+        html += standalone.map(p => nftGalleryCardHTML(p, isOwner)).join('');
+    }
+
+    grid.innerHTML = html;
 }
 
 // ─── Карточка галереи (квадратная iOS 26) ───────────────────────────────────────────
@@ -118,7 +169,91 @@ function nftGalleryCardHTML(p, isOwner) {
     </div>`;
 }
 
-// ─── Страница «Галереи» (список коллекционеров) ───────────────────────────────
+// ─── Строка пака в галерее ───────────────────────────────────────────────────
+
+function nftPackGalleryRowHTML(pack, isOwner) {
+    const count     = pack.paintings.length;
+    const countWord = count === 1 ? 'картина' : count < 5 ? 'картины' : 'картин';
+
+    // Статусные бейджи: если есть картины на продаже/аукционе
+    const forSale   = pack.paintings.filter(p => p.status === 'for_sale').length;
+    const inAuction = pack.paintings.filter(p => p.status === 'in_auction').length;
+    let statusBadges = '';
+    if (forSale > 0)   statusBadges += `<span class="nft-status-badge nft-status-for-sale" style="font-size:9px;padding:2px 6px;">🏷 ${forSale}</span> `;
+    if (inAuction > 0) statusBadges += `<span class="nft-status-badge nft-status-in-auction" style="font-size:9px;padding:2px 6px;">🔨 ${inAuction}</span>`;
+
+    return `
+    <div class="flex items-center gap-3 p-3.5 rounded-2xl cursor-pointer active:scale-[0.985] transition-all"
+         style="background:rgba(252,211,77,0.04);border:1px solid rgba(252,211,77,0.12);"
+         onclick="nftOpenPackInGallery(${pack.pack_id}, ${isOwner})">
+        <div class="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0"
+             style="border:1px solid rgba(252,211,77,0.2);">
+            <img src="${escapeHtml(pack.pack_cover)}" class="w-full h-full object-cover"
+                 onerror="this.src='https://via.placeholder.com/64x64?text=Pack'">
+        </div>
+        <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-1.5 mb-1 flex-wrap">
+                <span class="px-2 py-0.5 rounded-lg text-[9px] font-black"
+                      style="background:rgba(252,211,77,0.12);color:#fcd34d;">📦 Пак</span>
+                ${statusBadges}
+            </div>
+            <p class="text-white font-bold text-sm truncate leading-tight">${escapeHtml(pack.pack_name)}</p>
+            <p class="text-[11px] mt-0.5 font-bold" style="color:rgba(255,255,255,0.4);">${count} ${countWord}</p>
+        </div>
+        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:rgba(252,211,77,0.4);">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
+        </svg>
+    </div>`;
+}
+
+// ─── Открытие пака в галерее (под-страница) ───────────────────────────────────
+
+function nftOpenPackInGallery(packId, isOwner) {
+    vibrate('light');
+
+    const grid  = document.getElementById('nft-gallery-grid');
+    const empty = document.getElementById('nft-gallery-empty');
+    const title = document.getElementById('nft-gallery-title');
+    const backBtn = document.getElementById('nft-gallery-back-btn');
+    if (!grid) return;
+
+    // Найти пак в данных галереи
+    const allItems = nftGalleryData;
+    const packItems = allItems.filter(p => p.pack_id === packId);
+    if (!packItems.length) return;
+
+    const packName = packItems[0].pack_name || 'Пак';
+    nftGalleryPackView = { packId, isOwner };
+
+    // Показать кнопку «Назад»
+    backBtn.classList.remove('hidden');
+    if (title) title.textContent = packName;
+
+    empty.classList.add('hidden');
+    grid.innerHTML = `
+        <div class="col-span-2 mb-3">
+            <p class="text-[9px] tracking-widest uppercase font-bold text-center" style="color:rgba(252,211,77,0.5);">
+                ${packItems.length} ${packItems.length === 1 ? 'картина' : packItems.length < 5 ? 'картины' : 'картин'} в паке
+            </p>
+        </div>
+        ${packItems.map(p => nftGalleryCardHTML(p, isOwner)).join('')}`;
+}
+
+// ─── Назад из пака в галерее ─────────────────────────────────────────────────
+
+function nftGalleryBackToList() {
+    if (nftGalleryPackView) {
+        // Вернуться к общему виду галереи
+        nftGalleryPackView = null;
+        const backBtn = document.getElementById('nft-gallery-back-btn');
+        if (backBtn) backBtn.classList.add('hidden');
+        const title = document.getElementById('nft-gallery-title');
+        if (title) title.textContent = nftViewingUserId === null ? 'Моя Галерея' : 'Галерея';
+        nftRenderGalleryGrid(nftGalleryData, nftViewingUserId === null);
+    } else {
+        nftLoadGallery(null);
+    }
+}
 
 let nftGalleriesMode = 'list'; 
 
@@ -350,6 +485,8 @@ window.nftLoadGallery           = nftLoadGallery;
 window.nftGalleryBackToList     = nftGalleryBackToList;
 window.nftRenderGalleryGrid     = nftRenderGalleryGrid;
 window.nftGalleryCardHTML       = nftGalleryCardHTML;
+window.nftPackGalleryRowHTML    = nftPackGalleryRowHTML;
+window.nftOpenPackInGallery     = nftOpenPackInGallery;
 window.nftLoadGalleriesPage     = nftLoadGalleriesPage;
 window.nftRenderGalleriesList   = nftRenderGalleriesList;
 window.nftOpenUserGalleryPage   = nftOpenUserGalleryPage;

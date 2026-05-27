@@ -352,4 +352,27 @@ async def init_rocket_games_table():
             "CREATE INDEX IF NOT EXISTS idx_nft_auctions_seller ON nft_auctions (seller_id)"
         )
 
+        # ── NFT Паки (коллекции картин) ───────────────────────────────────────
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS nft_packs (
+                id              BIGSERIAL PRIMARY KEY,
+                name            TEXT    NOT NULL,
+                description     TEXT    DEFAULT '',
+                cover_image_url TEXT    DEFAULT '',
+                is_active       BOOLEAN DEFAULT TRUE,
+                created_at      INTEGER NOT NULL DEFAULT 0
+            )
+        """)
+        await db.execute("""
+            ALTER TABLE nft_paintings ADD COLUMN IF NOT EXISTS pack_id BIGINT DEFAULT NULL
+        """)
+
+        # ── Архивация паков (все картины распроданы) ──────────────────────────
+        await db.execute("""
+            ALTER TABLE nft_packs ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT FALSE
+        """)
+        await db.execute("""
+            ALTER TABLE nft_packs ADD COLUMN IF NOT EXISTS archived_at INTEGER DEFAULT NULL
+        """)
+
         await db.commit()

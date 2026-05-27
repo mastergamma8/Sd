@@ -148,9 +148,10 @@ async def lifespan(app: FastAPI):
 
         # Синхронизация NFT-каталога: все картины из nft_catalog.py
         # автоматически появляются в магазине при каждом запуске.
-        from db.db_nft import sync_catalog
-        from nft_catalog import PAINTINGS
+        from db.db_nft import sync_catalog, sync_packs
+        from nft_catalog import PAINTINGS, PACKS
         await sync_catalog(PAINTINGS)
+        await sync_packs(PACKS)
 
         print("Инициализация обновления цен подарков (API Portals)...")
         config.update_base_gifts_prices()
