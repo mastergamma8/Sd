@@ -46,19 +46,6 @@ async function nftLoadShop() {
         nftPacksData         = data.packs          || [];
         nftArchivedPacksData = data.archived_packs || [];
         nftRenderShop();
-
-        // ── Deep-link: консумация глобалов, установленных handleNFTDeepLink() ──
-        // Срабатывает, когда пользователь перешёл по ссылке ?startapp=nft_pack_* или nft_painting_*
-        if (window._nftDeepLinkPackId != null) {
-            const pid = window._nftDeepLinkPackId;
-            window._nftDeepLinkPackId = null;
-            setTimeout(() => nftOpenPackModal(pid), 150);
-        }
-        if (window._nftDeepLinkPainting != null) {
-            const { paintingId, serial } = window._nftDeepLinkPainting;
-            window._nftDeepLinkPainting = null;
-            setTimeout(() => nftOpenPainting(paintingId, false, false, serial), 150);
-        }
     } catch (e) {
         list.innerHTML = `<div class="text-center py-8 text-red-400/60 text-sm">Ошибка загрузки</div>`;
     }
@@ -194,10 +181,20 @@ function nftShopCarouselCardHTML(p) {
             <h4 class="text-white font-bold text-sm leading-tight mb-0.5 truncate">${escapeHtml(p.title)}</h4>
             <div class="mb-1.5">${nftAuthorTag(p.author)}</div>
             ${p.description ? `<p class="text-xs mb-2.5 line-clamp-2" style="color:rgba(255,255,255,0.45);">${escapeHtml(p.description)}</p>` : ''}
-            <div class="flex items-center gap-1.5">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-1.5">
                 <img src="/gifts/stars.png" class="w-4 h-4 object-contain" onerror="this.style.display='none'">
                 <span class="font-black text-sm" style="color:#fcd34d;">${p.price}</span>
                 <span class="text-[10px] font-bold" style="color:rgba(255,255,255,0.45);">звёзд</span>
+              </div>
+              <button onclick="event.stopPropagation();nftShareItem('painting',${p.id},0,'${escapeHtml(p.title).replace(/'/g,"\\'")}');"
+                      class="w-8 h-8 rounded-xl flex items-center justify-center active:scale-90 transition-all flex-shrink-0"
+                      style="background:rgba(252,211,77,0.08);border:1px solid rgba(252,211,77,0.2);">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:#fcd34d;">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                        d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
+                </svg>
+              </button>
             </div>
         </div>
     </div>`;
@@ -246,10 +243,20 @@ function nftPackCardHTML(pack) {
             <div class="flex items-center gap-2">
                 ${thumbs}${moreBadge}
             </div>
-            <button class="flex-shrink-0 px-4 py-2 rounded-xl text-xs font-black active:scale-95 transition-all nft-buy-btn"
-                    onclick="event.stopPropagation();nftOpenPackModal(${pack.id})">
+            <div class="flex items-center gap-2">
+              <button class="flex-shrink-0 px-4 py-2 rounded-xl text-xs font-black active:scale-95 transition-all nft-buy-btn"
+                      onclick="event.stopPropagation();nftOpenPackModal(${pack.id})">
                 Открыть пак
-            </button>
+              </button>
+              <button onclick="event.stopPropagation();nftShareItem('pack',${pack.id},0,'${escapeHtml(pack.name).replace(/'/g,"\\'")}');"
+                      class="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center active:scale-90 transition-all"
+                      style="background:rgba(252,211,77,0.08);border:1px solid rgba(252,211,77,0.2);">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:#fcd34d;">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                        d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
+                </svg>
+              </button>
+            </div>
         </div>
     </div>`;
 }
@@ -394,6 +401,15 @@ async function nftBuyFromPackModal() {
     }
 }
 
+// ─── Шаринг текущего открытого пака ─────────────────────────────────────────
+
+function nftShareCurrentPackModal() {
+    if (!nftCurrentPackModal) return;
+    if (typeof nftShareItem === 'function') {
+        nftShareItem('pack', nftCurrentPackModal.id, 0, nftCurrentPackModal.name || '');
+    }
+}
+
 // ─── Карточка архивного пака (распродан) ─────────────────────────────────────
 
 function nftArchivedPackCardHTML(pack) {
@@ -461,3 +477,4 @@ window.nftArchivedPackCardHTML = nftArchivedPackCardHTML;
 window.nftOpenPackModal        = nftOpenPackModal;
 window.nftPackSelectPainting   = nftPackSelectPainting;
 window.nftBuyFromPackModal     = nftBuyFromPackModal;
+window.nftShareCurrentPackModal = nftShareCurrentPackModal;

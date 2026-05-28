@@ -133,6 +133,7 @@ async function initApp() {
     gift_exchange_stars_rate:  data.config.gift_exchange_stars_rate,
 };
         botUsername  = data.config.bot_username;
+        window.botUsername = botUsername;
         window.botAppName = data.config.bot_app_name || 'app';
         if (data.config.roulette) rouletteConfig = data.config.roulette;
         if (data.config.cases) casesConfig = data.config.cases;

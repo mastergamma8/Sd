@@ -160,6 +160,8 @@ function nftGalleryCardHTML(p, isOwner) {
         ? `<div class="nft-status-badge" style="top:8px;left:8px;right:auto;background:rgba(16,185,129,0.9);color:#ffffff;">✦ Моя</div>`
         : '';
 
+    const shareBtn = ''; // Кнопка поделиться убрана с карточки (только в модальном окне)
+
     return `
     <div class="nft-gallery-card cursor-pointer relative"
          onclick="nftOpenPainting(${p.id}, true, ${viewOnly}, ${serial})">
@@ -170,7 +172,7 @@ function nftGalleryCardHTML(p, isOwner) {
                  onerror="this.src='https://via.placeholder.com/300x300?text=NFT'">
             <div class="absolute inset-0 z-10"
                  style="background:linear-gradient(to bottom,transparent 25%,rgba(10,7,4,0.98) 100%);"></div>
-            ${myBadge}${statusBadge}
+            ${myBadge}${statusBadge}${shareBtn}
             <div class="absolute bottom-3 left-3 right-3 z-20">
                 <p class="text-white font-bold text-xs truncate leading-tight">
                     ${escapeHtml(p.title)}${serialLabel}
@@ -199,6 +201,8 @@ function nftPackGalleryRowHTML(pack, isOwner) {
     if (forSale > 0)   statusBadges += `<span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-lg text-[9px] font-black flex-shrink-0" style="background:rgba(252,211,77,0.18);color:#fcd34d;">🏷 ${forSale} на продаже</span>`;
     if (inAuction > 0) statusBadges += `<span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-lg text-[9px] font-black flex-shrink-0" style="background:rgba(239,68,68,0.18);color:#f87171;">🔨 ${inAuction} аукцион</span>`;
 
+    const packShareBtn = ''; // Кнопка поделиться убрана со строки пака (только внутри страницы пака)
+
     return `
     <div class="flex items-center gap-3 p-3.5 rounded-2xl cursor-pointer active:scale-[0.985] transition-all"
          style="background:rgba(252,211,77,0.04);border:1px solid rgba(252,211,77,0.12);"
@@ -217,6 +221,7 @@ function nftPackGalleryRowHTML(pack, isOwner) {
             <p class="text-white font-bold text-sm truncate leading-tight">${escapeHtml(pack.pack_name)}</p>
             <p class="text-[11px] mt-0.5 font-bold" style="color:rgba(255,255,255,0.4);">${count} ${countWord}</p>
         </div>
+        ${packShareBtn}
         <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:rgba(252,211,77,0.4);">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
         </svg>
@@ -247,12 +252,24 @@ function nftOpenPackInGallery(packId, isOwner) {
         const content = document.getElementById('nft-galleries-content');
         if (!content) return;
 
+        const _shareOtherBtn = isOwner ? `
+            <button onclick="nftShareGalleryPack(${packId}, '${packName.replace(/'/g,"\\'")}');"
+                    class="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center active:scale-90 transition-all"
+                    style="background:rgba(252,211,77,0.08);border:1px solid rgba(252,211,77,0.2);">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:#fcd34d;">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                      d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
+              </svg>
+            </button>` : '';
         content.innerHTML = `
-            <div class="mb-4">
-                <p class="font-black text-base" style="color:#fef08a;font-family:-apple-system,BlinkMacSystemFont,sans-serif;">${escapeHtml(packName)}</p>
-                <p class="text-[9px] tracking-widest uppercase font-bold" style="color:rgba(252,211,77,0.55);">
-                    Пак · ${count} ${countWord}
-                </p>
+            <div class="mb-4 flex items-center justify-between">
+                <div>
+                    <p class="font-black text-base" style="color:#fef08a;font-family:-apple-system,BlinkMacSystemFont,sans-serif;">${escapeHtml(packName)}</p>
+                    <p class="text-[9px] tracking-widest uppercase font-bold" style="color:rgba(252,211,77,0.55);">
+                        Пак · ${count} ${countWord}
+                    </p>
+                </div>
+                ${_shareOtherBtn}
             </div>
             <div class="grid grid-cols-2 gap-3.5">
                 ${packItems.map(p => nftGalleryCardHTML(p, isOwner)).join('')}
@@ -269,11 +286,21 @@ function nftOpenPackInGallery(packId, isOwner) {
         if (title) title.textContent = packName;
 
         empty.classList.add('hidden');
+        const _sharePackBtn = isOwner ? `
+            <button onclick="nftShareGalleryPack(${packId}, '${packName.replace(/'/g,"\\'")}');"
+                    class="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center active:scale-90 transition-all"
+                    style="background:rgba(252,211,77,0.08);border:1px solid rgba(252,211,77,0.2);">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:#fcd34d;">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                      d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
+              </svg>
+            </button>` : '';
         grid.innerHTML = `
-            <div class="col-span-2 mb-3">
-                <p class="text-[9px] tracking-widest uppercase font-bold text-center" style="color:rgba(252,211,77,0.5);">
+            <div class="col-span-2 mb-3 flex items-center justify-between">
+                <p class="text-[9px] tracking-widest uppercase font-bold" style="color:rgba(252,211,77,0.5);">
                     ${count} ${countWord} в паке
                 </p>
+                ${_sharePackBtn}
             </div>
             ${packItems.map(p => nftGalleryCardHTML(p, isOwner)).join('')}`;
     }

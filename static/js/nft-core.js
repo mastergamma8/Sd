@@ -206,9 +206,10 @@ function nftShareCurrentPage() {
     const link    = `https://t.me/${bot}/${appName}?startapp=${startParam}`;
     const tgApp   = window.Telegram && window.Telegram.WebApp;
 
-    // Telegram WebApp — нативный диалог выбора чата
-    if (tgApp && tgApp.openTelegramLink) {
-        tgApp.openTelegramLink(
+    // Telegram WebApp — нативный диалог выбора чата (используем tg — глобальный из globals.js, как в earn.js)
+    const _tgApp = (typeof tg !== 'undefined' && tg) || (window.Telegram && window.Telegram.WebApp);
+    if (_tgApp && _tgApp.openTelegramLink) {
+        _tgApp.openTelegramLink(
             `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(shareText)}`
         );
         return;
@@ -228,9 +229,94 @@ function nftShareCurrentPage() {
     }
 }
 
+// ─── Прямой шаринг элемента (картина или пак) ────────────────────────────────
+//
+// Вызывается с кнопок на карточках галереи и в модале пака.
+// Не зависит от состояния nftShareContext — формирует ссылку напрямую.
+//
+//   type  : 'painting' | 'pack'
+//   id    : painting.id   / pack.id
+//   serial: serial_number (только для painting; для pack передать 0 / null)
+//   title : название для текста сообщения
+
+function nftShareItem(type, id, serial, title) {
+    vibrate('light');
+
+    const bot     = (window.botUsername || botUsername || '').replace('@', '');
+    const appName = (window.botAppName  || 'app').replace(/^@/, '');
+
+    let startParam, shareText;
+    if (type === 'painting') {
+        startParam = `nft_painting_${id}_${serial || 1}`;
+        shareText  = `🎨 Посмотри «${title}${serial ? ' #' + serial : ''}» в NFT Галерее!`;
+    } else {
+        startParam = `nft_pack_${id}`;
+        shareText  = `📦 Посмотри пак «${title}» в NFT Галерее!`;
+    }
+
+    const link = bot
+        ? `https://t.me/${bot}/${appName}?startapp=${startParam}`
+        : `https://t.me/${appName}`;
+
+    // Используем tg (глобальный из globals.js) — та же логика, что и в earn.js
+    if (typeof tg !== 'undefined' && tg && tg.openTelegramLink) {
+        tg.openTelegramLink(
+            `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(shareText)}`
+        );
+        return;
+    }
+    if (navigator.share) {
+        navigator.share({ title: 'NFT Галерея', text: shareText, url: link }).catch(() => {});
+        return;
+    }
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(link).then(() => {
+            if (typeof showNotify === 'function') showNotify('✅ Ссылка скопирована!');
+        });
+    }
+}
+
+/**
+ * Хелпер для кнопок на карточках галереи: ищет картину в nftGalleryData,
+ * берёт title и вызывает nftShareItem.
+ */
+function nftShareGalleryPainting(paintingId, serial) {
+    const painting = (typeof nftGalleryData !== 'undefined' ? nftGalleryData : [])
+        .find(p => p.id === paintingId && (serial > 0 ? p.serial_number === serial : true))
+        || (typeof nftGalleryData !== 'undefined' ? nftGalleryData : [])
+            .find(p => p.id === paintingId);
+    nftShareItem('painting', paintingId, serial, painting?.title || '');
+}
+
+/**
+ * Хелпер для строк паков в галерее: ищет пак по ID и шарит его.
+ * nftGalleryPacksData — массив паков, доступный из nft-gallery.js.
+ */
+function nftShareGalleryPack(packId, packName) {
+    nftShareItem('pack', packId, 0, packName || '');
+}
+
+/**
+ * Шаринг текущей открытой картины в модальном окне (nft-painting-modal).
+ * Использует контекст nftShareContext, установленный при открытии через nftOpenPainting().
+ */
+function nftSharePaintingModal() {
+    if (nftShareContext.type === 'painting' && nftShareContext.paintingId) {
+        nftShareItem(
+            'painting',
+            nftShareContext.paintingId,
+            nftShareContext.paintingSerial || 1,
+            nftShareContext.paintingTitle  || ''
+        );
+    } else {
+        nftShareCurrentPage();
+    }
+}
+
 // ─── Экспорт ──────────────────────────────────────────────────────────────────
 
 window.openNFTSection      = openNFTSection;
+window.nftSharePaintingModal = nftSharePaintingModal;
 window.closeNFTSection     = closeNFTSection;
 window.nftSwitchTab        = nftSwitchTab;
 window.openNFTTopup        = openNFTTopup;
@@ -241,3 +327,6 @@ window.nftViewUserGallery  = nftViewUserGallery;
 window.nftRenderCollectors = nftRenderCollectors;
 window.nftSetShareContext   = nftSetShareContext;
 window.nftShareCurrentPage  = nftShareCurrentPage;
+window.nftShareItem         = nftShareItem;
+window.nftShareGalleryPainting = nftShareGalleryPainting;
+window.nftShareGalleryPack     = nftShareGalleryPack;
