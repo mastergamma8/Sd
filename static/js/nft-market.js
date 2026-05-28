@@ -77,10 +77,11 @@ function nftListingCardHTML(l) {
     <div class="nft-card mb-4">
       <div class="flex gap-3.5 p-4 cursor-pointer active:bg-white/[0.03] transition-colors rounded-t-3xl"
            onclick="nftOpenListingDetail(${l.id})">
-        <div class="flex-shrink-0 w-20 h-20 rounded-2xl overflow-hidden"
+        <div class="flex-shrink-0 w-20 h-20 rounded-2xl overflow-hidden nft-art-frame"
              style="border:1px solid rgba(252,211,77,0.15);">
+          <div class="art-blur" style="background-image:url(&quot;${l.image_url.replace(/"/g,'')}&quot;)"></div>
           <img src="${escapeHtml(l.image_url)}" alt="${escapeHtml(l.title)}"
-               class="w-full h-full object-cover"
+               class="art-img"
                onerror="this.src='https://via.placeholder.com/80x80?text=NFT'">
         </div>
         <div class="flex-1 min-w-0 flex flex-col justify-between">
@@ -169,6 +170,7 @@ function nftOpenListingDetail(listingId) {
     if (!l) return;
 
     document.getElementById('nft-modal-image').src          = l.image_url;
+    const _bL = document.getElementById('nft-modal-blur'); if (_bL) _bL.style.backgroundImage = `url("${l.image_url.replace(/"/g,'')}")`;
     document.getElementById('nft-modal-desc').textContent   = l.description || '';
     document.getElementById('nft-modal-price').textContent  = l.price;
 
@@ -286,6 +288,7 @@ function nftOpenListModal(ownedId, title, imageUrl) {
     nftSellTarget = { owned_id: ownedId };
     document.getElementById('nft-list-modal-title').textContent = title;
     document.getElementById('nft-list-modal-img').src           = imageUrl;
+    const _bLi = document.getElementById('nft-list-modal-blur'); if (_bLi) _bLi.style.backgroundImage = `url("${imageUrl.replace(/"/g,'')}")`;
     document.getElementById('nft-list-price-input').value       = '';
     document.getElementById('nft-list-modal').classList.remove('hidden');
 }
@@ -414,12 +417,13 @@ function nftAuctionCardHTML(a) {
     <div class="nft-card mb-4">
       <div class="flex gap-3.5 p-4 cursor-pointer active:bg-white/[0.03] transition-colors rounded-t-3xl"
            onclick="nftOpenAuctionDetail(${a.id})">
-        <div class="flex-shrink-0 w-20 h-20 rounded-2xl overflow-hidden relative"
+        <div class="flex-shrink-0 w-20 h-20 rounded-2xl overflow-hidden nft-art-frame relative"
              style="border:1px solid rgba(252,211,77,0.15);">
+          <div class="art-blur" style="background-image:url(&quot;${a.image_url.replace(/"/g,'')}&quot;)"></div>
           <img src="${escapeHtml(a.image_url)}" alt="${escapeHtml(a.title)}"
-               class="w-full h-full object-cover"
+               class="art-img"
                onerror="this.src='https://via.placeholder.com/80x80?text=NFT'">
-          <div class="absolute top-1.5 left-1.5 px-2 py-0.5 rounded-lg text-[8px] font-black"
+          <div class="absolute top-1.5 left-1.5 z-20 px-2 py-0.5 rounded-lg text-[8px] font-black"
                style="background:rgba(252,211,77,0.95);color:#0a0704;box-shadow:0 2px 6px rgba(0,0,0,0.35);">ТОРГИ</div>
         </div>
         <div class="flex-1 min-w-0 flex flex-col justify-between">
@@ -483,6 +487,7 @@ function nftOpenAuctionCreateModal(ownedId, title, imageUrl) {
     nftAuctionTarget = { owned_id: ownedId };
     document.getElementById('nft-auction-modal-title').textContent = title;
     document.getElementById('nft-auction-modal-img').src           = imageUrl;
+    const _bAu = document.getElementById('nft-auction-modal-blur'); if (_bAu) _bAu.style.backgroundImage = `url("${imageUrl.replace(/"/g,'')}")`;
     document.getElementById('nft-auction-start-price').value       = '';
 
     document.querySelectorAll('.nft-duration-btn').forEach(btn => btn.classList.remove('active-duration'));
@@ -625,6 +630,7 @@ function nftOpenAuctionDetail(auctionId) {
     if (!a) return;
 
     document.getElementById('nft-modal-image').src          = a.image_url;
+    const _bA = document.getElementById('nft-modal-blur'); if (_bA) _bA.style.backgroundImage = `url("${a.image_url.replace(/"/g,'')}")`;
     document.getElementById('nft-modal-desc').textContent   = a.description || '';
     document.getElementById('nft-modal-price').textContent  = a.current_price;
 

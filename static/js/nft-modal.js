@@ -30,7 +30,19 @@ function nftOpenPainting(paintingId, fromGallery = false, viewOnly = false, seri
 
     nftModalPainting = painting;
 
+    // Обновляем контекст кнопки «Поделиться»
+    const _shareSerial = serialNumber || painting.serial_number || null;
+    if (typeof nftSetShareContext === 'function') {
+        nftSetShareContext({
+            type:          'painting',
+            paintingId:    painting.id,
+            paintingTitle: painting.title || '',
+            paintingSerial: _shareSerial,
+        });
+    }
+
     document.getElementById('nft-modal-image').src          = painting.image_url;
+    const _b1 = document.getElementById('nft-modal-blur'); if (_b1) _b1.style.backgroundImage = `url("${painting.image_url.replace(/"/g,'')}")`;
     document.getElementById('nft-modal-desc').textContent   = painting.description || '';
     document.getElementById('nft-modal-price').textContent  = painting.price;
 

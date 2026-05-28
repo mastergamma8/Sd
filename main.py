@@ -336,9 +336,10 @@ os.makedirs("static",    exist_ok=True)
 os.makedirs("partials",  exist_ok=True)
 os.makedirs("templates", exist_ok=True)
 
-app.mount("/gifts",    StaticFiles(directory="gifts"),    name="gifts")
+app.mount("/gifts",     StaticFiles(directory="gifts"),     name="gifts")
 app.mount("/static",   StaticFiles(directory="static"),   name="static")
 app.mount("/partials", StaticFiles(directory="partials"), name="partials")
+app.mount("/paintings", StaticFiles(directory="paintings"), name="paintings")
 
 templates = Jinja2Templates(directory="templates")
 

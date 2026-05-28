@@ -32,7 +32,8 @@ def register(dp: Dispatcher, bot: Bot):
 
         args = message.text.split()
         referrer_id = None
-        game_param = None  # параметр ?game= для WebApp URL
+        game_param  = None   # параметр ?game= для WebApp URL
+        nft_param   = None   # параметр ?nft=  для WebApp URL
 
         if len(args) > 1:
             arg = args[1]
@@ -42,6 +43,9 @@ def register(dp: Dispatcher, bot: Bot):
                 key = arg[len("game_"):]
                 if key in _GAME_PARAMS:
                     game_param = key
+            elif arg.startswith("nft_"):
+                # nft_gallery | nft_pack_{id} | nft_painting_{id}_{serial}
+                nft_param = arg[len("nft_"):]   # "gallery", "pack_42", "painting_7_1" …
 
         try:
             await database.upsert_user(
@@ -68,13 +72,22 @@ def register(dp: Dispatcher, bot: Bot):
             if game_param:
                 sep = "&" if "?" in webapp_url else "?"
                 webapp_url = f"{webapp_url}{sep}game={game_param}"
+            # Если пришёл deep-link на NFT раздел — добавляем ?nft=
+            elif nft_param:
+                sep = "&" if "?" in webapp_url else "?"
+                webapp_url = f"{webapp_url}{sep}nft={nft_param}" 
 
             _GAME_LABELS = {
                 "cases": "🎁 Открыть Кейсы",
                 "rocket": "🚀 Открыть Ракету",
                 "pvp": "⚔️ Открыть PVP Арену"
             }
-            webapp_btn_text = _GAME_LABELS.get(game_param, "Открыть приложение") if game_param else "Открыть приложение"
+            if game_param:
+                webapp_btn_text = _GAME_LABELS.get(game_param, "Открыть приложение")
+            elif nft_param:
+                webapp_btn_text = "🖼 Открыть NFT Галерею"
+            else:
+                webapp_btn_text = "Открыть приложение" 
 
             markup = InlineKeyboardMarkup(inline_keyboard=[
                 [
@@ -95,8 +108,10 @@ def register(dp: Dispatcher, bot: Bot):
             if game_param:
                 _default_game_name = "игру"
                 text = f"...{_game_names.get(game_param, _default_game_name)}!"
+            elif nft_param:
+                text = "🖼 Открой NFT Галерею — лимитированные картины и коллекции!"
             else:
-                text = "Привет! Нажми на кнопку ниже, чтобы открыть приложение."
+                text = "Привет! Нажми на кнопку ниже, чтобы открыть приложение." 
             if referrer_id and referrer_id != user_id:
                 text += f"\n\n{E_PARTY} Вы перешли по пригласительной ссылке!"
 

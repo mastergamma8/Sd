@@ -23,7 +23,11 @@ if not BOT_USERNAME:
 
 WEBAPP_URL = os.getenv("WEBAPP_URL")
 if not WEBAPP_URL:
-    raise ValueError("WEBAPP_URL не найден в переменных окружения (.env)!") 
+    raise ValueError("WEBAPP_URL не найден в переменных окружения (.env)!")
+
+# Короткое имя Mini App в BotFather (та часть после /bot_username/ в ссылке).
+# Например: https://t.me/SpaceDonutBot/app  →  BOT_APP_NAME = "app"
+BOT_APP_NAME = os.getenv("BOT_APP_NAME", "app") 
 
 _ADMIN_ID_RAW = os.getenv("ADMIN_ID")
 if not _ADMIN_ID_RAW:

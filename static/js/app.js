@@ -133,6 +133,7 @@ async function initApp() {
     gift_exchange_stars_rate:  data.config.gift_exchange_stars_rate,
 };
         botUsername  = data.config.bot_username;
+        window.botAppName = data.config.bot_app_name || 'app';
         if (data.config.roulette) rouletteConfig = data.config.roulette;
         if (data.config.cases) casesConfig = data.config.cases;
         if (data.config.rocket) rocketConfigLocal = data.config.rocket; 
@@ -309,26 +310,103 @@ if (window.partialsAreLoaded) {
         },
     };
 
-    const params   = new URLSearchParams(window.location.search);
-    const gameKey  = params.get('game');
+    // Читаем start_param из Telegram (startapp-ссылки вида ?startapp=game_cases)
+    // ИЛИ из ?game= для обратной совместимости
+    const startParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param || '';
+    let gameKey;
+
+    if (startParam.startsWith('game_')) {
+        gameKey = startParam.slice('game_'.length);   // "game_cases" → "cases"
+    } else {
+        gameKey = new URLSearchParams(window.location.search).get('game');
+    }
+
     if (!gameKey || !SUPPORTED[gameKey]) return;
 
-    // Ждём, пока приложение полностью инициализируется (лоадер скроется)
-    // и только потом выполняем навигацию.
     const loader = document.getElementById('app-loader');
     if (loader) {
         const obs = new MutationObserver(() => {
             if (loader.classList.contains('hidden') || loader.style.display === 'none') {
                 obs.disconnect();
-                // Небольшая задержка, чтобы все JS-модули игр точно загрузились
                 setTimeout(() => SUPPORTED[gameKey](), 300);
             }
         });
         obs.observe(loader, { attributes: true, attributeFilter: ['class', 'style'] });
     } else {
-        // Лоадера нет — просто ждём загрузки всего скрипта
         window.addEventListener('load', () => setTimeout(() => SUPPORTED[gameKey](), 500));
     }
 })();
 
 window.openSupportBot = openSupportBot;
+
+// ─── Deep-link: авто-открытие NFT галереи по параметру ?nft= ─────────────────
+//
+// Форматы параметра:
+//   ?nft=gallery              — открыть вкладку «Моя Галерея»
+//   ?nft=pack_{packId}        — открыть пак с данным ID
+//   ?nft=painting_{id}_{serial} — открыть модалку конкретной картины
+//
+// Бот отправляет WebApp URL с этим параметром, когда пользователь
+// переходит по ссылке вида https://t.me/BOT?start=nft_*
+//
+(function handleNFTDeepLink() {
+    // Читаем start_param из Telegram (startapp-ссылки вида ?startapp=nft_gallery)
+    // ИЛИ из ?nft= для обратной совместимости
+    const startParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param || '';
+    let nftParam;
+
+    if (startParam.startsWith('nft_')) {
+        nftParam = startParam.slice('nft_'.length);   // "nft_gallery" → "gallery"
+    } else {
+        nftParam = new URLSearchParams(window.location.search).get('nft');
+    }
+
+    if (!nftParam) return;
+
+    function executeNFTDeepLink() {
+        if (typeof openNFTSection !== 'function') return;
+
+        openNFTSection();
+
+        setTimeout(() => {
+            if (nftParam === 'gallery') {
+                // Просто открываем вкладку галереи (уже выбрана по умолчанию после openNFTSection)
+                if (typeof nftSwitchTab === 'function') nftSwitchTab('gallery');
+
+            } else if (nftParam.startsWith('pack_')) {
+                // pack_{packId} — паки находятся во вкладке «Магазин»
+                const packId = parseInt(nftParam.slice(5), 10);
+                if (!isNaN(packId)) {
+                    window._nftDeepLinkPackId = packId;
+                    if (typeof nftSwitchTab === 'function') nftSwitchTab('shop');
+                }
+
+            } else if (nftParam.startsWith('painting_')) {
+                // painting_{paintingId}_{serialNumber}
+                // Переключаемся в «Магазин» — там загружаются данные всех картин,
+                // nftOpenPainting дополнительно ищет и в nftGalleryData.
+                const parts      = nftParam.slice(9).split('_');
+                const paintingId = parseInt(parts[0], 10);
+                const serial     = parseInt(parts[1], 10) || 1;
+                if (!isNaN(paintingId)) {
+                    window._nftDeepLinkPainting = { paintingId, serial };
+                    if (typeof nftSwitchTab === 'function') nftSwitchTab('shop');
+                }
+            }
+        }, 200);
+    }
+
+    // Ждём, пока приложение полностью загрузится (лоадер исчезнет)
+    const loader = document.getElementById('app-loader');
+    if (loader) {
+        const obs = new MutationObserver(() => {
+            if (loader.classList.contains('hidden') || loader.style.display === 'none') {
+                obs.disconnect();
+                setTimeout(() => executeNFTDeepLink(), 350);
+            }
+        });
+        obs.observe(loader, { attributes: true, attributeFilter: ['class', 'style'] });
+    } else {
+        window.addEventListener('load', () => setTimeout(() => executeNFTDeepLink(), 500));
+    }
+})();

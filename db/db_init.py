@@ -375,9 +375,28 @@ async def init_rocket_games_table():
             ALTER TABLE nft_packs ADD COLUMN IF NOT EXISTS archived_at INTEGER DEFAULT NULL
         """)
 
-        # ── Автор картины ─────────────────────────────────────────────────────
+        # ── Стабильный каталожный идентификатор ───────────────────────────────
+        # catalog_id — строковый ключ из nft_catalog.py (поле "id").
+        # Используется для поиска записи вместо name / title, что позволяет
+        # свободно переименовывать паки и картины без создания дублей.
         await db.execute("""
-            ALTER TABLE nft_paintings ADD COLUMN IF NOT EXISTS author TEXT DEFAULT 'Space_Donut'
+            ALTER TABLE nft_packs ADD COLUMN IF NOT EXISTS catalog_id TEXT DEFAULT NULL
+        """)
+        await db.execute("""
+            ALTER TABLE nft_paintings ADD COLUMN IF NOT EXISTS catalog_id TEXT DEFAULT NULL
+        """)
+        # Уникальный индекс — предотвращает случайное дублирование catalog_id.
+        # NULLS NOT DISTINCT не поддерживается в старых PG; используем частичный
+        # индекс (WHERE catalog_id IS NOT NULL), который игнорирует NULL-строки.
+        await db.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_nft_packs_catalog_id
+            ON nft_packs (catalog_id)
+            WHERE catalog_id IS NOT NULL
+        """)
+        await db.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_nft_paintings_catalog_id
+            ON nft_paintings (catalog_id)
+            WHERE catalog_id IS NOT NULL
         """)
 
         await db.commit()

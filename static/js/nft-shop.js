@@ -19,6 +19,18 @@ function nftAuthorTag(author) {
                style="color:rgba(255,255,255,0.4);text-decoration:none;">by @${escapeHtml(handle)}</a>`;
 }
 
+// ─── Хелпер: фрейм картины с размытым фоном (любое соотношение сторон) ─────
+
+function nftArtFrame(src, alt, paddingTop, extraImgClass) {
+    const esc = (s) => s ? s.replace(/"/g,'&quot;') : '';
+    return `<div class="nft-art-frame relative w-full" style="padding-top:${paddingTop};">
+        <div class="art-blur" style="background-image:url('${esc(src)}')"></div>
+        <img src="${esc(src)}" alt="${esc(alt)}"
+             class="art-img${extraImgClass ? ' '+extraImgClass : ''}"
+             onerror="this.src='https://via.placeholder.com/400x300?text=NFT'">
+    </div>`;
+}
+
 // ─── Загрузка магазина ────────────────────────────────────────────────────────
 
 async function nftLoadShop() {
@@ -34,6 +46,19 @@ async function nftLoadShop() {
         nftPacksData         = data.packs          || [];
         nftArchivedPacksData = data.archived_packs || [];
         nftRenderShop();
+
+        // ── Deep-link: консумация глобалов, установленных handleNFTDeepLink() ──
+        // Срабатывает, когда пользователь перешёл по ссылке ?startapp=nft_pack_* или nft_painting_*
+        if (window._nftDeepLinkPackId != null) {
+            const pid = window._nftDeepLinkPackId;
+            window._nftDeepLinkPackId = null;
+            setTimeout(() => nftOpenPackModal(pid), 150);
+        }
+        if (window._nftDeepLinkPainting != null) {
+            const { paintingId, serial } = window._nftDeepLinkPainting;
+            window._nftDeepLinkPainting = null;
+            setTimeout(() => nftOpenPainting(paintingId, false, false, serial), 150);
+        }
     } catch (e) {
         list.innerHTML = `<div class="text-center py-8 text-red-400/60 text-sm">Ошибка загрузки</div>`;
     }
@@ -162,13 +187,9 @@ function nftShopCarouselCardHTML(p) {
     <div class="flex-shrink-0 nft-card cursor-pointer relative overflow-hidden"
          style="width:72vw;max-width:300px;scroll-snap-align:start;border-radius:1.5rem;"
          onclick="nftOpenPainting(${p.id})">
-        <div class="relative w-full" style="padding-top:68%;">
-            <img src="${escapeHtml(p.image_url)}" alt="${escapeHtml(p.title)}"
-                 class="absolute inset-0 w-full h-full object-cover"
-                 onerror="this.src='https://via.placeholder.com/300x200?text=NFT'">
-            <div class="absolute inset-0" style="background:linear-gradient(to bottom,transparent 35%,rgba(10,7,4,0.98) 100%);"></div>
-            ${badgeHTML}
-        </div>
+        ${nftArtFrame(p.image_url, p.title, '68%')}
+        <div class="absolute" style="top:calc(68% - 2.2rem);left:0;right:0;height:2.2rem;background:linear-gradient(to bottom,transparent,rgba(10,7,4,0.98));pointer-events:none;"></div>
+        <div class="absolute" style="top:0;right:0.75rem;left:0.75rem;">${badgeHTML}</div>
         <div class="p-4 relative z-10">
             <h4 class="text-white font-bold text-sm leading-tight mb-0.5 truncate">${escapeHtml(p.title)}</h4>
             <div class="mb-1.5">${nftAuthorTag(p.author)}</div>
@@ -207,16 +228,15 @@ function nftPackCardHTML(pack) {
     <div class="nft-card overflow-hidden cursor-pointer active:scale-[0.985] transition-all"
          onclick="nftOpenPackModal(${pack.id})">
         <!-- Обложка пака -->
-        <div class="relative w-full" style="padding-top:52%;">
+        <div class="nft-art-frame relative w-full" style="padding-top:52%;">
+            <div class="art-blur" style="background-image:url(&quot;${cover.replace(/"/g,'')}&quot;)"></div>
             <img src="${escapeHtml(cover)}" alt="${escapeHtml(pack.name)}"
-                 class="absolute inset-0 w-full h-full object-cover"
+                 class="art-img"
                  onerror="this.src='https://via.placeholder.com/400x208?text=Pack'">
-            <div class="absolute inset-0" style="background:linear-gradient(to bottom,rgba(10,7,4,0.1) 0%,rgba(10,7,4,0.92) 100%);"></div>
-            <!-- Бейдж пака -->
-            <div class="absolute top-3 left-3 px-2.5 py-1 rounded-xl text-[10px] font-black"
+            <div class="absolute inset-0 z-10" style="background:linear-gradient(to bottom,rgba(10,7,4,0.05) 0%,rgba(10,7,4,0.90) 100%);"></div>
+            <div class="absolute top-3 left-3 z-20 px-2.5 py-1 rounded-xl text-[10px] font-black"
                  style="background:rgba(252,211,77,0.95);color:#0a0704;">📦 Пак · ${count} ${countWord}</div>
-            <!-- Название на фото -->
-            <div class="absolute bottom-3 left-4 right-4">
+            <div class="absolute bottom-3 left-4 right-4 z-20">
                 <h4 class="text-white font-black text-base leading-tight truncate">${escapeHtml(pack.name)}</h4>
                 ${pack.description ? `<p class="text-[11px] mt-0.5 line-clamp-1" style="color:rgba(255,255,255,0.55);">${escapeHtml(pack.description)}</p>` : ''}
             </div>
@@ -295,6 +315,8 @@ function _nftRenderPackSelected(idx) {
         img.style.opacity = '0';
         setTimeout(() => {
             img.src = p.image_url;
+            const blur = document.getElementById('nft-pack-modal-blur');
+            if (blur) blur.style.backgroundImage = `url("${(p.image_url||'').replace(/"/g,'')}")`;
             img.style.opacity = '1';
         }, 150);
     }
@@ -327,7 +349,7 @@ function _nftRenderPackSelected(idx) {
         : `<button onclick="nftBuyFromPackModal()"
                 class="w-full py-4 rounded-2xl font-black text-sm active:scale-[0.97] transition-all ${isSoldOut ? '' : 'nft-buy-btn'} mb-2.5"
                 ${isSoldOut ? 'disabled style="background:rgba(239,68,68,0.2);color:#ffffff;"' : ''}>
-               ${isSoldOut ? `Распродано · 0 из ${p.total_supply}` : `Купить за ${p.price} ⭐`}
+               ${isSoldOut ? `Распродано · 0 из ${p.total_supply}` : `Купить за ${p.price} <img src="/gifts/stars.png" class="w-4 h-4 inline-block align-middle" style="vertical-align:-2px;" onerror="this.style.display='none'">`}
            </button>`;
 
     info.innerHTML = `
@@ -399,11 +421,12 @@ function nftArchivedPackCardHTML(pack) {
     return `
     <div class="nft-card overflow-hidden cursor-pointer active:scale-[0.985] transition-all" style="filter:grayscale(0.4);"
          onclick="nftOpenPackModal(${pack.id})">
-        <div class="relative w-full" style="padding-top:52%;">
+        <div class="nft-art-frame relative w-full" style="padding-top:52%;">
+            <div class="art-blur" style="background-image:url(&quot;${cover.replace(/"/g,'')}&quot;);filter:blur(22px) brightness(0.3) saturate(0.5) grayscale(1);"></div>
             <img src="${escapeHtml(cover)}" alt="${escapeHtml(pack.name)}"
-                 class="absolute inset-0 w-full h-full object-cover grayscale"
+                 class="art-img grayscale"
                  onerror="this.src='https://via.placeholder.com/400x208?text=Pack'">
-            <div class="absolute inset-0" style="background:linear-gradient(to bottom,rgba(10,7,4,0.3) 0%,rgba(10,7,4,0.95) 100%);"></div>
+            <div class="absolute inset-0 z-10" style="background:linear-gradient(to bottom,rgba(10,7,4,0.1) 0%,rgba(10,7,4,0.92) 100%);"></div>
             <div class="absolute top-3 left-3 px-2.5 py-1 rounded-xl text-[10px] font-black"
                  style="background:rgba(100,100,100,0.7);color:#ccc;">🗄 Архив · ${count} ${countWord}</div>
             <div class="absolute bottom-3 left-4 right-4">

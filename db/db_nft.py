@@ -10,77 +10,145 @@ from db.db_core import DB_NAME
 # ─── Синхронизация каталога при старте ───────────────────────────────────────
 
 async def sync_packs(packs_data: list[dict]) -> None:
-    """Sync pack definitions from nft_catalog.PACKS to DB."""
+    """Sync pack definitions from nft_catalog.PACKS to DB.
+
+    Поиск записи идёт по catalog_id (стабильный ключ из каталога).
+    Если catalog_id не заполнен — откат на поиск по name для совместимости
+    со старыми записями, которые были добавлены до введения id-логики.
+    """
     if not packs_data:
         return
     async with aiosqlite.connect(DB_NAME) as db:
         for pack in packs_data:
-            if not pack.get("name"):
+            catalog_id = pack.get("id") or ""
+            if not catalog_id and not pack.get("name"):
                 continue
+
             paintings_in_pack = pack.get("paintings", [])
-            cover = pack.get("cover_image_url") or (paintings_in_pack[0]["image_url"] if paintings_in_pack else "")
+            cover = pack.get("cover_image_url") or (
+                paintings_in_pack[0]["image_url"] if paintings_in_pack else ""
+            )
 
-            async with db.execute(
-                "SELECT id FROM nft_packs WHERE name = ?", (pack["name"],)
-            ) as cur:
-                row = await cur.fetchone()
+            # ── Найти существующий пак ──────────────────────────────────────
+            pack_db_id = None
 
-            if row:
-                pack_id = row[0]
-                # Не трогаем is_active / is_archived если пак уже в архиве —
-                # архивация выставляется автоматически при распродаже и не должна
-                # сбрасываться перезапуском приложения.
+            if catalog_id:
+                # Основной путь: по стабильному catalog_id
+                async with db.execute(
+                    "SELECT id FROM nft_packs WHERE catalog_id = ?", (catalog_id,)
+                ) as cur:
+                    row = await cur.fetchone()
+                if row:
+                    pack_db_id = row[0]
+                else:
+                    # Обратная совместимость: запись могла быть создана до
+                    # введения id — ищем по name и проставляем catalog_id
+                    async with db.execute(
+                        "SELECT id FROM nft_packs WHERE catalog_id IS NULL AND name = ?",
+                        (pack["name"],),
+                    ) as cur:
+                        row = await cur.fetchone()
+                    if row:
+                        pack_db_id = row[0]
+                        await db.execute(
+                            "UPDATE nft_packs SET catalog_id = ? WHERE id = ?",
+                            (catalog_id, pack_db_id),
+                        )
+            else:
+                # Нет id в каталоге — старая логика по name
+                async with db.execute(
+                    "SELECT id FROM nft_packs WHERE name = ?", (pack["name"],)
+                ) as cur:
+                    row = await cur.fetchone()
+                if row:
+                    pack_db_id = row[0]
+
+            # ── Обновить или создать пак ─────────────────────────────────────
+            if pack_db_id:
+                # Не трогаем is_active / is_archived у заархивированных паков
                 await db.execute(
                     """UPDATE nft_packs
-                       SET description=?, cover_image_url=?
+                       SET name=?, description=?, cover_image_url=?
                        WHERE id=? AND (is_archived IS NULL OR is_archived = FALSE)""",
-                    (pack.get("description", ""), cover, pack_id),
+                    (pack.get("name", ""), pack.get("description", ""), cover, pack_db_id),
                 )
-                # Для неархивных паков восстанавливаем is_active=TRUE
                 await db.execute(
                     """UPDATE nft_packs
                        SET is_active=TRUE
                        WHERE id=? AND (is_archived IS NULL OR is_archived = FALSE)""",
-                    (pack_id,),
+                    (pack_db_id,),
                 )
             else:
                 async with db.execute(
-                    """INSERT INTO nft_packs (name, description, cover_image_url, is_active, created_at)
-                       VALUES (?,?,?,TRUE,?) RETURNING id""",
-                    (pack["name"], pack.get("description", ""), cover, int(time.time())),
+                    """INSERT INTO nft_packs
+                           (catalog_id, name, description, cover_image_url, is_active, created_at)
+                       VALUES (?,?,?,?,TRUE,?) RETURNING id""",
+                    (catalog_id or None, pack.get("name", ""),
+                     pack.get("description", ""), cover, int(time.time())),
                 ) as cur:
                     row2 = await cur.fetchone()
-                pack_id = row2[0]
+                pack_db_id = row2[0]
 
+            # ── Синхронизировать картины пака ────────────────────────────────
             for p in paintings_in_pack:
-                if not p.get("title") or not p.get("image_url") or not p.get("price"):
+                if not p.get("image_url") or not p.get("price"):
                     continue
-                async with db.execute(
-                    "SELECT id FROM nft_paintings WHERE title = ?", (p["title"],)
-                ) as cur:
-                    row3 = await cur.fetchone()
-                if row3:
+
+                p_catalog_id = p.get("id") or ""
+                p_title = p.get("title", "")
+
+                painting_db_id = None
+
+                if p_catalog_id:
+                    async with db.execute(
+                        "SELECT id FROM nft_paintings WHERE catalog_id = ?", (p_catalog_id,)
+                    ) as cur:
+                        row3 = await cur.fetchone()
+                    if row3:
+                        painting_db_id = row3[0]
+                    else:
+                        # Обратная совместимость: ищем по title без catalog_id
+                        async with db.execute(
+                            "SELECT id FROM nft_paintings WHERE catalog_id IS NULL AND title = ?",
+                            (p_title,),
+                        ) as cur:
+                            row3 = await cur.fetchone()
+                        if row3:
+                            painting_db_id = row3[0]
+                            await db.execute(
+                                "UPDATE nft_paintings SET catalog_id = ? WHERE id = ?",
+                                (p_catalog_id, painting_db_id),
+                            )
+                else:
+                    # Нет id в каталоге — старая логика по title
+                    async with db.execute(
+                        "SELECT id FROM nft_paintings WHERE title = ?", (p_title,)
+                    ) as cur:
+                        row3 = await cur.fetchone()
+                    if row3:
+                        painting_db_id = row3[0]
+
+                if painting_db_id:
                     await db.execute(
                         """UPDATE nft_paintings
-                           SET description=?, image_url=?, price=?,
-                               total_supply=?, is_active=?, pack_id=?, author=?
-                           WHERE title=?""",
-                        (p.get("description", ""), p["image_url"], p["price"],
+                           SET title=?, description=?, image_url=?, price=?,
+                               total_supply=?, is_active=?, pack_id=?
+                           WHERE id=?""",
+                        (p_title, p.get("description", ""), p["image_url"], p["price"],
                          p.get("total_supply", 0), bool(p.get("is_active", True)),
-                         pack_id, p.get("author", "Space_Donut") or "Space_Donut",
-                         p["title"]),
+                         pack_db_id, painting_db_id),
                     )
                 else:
                     await db.execute(
                         """INSERT INTO nft_paintings
-                             (title, description, image_url, price, total_supply,
-                              is_active, pack_id, author, created_at)
+                             (catalog_id, title, description, image_url, price,
+                              total_supply, is_active, pack_id, created_at)
                            VALUES (?,?,?,?,?,?,?,?,?)""",
-                        (p["title"], p.get("description", ""), p["image_url"], p["price"],
-                         p.get("total_supply", 0), bool(p.get("is_active", True)),
-                         pack_id, p.get("author", "Space_Donut") or "Space_Donut",
-                         int(time.time())),
+                        (p_catalog_id or None, p_title, p.get("description", ""),
+                         p["image_url"], p["price"], p.get("total_supply", 0),
+                         bool(p.get("is_active", True)), pack_db_id, int(time.time())),
                     )
+
         await db.commit()
 
 
@@ -98,7 +166,7 @@ async def get_packs_with_paintings() -> list[dict]:
             pack_id = pk["id"]
             async with db.execute(
                 """SELECT id, title, description, image_url, price,
-                          total_supply, sold_count, author, created_at
+                          total_supply, sold_count, created_at
                    FROM nft_paintings
                    WHERE pack_id=? AND is_active=TRUE
                    ORDER BY created_at ASC""",
@@ -121,7 +189,6 @@ async def get_packs_with_paintings() -> list[dict]:
                     "sold_count":   sc,
                     "available":    available,
                     "pack_id":      pack_id,
-                    "author":       r["author"] or "Space_Donut",
                 })
 
             cover = pk["cover_image_url"] or (paintings[0]["image_url"] if paintings else "")
@@ -136,35 +203,69 @@ async def get_packs_with_paintings() -> list[dict]:
 
 
 async def sync_catalog(paintings: list[dict]) -> None:
+    """Sync standalone paintings (without pack) from nft_catalog.PAINTINGS to DB.
+
+    Поиск идёт по catalog_id; при его отсутствии — откат на title.
+    """
     if not paintings:
         return
     async with aiosqlite.connect(DB_NAME) as db:
         for p in paintings:
-            if not p.get("title") or not p.get("image_url") or not p.get("price"):
+            if not p.get("image_url") or not p.get("price"):
                 continue
-            async with db.execute(
-                "SELECT id FROM nft_paintings WHERE title = ?", (p["title"],)
-            ) as cur:
-                row = await cur.fetchone()
-            if row:
+
+            p_catalog_id = p.get("id") or ""
+            p_title = p.get("title", "")
+
+            painting_db_id = None
+
+            if p_catalog_id:
+                async with db.execute(
+                    "SELECT id FROM nft_paintings WHERE catalog_id = ?", (p_catalog_id,)
+                ) as cur:
+                    row = await cur.fetchone()
+                if row:
+                    painting_db_id = row[0]
+                else:
+                    # Обратная совместимость: ищем по title и проставляем catalog_id
+                    async with db.execute(
+                        "SELECT id FROM nft_paintings WHERE catalog_id IS NULL AND title = ?",
+                        (p_title,),
+                    ) as cur:
+                        row = await cur.fetchone()
+                    if row:
+                        painting_db_id = row[0]
+                        await db.execute(
+                            "UPDATE nft_paintings SET catalog_id = ? WHERE id = ?",
+                            (p_catalog_id, painting_db_id),
+                        )
+            else:
+                async with db.execute(
+                    "SELECT id FROM nft_paintings WHERE title = ?", (p_title,)
+                ) as cur:
+                    row = await cur.fetchone()
+                if row:
+                    painting_db_id = row[0]
+
+            if painting_db_id:
                 await db.execute(
                     """UPDATE nft_paintings
-                       SET description=?, image_url=?, price=?, total_supply=?, is_active=?, author=?
-                       WHERE title=?""",
-                    (p.get("description",""), p["image_url"], p["price"],
+                       SET title=?, description=?, image_url=?, price=?,
+                           total_supply=?, is_active=?
+                       WHERE id=?""",
+                    (p_title, p.get("description", ""), p["image_url"], p["price"],
                      p.get("total_supply", 0), bool(p.get("is_active", True)),
-                     p.get("author", "Space_Donut") or "Space_Donut",
-                     p["title"]),
+                     painting_db_id),
                 )
             else:
                 await db.execute(
                     """INSERT INTO nft_paintings
-                         (title, description, image_url, price, total_supply, is_active, author, created_at)
+                         (catalog_id, title, description, image_url, price,
+                          total_supply, is_active, created_at)
                        VALUES (?,?,?,?,?,?,?,?)""",
-                    (p["title"], p.get("description",""), p["image_url"], p["price"],
-                     p.get("total_supply", 0), bool(p.get("is_active", True)),
-                     p.get("author", "Space_Donut") or "Space_Donut",
-                     int(time.time())),
+                    (p_catalog_id or None, p_title, p.get("description", ""),
+                     p["image_url"], p["price"], p.get("total_supply", 0),
+                     bool(p.get("is_active", True)), int(time.time())),
                 )
         await db.commit()
 
@@ -201,7 +302,7 @@ async def get_active_paintings() -> list[dict]:
         db.row_factory = aiosqlite.Row
         async with db.execute(
             """SELECT id, title, description, image_url, price,
-                      total_supply, sold_count, author, created_at
+                      total_supply, sold_count, created_at
                FROM nft_paintings WHERE is_active=TRUE AND pack_id IS NULL ORDER BY created_at DESC"""
         ) as cur:
             rows = await cur.fetchall()
@@ -219,7 +320,6 @@ async def get_active_paintings() -> list[dict]:
             "total_supply": ts,
             "sold_count":   sc,
             "available":    available,
-            "author":       r["author"] or "Space_Donut",
         })
     return result
 
@@ -244,7 +344,6 @@ async def _maybe_archive_pack(db, pack_id: int) -> bool:
         row = await cur.fetchone()
 
     total, sold_out, unlimited = row[0], row[1], row[2]
-    # Архивируем только если все картины имеют лимит и все распроданы
     if total > 0 and unlimited == 0 and sold_out == total:
         await db.execute(
             """UPDATE nft_packs
@@ -274,7 +373,7 @@ async def get_archived_packs() -> list[dict]:
             pack_id = pk["id"]
             async with db.execute(
                 """SELECT id, title, description, image_url, price,
-                          total_supply, sold_count, author
+                          total_supply, sold_count
                    FROM nft_paintings
                    WHERE pack_id = ?
                    ORDER BY created_at ASC""",
@@ -294,7 +393,6 @@ async def get_archived_packs() -> list[dict]:
                     "sold_count":   r["sold_count"],
                     "available":    0,
                     "pack_id":      pack_id,
-                    "author":       r["author"] or "Space_Donut",
                 })
 
             cover = pk["cover_image_url"] or (paintings[0]["image_url"] if paintings else "")
@@ -313,7 +411,6 @@ async def get_archived_packs() -> list[dict]:
 
 async def buy_painting(user_id: int, painting_id: int) -> tuple[bool, str]:
     async with aiosqlite.connect(DB_NAME) as db:
-        # Картина существует?
         db.row_factory = aiosqlite.Row
         async with db.execute(
             "SELECT id, price, total_supply, sold_count, is_active, pack_id FROM nft_paintings WHERE id=?",
@@ -331,7 +428,6 @@ async def buy_painting(user_id: int, painting_id: int) -> tuple[bool, str]:
 
         price = painting["price"]
 
-        # Достаточно NFT-звёзд? (атомарное списание)
         cur2 = await db.execute(
             "UPDATE users SET nft_stars = nft_stars - ? WHERE tg_id=? AND nft_stars >= ?",
             (price, user_id, price),
@@ -340,7 +436,6 @@ async def buy_painting(user_id: int, painting_id: int) -> tuple[bool, str]:
         if cur2.rowcount != 1:
             return False, "not_enough_stars"
 
-        # Добавляем в коллекцию c серийным номером
         try:
             await db.execute(
                 """INSERT INTO nft_owned (user_id, painting_id, acquired_at, serial_number)
@@ -351,7 +446,6 @@ async def buy_painting(user_id: int, painting_id: int) -> tuple[bool, str]:
                 (user_id, painting_id, int(time.time()), painting_id),
             )
         except Exception:
-            # Если гонка — откатываем списание
             await db.execute(
                 "UPDATE users SET nft_stars = nft_stars + ? WHERE tg_id=?",
                 (price, user_id),
@@ -365,7 +459,6 @@ async def buy_painting(user_id: int, painting_id: int) -> tuple[bool, str]:
         )
         await db.commit()
 
-        # ── Автоархивация пака, если все картины распроданы ───────────────────
         pack_id = painting["pack_id"]
         if pack_id:
             await _maybe_archive_pack(db, pack_id)
@@ -378,7 +471,7 @@ async def get_user_gallery(user_id: int) -> list[dict]:
         db.row_factory = aiosqlite.Row
         async with db.execute(
             """SELECT p.id, p.title, p.description, p.image_url,
-                      p.price, p.total_supply, p.sold_count, p.author, o.acquired_at,
+                      p.price, p.total_supply, p.sold_count, o.acquired_at,
                       o.serial_number, o.id as owned_id, o.status,
                       ml.id   as listing_id,
                       au.id   as auction_id,
@@ -413,9 +506,10 @@ async def get_all_galleries(limit: int = 50) -> list[dict]:
         async with db.execute(
             """SELECT u.tg_id, u.username, u.first_name,
                       COALESCE(u.is_anonymous,0) as is_anonymous,
+                      CASE WHEN u.is_anonymous = 1 THEN NULL ELSE u.photo_url END AS photo_url,
                       COUNT(o.id) as collection_size
                FROM nft_owned o JOIN users u ON u.tg_id = o.user_id
-               GROUP BY u.tg_id, u.username, u.first_name, u.is_anonymous
+               GROUP BY u.tg_id, u.username, u.first_name, u.is_anonymous, u.photo_url
                ORDER BY collection_size DESC LIMIT ?""",
             (limit,),
         ) as cur:
@@ -432,8 +526,6 @@ async def get_nft_history(user_id: int, limit: int = 40, offset: int = 0) -> lis
         async with db.execute(
             """SELECT h.id, h.action_type, h.description, h.amount, h.created_at,
                       h.ref_id,
-                      -- Для nft_buy: ref_id = painting_id → прямой JOIN
-                      -- Для market/auction: ref_id = listing/auction id → через подзапросы
                       CASE h.action_type
                         WHEN 'nft_buy' THEN (
                             SELECT image_url FROM nft_paintings WHERE id = h.ref_id

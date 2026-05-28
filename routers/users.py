@@ -65,6 +65,7 @@ async def init_user(current_user: dict = Depends(get_current_user)):
             "main_gifts":   config.MAIN_GIFTS,
             "tg_gifts":     getattr(config, "TG_GIFTS", {}),
             "bot_username": config.BOT_USERNAME,
+            "bot_app_name": getattr(config, "BOT_APP_NAME", "app"),
             "roulette":     config.ROULETTE_CONFIG,
             "cases":        {
                 k: v for k, v in config.CASES_CONFIG.items()

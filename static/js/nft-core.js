@@ -12,6 +12,10 @@ let nftCurrentTab     = 'shop';
 let nftModalPainting  = null;
 let nftViewingUserId  = null; // null = своя галерея
 
+// ─── Контекст для кнопки "Поделиться" ─────────────────────────────────────────
+// type: 'gallery' | 'pack' | 'painting'
+let nftShareContext = { type: 'gallery' };
+
 // ─── Открытие / Закрытие секции ───────────────────────────────────────────────
 
 function openNFTSection() {
@@ -60,6 +64,9 @@ function closeNFTSection() {
 function nftSwitchTab(tab) {
     vibrate('light');
     nftCurrentTab = tab;
+
+    // Сбрасываем контекст шаринга при переключении вкладки
+    nftShareContext = { type: tab === 'gallery' || tab === 'galleries' ? 'gallery' : tab };
 
     // Обновляем активную кнопку навигации
     document.querySelectorAll('.nft-nav-item').forEach(btn => btn.classList.remove('active'));
@@ -149,6 +156,78 @@ function nftViewUserGallery(userId, name) {
     nftLoadGallery(userId);
 }
 
+// ─── Поделиться — генерация ссылки ───────────────────────────────────────────
+
+/**
+ * Устанавливает контекст для кнопки "Поделиться".
+ * Вызывается из nft-gallery.js и nft-modal.js при навигации.
+ */
+function nftSetShareContext(ctx) {
+    nftShareContext = Object.assign({}, nftShareContext, ctx);
+}
+
+/**
+ * Открывает нативный диалог шаринга Telegram с ссылкой
+ * на текущую страницу (галерею, пак или картину).
+ *
+ * Форматы deep-link параметра ?start=:
+ *   nft_gallery              — страница NFT галереи
+ *   nft_pack_{packId}        — конкретный пак по ID
+ *   nft_painting_{id}_{serial} — конкретная картина
+ */
+function nftShareCurrentPage() {
+    vibrate('light');
+
+    const bot = (window.botUsername || '').replace('@', '');
+    if (!bot) {
+        if (typeof showNotify === 'function') showNotify('❌ Ссылка недоступна');
+        return;
+    }
+
+    let startParam, shareText;
+
+    if (nftShareContext.type === 'pack' && nftShareContext.packId) {
+        startParam = `nft_pack_${nftShareContext.packId}`;
+        const name = nftShareContext.packName || 'Пак';
+        shareText  = `📦 Посмотри пак «${name}» в NFT Галерее!`;
+    } else if (nftShareContext.type === 'painting' && nftShareContext.paintingId) {
+        const serial = nftShareContext.paintingSerial || 1;
+        startParam = `nft_painting_${nftShareContext.paintingId}_${serial}`;
+        const title = nftShareContext.paintingTitle || 'Картина';
+        shareText   = `🎨 Посмотри «${title} #${serial}» в NFT Галерее!`;
+    } else {
+        startParam = 'nft_gallery';
+        shareText  = '🖼 Посмотри NFT Галерею!';
+    }
+
+    // Формат ссылки: https://t.me/BotName/AppName?startapp=nft_gallery
+    // AppName берём из window.botAppName (приходит из /api/init → config.BOT_APP_NAME)
+    const appName = (window.botAppName || 'app').replace(/^@/, '');
+    const link    = `https://t.me/${bot}/${appName}?startapp=${startParam}`;
+    const tgApp   = window.Telegram && window.Telegram.WebApp;
+
+    // Telegram WebApp — нативный диалог выбора чата
+    if (tgApp && tgApp.openTelegramLink) {
+        tgApp.openTelegramLink(
+            `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(shareText)}`
+        );
+        return;
+    }
+
+    // Web Share API (мобильный браузер)
+    if (navigator.share) {
+        navigator.share({ title: 'NFT Галерея', text: shareText, url: link }).catch(() => {});
+        return;
+    }
+
+    // Fallback — копируем в буфер обмена
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(link).then(() => {
+            if (typeof showNotify === 'function') showNotify('✅ Ссылка скопирована!');
+        });
+    }
+}
+
 // ─── Экспорт ──────────────────────────────────────────────────────────────────
 
 window.openNFTSection      = openNFTSection;
@@ -160,3 +239,5 @@ window.closeNFTModal       = closeNFTModal;
 window.nftLoadingHTML      = nftLoadingHTML;
 window.nftViewUserGallery  = nftViewUserGallery;
 window.nftRenderCollectors = nftRenderCollectors;
+window.nftSetShareContext   = nftSetShareContext;
+window.nftShareCurrentPage  = nftShareCurrentPage;

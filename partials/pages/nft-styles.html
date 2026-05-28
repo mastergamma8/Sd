@@ -149,16 +149,7 @@
   background: rgba(252, 211, 77, 0.08);
   border-radius: 1.25rem;
 }
-.nft-nav-item.active::after {
-  content: '';
-  position: absolute;
-  bottom: 3px;
-  width: 4px;
-  height: 4px;
-  background-color: var(--nft-gold);
-  border-radius: 99px;
-  box-shadow: 0 0 6px var(--nft-gold);
-}
+
 .nft-nav-item.active svg {
   transform: translateY(-1px);
   filter: drop-shadow(0 0 4px rgba(252, 211, 77, 0.45));
@@ -180,6 +171,33 @@
   border: 1px solid rgba(255, 255, 255, 0.05);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+/* ── Универсальный фрейм для картин любого соотношения сторон ────────────── */
+/* Полная картина показывается без обрезки; пустые зоны — размытый фон       */
+.nft-art-frame {
+  position: relative;
+  overflow: hidden;
+  background: #0a0704;
+}
+.nft-art-frame .art-blur {
+  position: absolute;
+  inset: -12px;
+  background-size: cover;
+  background-position: center;
+  filter: blur(22px) brightness(0.45) saturate(1.4);
+  transform: scale(1.08);
+  pointer-events: none;
+  z-index: 0;
+}
+.nft-art-frame .art-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  z-index: 1;
+  padding: 4px;
 }
 .nft-card:active {
   transform: scale(0.985);
