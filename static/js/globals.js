@@ -78,6 +78,7 @@ function updateUI() {
     if (typeof renderMainPage === 'function') renderMainPage();
     if (typeof renderProfile === 'function') renderProfile();
     if (typeof updateTgShopBalance === 'function') updateTgShopBalance();
+    if (typeof updateTonBalanceUI === 'function') updateTonBalanceUI();
 }
 
 // =====================================================

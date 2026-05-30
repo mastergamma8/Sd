@@ -102,6 +102,22 @@ async def get_live_donuts_to_stars_rate() -> float:
 # Комиссия за вывод подарка в звездах
 WITHDRAW_FEE_STARS = 25
 
+# ── TON Blockchain ────────────────────────────────────────────────────────────
+TON_WALLET_ADDRESS: str   = os.getenv("TON_WALLET_ADDRESS", "")
+TON_CENTER_API_KEY: str   = os.getenv("TON_CENTER_API_KEY", "")
+TON_DEPOSIT_TIMEOUT: int  = 600          # 10 минут на подтверждение депозита
+TON_MIN_DEPOSIT: float    = 0.1          # минимальный депозит в TON
+TON_MAX_DEPOSIT: float    = 100.0        # максимальный депозит в TON
+
+# ── TON Withdrawal ────────────────────────────────────────────────────────────
+# Мнемоника хранится как строка из 24 слов; разбивается в список здесь.
+TON_WALLET_MNEMONIC: list = os.getenv("TON_WALLET_MNEMONIC", "").split()
+
+TON_MIN_WITHDRAW: float   = 0.5          # минимум для вывода в TON
+TON_MAX_WITHDRAW: float   = 50.0         # максимум за одну операцию
+TON_WITHDRAW_FEE: float   = 0.05         # сетевой газ, вычитается из суммы вывода
+TON_WITHDRAW_COOLDOWN: int = 3600        # 1 час между выводами (в секундах)
+
 # ==========================================
 # РЕЖИМ ТЕХНИЧЕСКОГО ОБСЛУЖИВАНИЯ
 # ==========================================

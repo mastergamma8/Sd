@@ -18,6 +18,22 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4"/></svg>
             </button>
         </div>
+
+        <!-- Баланс TON -->
+        <div class="glass flex items-center rounded-full text-sm font-bold shadow-[0_0_15px_rgba(0,152,234,0.15)] border border-white/10" style="color:#0098EA;">
+            <div class="px-3 py-2 flex items-center gap-1.5">
+                <img src="/gifts/ton.png" class="w-4 h-4 object-contain drop-shadow-md ton-icon-img"
+                     onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+                <svg class="w-4 h-4 ton-icon-svg hidden" viewBox="0 0 56 56" fill="#0098EA">
+                    <path d="M28 0C12.536 0 0 12.536 0 28s12.536 28 28 28 28-12.536 28-28S43.464 0 28 0zm13.156 17H14.844l13.312 22.781L41.156 17z"/>
+                </svg>
+                <span id="ton-balance-amount" style="color:#0098EA;">0</span>
+            </div>
+            <!-- Кнопка управления TON-кошельком -->
+            <button onclick="openTonWalletModal()" class="rounded-r-full pl-2 pr-3 py-2 border-l border-white/10 active:scale-95 transition-all flex items-center justify-center" style="background:rgba(0,152,234,0.15);color:#0098EA;">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4"/></svg>
+            </button>
+        </div>
         
         <!-- Баланс звезд -->
         <div class="glass flex items-center rounded-full text-sm font-bold text-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.15)] border border-white/10">
@@ -33,3 +49,6 @@
     </div>
 </header>
 
+<!-- TonConnect UI + TonWeb (BOC encoding) -->
+<script src="https://unpkg.com/@tonconnect/ui@2.0.8/dist/tonconnect-ui.min.js"></script>
+<script src="https://unpkg.com/tonweb@0.0.62/dist/tonweb.js"></script>

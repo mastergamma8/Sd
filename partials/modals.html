@@ -679,3 +679,223 @@
         </button>
     </div>
     </div>
+<!-- ═══════════════════════════════════════
+     TON: МОДАЛЬНОЕ ОКНО КОШЕЛЬКА
+═══════════════════════════════════════ -->
+<div id="ton-wallet-modal"
+     class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden flex items-end justify-center z-[120]">
+    <div class="glass-panel w-full max-w-md rounded-t-3xl border border-white/10
+                shadow-[0_-10px_40px_rgba(0,0,0,0.5)] p-6 pb-10 relative overflow-hidden">
+
+        <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[200%] h-32
+                    blur-[50px] rounded-full pointer-events-none"
+             style="background:rgba(0,152,234,0.12);"></div>
+        <div class="w-12 h-1.5 bg-white/20 rounded-full mx-auto mb-5 relative z-10"></div>
+
+        <div class="flex flex-col items-center gap-2 mb-6 relative z-10">
+            <div class="w-16 h-16 rounded-full flex items-center justify-center mb-1 border"
+                 style="background:rgba(0,152,234,0.15);border-color:rgba(0,152,234,0.3);">
+                <img src="/gifts/ton.png" class="w-9 h-9 object-contain ton-icon-img"
+                     onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+                <svg class="w-9 h-9 ton-icon-svg hidden" viewBox="0 0 56 56" fill="#0098EA">
+                    <path d="M28 0C12.536 0 0 12.536 0 28s12.536 28 28 28 28-12.536 28-28S43.464 0 28 0zm13.156 17H14.844l13.312 22.781L41.156 17z"/>
+                </svg>
+            </div>
+            <h3 class="text-xl font-bold text-white">TON Кошелёк</h3>
+            <p id="ton-modal-wallet-preview" class="text-xs font-mono" style="color:rgba(0,198,255,0.7);"></p>
+        </div>
+
+        <!-- Не подключён -->
+        <div id="ton-modal-disconnected">
+            <p class="text-sm text-center mb-4" style="color:rgba(255,255,255,0.5);">
+                Подключите кошелёк Tonkeeper, MyTonWallet или другой для пополнения и вывода
+            </p>
+            <button onclick="connectTonWallet()"
+                    class="w-full py-3.5 rounded-2xl font-bold text-white text-base
+                           active:scale-95 transition-all mb-3 relative z-10"
+                    style="background:linear-gradient(135deg,#0098EA,#00c6ff);
+                           box-shadow:0 0 20px rgba(0,152,234,0.4);">
+                Подключить кошелёк
+            </button>
+        </div>
+
+        <!-- Подключён -->
+        <div id="ton-modal-connected" class="hidden">
+            <div class="rounded-2xl p-3 mb-4 border flex justify-between items-center"
+                 style="background:rgba(0,152,234,0.08);border-color:rgba(0,152,234,0.2);">
+                <span class="text-xs" style="color:rgba(255,255,255,0.5);">Баланс пончиков</span>
+                <span id="ton-modal-balance" class="font-bold text-white text-sm">—</span>
+            </div>
+            <div class="flex gap-2 mb-3">
+                <button onclick="closeTonWalletModal(); openTonDepositModal();"
+                        class="flex-1 py-3 rounded-2xl font-bold text-sm text-white active:scale-95 transition-all"
+                        style="background:linear-gradient(135deg,#10b981,#0098EA);">
+                    ↓ Пополнить
+                </button>
+                <button onclick="closeTonWalletModal(); openTonWithdrawModal();"
+                        class="flex-1 py-3 rounded-2xl font-bold text-sm text-white active:scale-95 transition-all"
+                        style="background:linear-gradient(135deg,#f59e0b,#ef4444);">
+                    ↑ Вывести
+                </button>
+            </div>
+            <button onclick="disconnectTonWallet()"
+                    class="w-full py-2.5 rounded-2xl text-sm active:scale-95 transition-all border border-white/10"
+                    style="color:rgba(255,255,255,0.4);background:rgba(255,255,255,0.05);">
+                Отключить кошелёк
+            </button>
+        </div>
+
+        <button onclick="closeTonWalletModal()"
+                class="w-full py-3 mt-2 rounded-2xl font-semibold text-sm active:scale-95 transition-all border border-white/10 relative z-10"
+                style="color:rgba(255,255,255,0.4);background:rgba(255,255,255,0.05);">
+            Закрыть
+        </button>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     TON: МОДАЛЬНОЕ ОКНО ДЕПОЗИТА
+═══════════════════════════════════════ -->
+<div id="ton-deposit-modal"
+     class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden flex items-end justify-center z-[120]">
+    <div class="glass-panel w-full max-w-md rounded-t-3xl border border-white/10
+                shadow-[0_-10px_40px_rgba(0,0,0,0.5)] p-6 pb-10 relative overflow-hidden">
+
+        <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[200%] h-32
+                    blur-[50px] rounded-full pointer-events-none"
+             style="background:rgba(0,152,234,0.12);"></div>
+        <div class="w-12 h-1.5 bg-white/20 rounded-full mx-auto mb-5 relative z-10"></div>
+
+        <div class="flex flex-col items-center gap-2 mb-6 relative z-10">
+            <div class="w-16 h-16 rounded-full flex items-center justify-center mb-1 border"
+                 style="background:rgba(0,152,234,0.15);border-color:rgba(0,152,234,0.3);">
+                <img src="/gifts/ton.png" class="w-9 h-9 object-contain ton-icon-img"
+                     onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+                <svg class="w-9 h-9 ton-icon-svg hidden" viewBox="0 0 56 56" fill="#0098EA">
+                    <path d="M28 0C12.536 0 0 12.536 0 28s12.536 28 28 28 28-12.536 28-28S43.464 0 28 0zm13.156 17H14.844l13.312 22.781L41.156 17z"/>
+                </svg>
+            </div>
+            <h3 class="text-xl font-bold text-white">Пополнить через TON</h3>
+            <p class="text-sm text-center" style="color:rgba(255,255,255,0.5);">
+                1 TON = 1 🍩 пончик<br>
+                Переводится напрямую из вашего кошелька
+            </p>
+        </div>
+
+        <!-- Ввод суммы -->
+        <div class="rounded-2xl p-4 mb-4 border relative z-10"
+             style="background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.1);">
+            <label class="text-xs block mb-2" style="color:rgba(255,255,255,0.5);">Сумма депозита</label>
+            <div class="flex items-center gap-3">
+                <input id="ton-deposit-amount"
+                       type="number" min="0.1" max="100" step="0.1" placeholder="0.5"
+                       class="flex-1 bg-transparent text-white text-xl font-bold outline-none placeholder:text-white/20">
+                <span class="font-bold" style="color:#0098EA;">TON</span>
+            </div>
+            <div class="flex gap-2 mt-3">
+                <button onclick="document.getElementById('ton-deposit-amount').value='0.5'"
+                        class="flex-1 py-1.5 rounded-lg text-xs font-semibold active:scale-95 border"
+                        style="color:rgba(0,198,255,0.8);background:rgba(0,152,234,0.1);border-color:rgba(0,152,234,0.2);">0.5</button>
+                <button onclick="document.getElementById('ton-deposit-amount').value='1'"
+                        class="flex-1 py-1.5 rounded-lg text-xs font-semibold active:scale-95 border"
+                        style="color:rgba(0,198,255,0.8);background:rgba(0,152,234,0.1);border-color:rgba(0,152,234,0.2);">1</button>
+                <button onclick="document.getElementById('ton-deposit-amount').value='5'"
+                        class="flex-1 py-1.5 rounded-lg text-xs font-semibold active:scale-95 border"
+                        style="color:rgba(0,198,255,0.8);background:rgba(0,152,234,0.1);border-color:rgba(0,152,234,0.2);">5</button>
+                <button onclick="document.getElementById('ton-deposit-amount').value='10'"
+                        class="flex-1 py-1.5 rounded-lg text-xs font-semibold active:scale-95 border"
+                        style="color:rgba(0,198,255,0.8);background:rgba(0,152,234,0.1);border-color:rgba(0,152,234,0.2);">10</button>
+            </div>
+        </div>
+
+        <div id="ton-deposit-status" class="text-center text-sm mb-4 min-h-[20px] relative z-10"
+             style="color:rgba(0,198,255,0.7);"></div>
+
+        <button onclick="startTonDeposit()"
+                class="w-full py-3.5 rounded-2xl font-bold text-white text-base
+                       active:scale-95 transition-all mb-3 relative z-10"
+                style="background:linear-gradient(135deg,#0098EA,#00c6ff);
+                       box-shadow:0 0 20px rgba(0,152,234,0.4);">
+            Отправить через кошелёк
+        </button>
+        <button onclick="closeTonDepositModal()"
+                class="w-full py-3 rounded-2xl font-semibold text-sm active:scale-95 transition-all border border-white/10 relative z-10"
+                style="color:rgba(255,255,255,0.6);background:rgba(255,255,255,0.05);">
+            Отмена
+        </button>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     TON: МОДАЛЬНОЕ ОКНО ВЫВОДА
+═══════════════════════════════════════ -->
+<div id="ton-withdraw-modal"
+     class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden flex items-end justify-center z-[120]">
+    <div class="glass-panel w-full max-w-md rounded-t-3xl border border-white/10
+                shadow-[0_-10px_40px_rgba(0,0,0,0.5)] p-6 pb-10 relative overflow-hidden">
+
+        <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[200%] h-32
+                    blur-[50px] rounded-full pointer-events-none"
+             style="background:rgba(245,158,11,0.1);"></div>
+        <div class="w-12 h-1.5 bg-white/20 rounded-full mx-auto mb-5 relative z-10"></div>
+
+        <div class="flex flex-col items-center gap-2 mb-6 relative z-10">
+            <div class="w-16 h-16 rounded-full flex items-center justify-center mb-1 border"
+                 style="background:rgba(245,158,11,0.15);border-color:rgba(245,158,11,0.3);">
+                <svg class="w-8 h-8" fill="none" stroke="#f59e0b" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M7 11l5-5m0 0l5 5m-5-5v12"/>
+                </svg>
+            </div>
+            <h3 class="text-xl font-bold text-white">Вывести TON</h3>
+            <p class="text-xs" style="color:rgba(255,255,255,0.4);">
+                Кошелёк: <span id="withdraw-wallet-preview" class="font-mono" style="color:rgba(0,198,255,0.7);"></span>
+            </p>
+        </div>
+
+        <!-- Ввод суммы -->
+        <div class="rounded-2xl p-4 mb-3 border relative z-10"
+             style="background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.1);">
+            <label class="text-xs block mb-2" style="color:rgba(255,255,255,0.5);">Сумма вывода</label>
+            <div class="flex items-center gap-3">
+                <input id="ton-withdraw-amount"
+                       type="number" min="0.5" max="50" step="0.1" placeholder="1.0"
+                       class="flex-1 bg-transparent text-white text-xl font-bold outline-none placeholder:text-white/20">
+                <span class="font-bold" style="color:#f59e0b;">TON</span>
+            </div>
+            <div class="flex gap-2 mt-3">
+                <button onclick="document.getElementById('ton-withdraw-amount').value='1'"
+                        class="flex-1 py-1.5 rounded-lg text-xs font-semibold active:scale-95 border"
+                        style="color:rgba(245,158,11,0.8);background:rgba(245,158,11,0.1);border-color:rgba(245,158,11,0.2);">1</button>
+                <button onclick="document.getElementById('ton-withdraw-amount').value='5'"
+                        class="flex-1 py-1.5 rounded-lg text-xs font-semibold active:scale-95 border"
+                        style="color:rgba(245,158,11,0.8);background:rgba(245,158,11,0.1);border-color:rgba(245,158,11,0.2);">5</button>
+                <button onclick="document.getElementById('ton-withdraw-amount').value='10'"
+                        class="flex-1 py-1.5 rounded-lg text-xs font-semibond active:scale-95 border"
+                        style="color:rgba(245,158,11,0.8);background:rgba(245,158,11,0.1);border-color:rgba(245,158,11,0.2);">10</button>
+            </div>
+        </div>
+
+        <!-- Информация о комиссии -->
+        <div class="rounded-xl px-4 py-2.5 mb-4 border flex justify-between items-center relative z-10"
+             style="background:rgba(255,255,255,0.03);border-color:rgba(255,255,255,0.06);">
+            <span class="text-xs" style="color:rgba(255,255,255,0.4);">Сетевая комиссия</span>
+            <span class="text-xs font-semibold" style="color:rgba(245,158,11,0.7);">~0.05 TON (газ)</span>
+        </div>
+
+        <button id="ton-withdraw-btn"
+                onclick="submitTonWithdraw()"
+                class="w-full py-3.5 rounded-2xl font-bold text-white text-base
+                       active:scale-95 transition-all mb-3 relative z-10
+                       disabled:opacity-50 disabled:cursor-not-allowed"
+                style="background:linear-gradient(135deg,#f59e0b,#ef4444);
+                       box-shadow:0 0 20px rgba(245,158,11,0.4);">
+            Вывести
+        </button>
+        <button onclick="closeTonWithdrawModal()"
+                class="w-full py-3 rounded-2xl font-semibold text-sm active:scale-95 transition-all border border-white/10 relative z-10"
+                style="color:rgba(255,255,255,0.6);background:rgba(255,255,255,0.05);">
+            Отмена
+        </button>
+    </div>
+</div>

@@ -20,6 +20,7 @@ from routers import tg_shop
 from routers import shop
 from routers import nft
 from routers import nft_market
+from routers import ton as ton_router
 from db.db_core import DB_NAME
 
 # Секрет для верификации webhook-запросов от Telegram.
@@ -60,6 +61,12 @@ RATE_LIMITS: list[tuple[str, int, int]] = [
     ("/api/claim",             10, 60),
     ("/api/tg_shop/buy",        5, 60),
     ("/api/shop/buy",           5, 60),
+    # ── TON ──────────────────────────────────────────────────────────────────
+    ("/api/ton/deposit/create",   5, 60),   # 5 попыток/мин создать депозит
+    ("/api/ton/deposit/verify",  30, 60),   # 30 проверок/мин (polling)
+    ("/api/ton/wallet/save",     10, 60),   # сохранение адреса кошелька
+    ("/api/ton/withdraw",         3, 300),  # 3 попытки за 5 минут
+    ("/api/ton/withdraw/history", 20, 60),
 ]
 
 
@@ -358,6 +365,17 @@ app.include_router(tg_shop.router)
 app.include_router(shop.router)
 app.include_router(nft.router)
 app.include_router(nft_market.router)
+app.include_router(ton_router.router)
+
+
+@app.get("/tonconnect-manifest.json")
+async def ton_manifest():
+    from fastapi.responses import JSONResponse
+    return JSONResponse({
+        "url": config.WEBAPP_URL,
+        "name": "Space Donut",
+        "iconUrl": f"{config.WEBAPP_URL}/gifts/sd.png"
+    })
 
 
 # ── Webhook endpoints для Telegram ───────────────────────────────────────────

@@ -399,4 +399,50 @@ async def init_rocket_games_table():
             WHERE catalog_id IS NOT NULL
         """)
 
+        # ── TON: адрес кошелька пользователя ─────────────────────────────────
+        await db.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS ton_wallet TEXT DEFAULT NULL")
+
+        # ── TON: депозиты ─────────────────────────────────────────────────────
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS ton_deposits (
+                id              BIGSERIAL PRIMARY KEY,
+                user_id         BIGINT    NOT NULL,
+                memo            TEXT      NOT NULL UNIQUE,
+                expected_amount FLOAT8,
+                actual_amount   FLOAT8,
+                status          TEXT      NOT NULL DEFAULT 'pending',
+                tx_hash         TEXT,
+                created_at      INTEGER   NOT NULL,
+                confirmed_at    INTEGER
+            )
+        """)
+        await db.execute(
+            "CREATE INDEX IF NOT EXISTS idx_ton_deposits_user ON ton_deposits (user_id, status)"
+        )
+        await db.execute(
+            "CREATE INDEX IF NOT EXISTS idx_ton_deposits_memo ON ton_deposits (memo)"
+        )
+        await db.execute(
+            "CREATE INDEX IF NOT EXISTS idx_ton_deposits_hash ON ton_deposits (tx_hash)"
+        )
+
+        # ── TON: выводы ───────────────────────────────────────────────────────
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS ton_withdrawals (
+                id           BIGSERIAL PRIMARY KEY,
+                user_id      BIGINT    NOT NULL,
+                to_address   TEXT      NOT NULL,
+                amount_ton   FLOAT8    NOT NULL,
+                fee_ton      FLOAT8    NOT NULL DEFAULT 0,
+                status       TEXT      NOT NULL DEFAULT 'pending',
+                boc_hash     TEXT,
+                error        TEXT,
+                created_at   INTEGER   NOT NULL,
+                confirmed_at INTEGER
+            )
+        """)
+        await db.execute(
+            "CREATE INDEX IF NOT EXISTS idx_ton_withdrawals_user ON ton_withdrawals (user_id, status)"
+        )
+
         await db.commit()

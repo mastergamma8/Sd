@@ -10,3 +10,4 @@ cloudscraper>=1.2.71
 requests>=2.32.3
 psycopg[binary]>=3.2.9
 psycopg-pool>=3.2.0
+tonsdk==0.0.36
