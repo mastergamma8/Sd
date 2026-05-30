@@ -247,6 +247,35 @@ async def deposit_history(
     return {"deposits": rows}
 
 
+@router.get("/wallet/balance")
+async def get_wallet_balance(
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Возвращает фактический баланс TON-кошелька пользователя из блокчейна.
+    Адрес берётся из базы данных (сохраняется при подключении TonConnect).
+    """
+    wallet_address = await db_ton.get_user_wallet(current_user["id"])
+    if not wallet_address:
+        return {"wallet_balance": None, "error": "no_wallet"}
+
+    params: dict = {"address": wallet_address}
+    if config.TON_CENTER_API_KEY:
+        params["api_key"] = config.TON_CENTER_API_KEY
+
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            resp = await client.get(f"{TON_CENTER_API}/getAddressBalance", params=params)
+            data = resp.json()
+            if data.get("ok"):
+                nano = int(data.get("result", 0))
+                return {"wallet_balance": nano / 1_000_000_000}
+    except Exception as e:
+        pass
+
+    return {"wallet_balance": None, "error": "fetch_failed"}
+
+
 @router.post("/wallet/save")
 async def save_wallet(
     data: WalletSaveRequest,

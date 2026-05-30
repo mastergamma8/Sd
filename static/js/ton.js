@@ -12,6 +12,70 @@ let currentDepositMemo  = null;
 let depositPollInterval = null;
 let tonNetwork          = null;   // '-3' testnet | '-239' mainnet; загружается из /api/ton/config
 let tonConfigLoaded     = false;
+let walletBlockchainBalance = null; // Реальный баланс кошелька из блокчейна (не баланс приложения)
+
+// Лимиты из конфига (заполняются при loadTonConfig)
+let tonMinDeposit  = 0.1;
+let tonMaxDeposit  = 100.0;
+let tonMinWithdraw = 0.5;
+let tonMaxWithdraw = 50.0;
+let tonWithdrawFee = 0.05;
+
+// ── Вспомогательные функции для адресов и сумм ───────────────────────────────
+
+/**
+ * Converts a raw TON address (0:hex64) to a user-friendly base64url format
+ * (UQ... on mainnet / kQ... on testnet).
+ * Falls back to the raw string if TonWeb is unavailable or conversion fails.
+ */
+function _toFriendlyAddr(raw) {
+    if (!raw) return '';
+    try {
+        if (typeof TonWeb !== 'undefined' && TonWeb.utils && TonWeb.utils.Address) {
+            const addr = new TonWeb.utils.Address(raw);
+            // non-bounceable (UQ.../kQ...) is the standard user-facing format
+            return addr.toString(true, true, false, !!window.__TON_TESTNET__);
+        }
+    } catch (e) { /* fall through */ }
+    return raw;
+}
+
+/** Returns a short label for compact display: "UQBm_A...ExAW" */
+function _shortAddr(raw) {
+    if (!raw) return '';
+    const friendly = _toFriendlyAddr(raw);
+    return friendly.length > 12
+        ? friendly.slice(0, 6) + '...' + friendly.slice(-4)
+        : friendly;
+}
+
+/** Formats a TON amount with up to 4 decimal places, trailing zeros stripped. */
+function _fmtTon(amount) {
+    if (amount === undefined || amount === null || amount === '') return '—';
+    const n = parseFloat(amount);
+    return isNaN(n) ? '—' : parseFloat(n.toFixed(4)).toString();
+}
+
+/** Возвращает локализованную строку лимитов из i18n словаря */
+function _limitsText(key, min, max) {
+    const lang = typeof currentLang !== 'undefined' ? currentLang : 'ru';
+    const tpl = (typeof i18n !== 'undefined' && i18n[lang] && i18n[lang][key])
+        ? i18n[lang][key]
+        : 'Min. {min} · Max. {max}';
+    return tpl.replace('{min}', min).replace('{max}', max);
+}
+
+/** Обновляет строки лимитов и комиссии в обоих модальных окнах. */
+function _updateLimitsUI() {
+    const depLim = document.getElementById('ton-deposit-limits');
+    if (depLim) depLim.textContent = _limitsText('ton_deposit_limits', tonMinDeposit, tonMaxDeposit);
+
+    const witLim = document.getElementById('ton-withdraw-limits');
+    if (witLim) witLim.textContent = _limitsText('ton_withdraw_limits', tonMinWithdraw, tonMaxWithdraw);
+
+    const feeEl = document.getElementById('ton-withdraw-fee-value');
+    if (feeEl) feeEl.textContent = `~${tonWithdrawFee} TON`;
+}
 
 // ── Загрузка конфигурации сети с сервера ─────────────────────────────────────
 // Определяет сеть (testnet / mainnet) один раз и кэширует результат.
@@ -33,6 +97,22 @@ async function loadTonConfig() {
     tonNetwork             = cfg.is_testnet ? '-3' : '-239';
     window.__TON_TESTNET__ = !!cfg.is_testnet; // булевый флаг для startTonDeposit
     tonConfigLoaded        = true;
+
+    // Сохраняем лимиты из конфига
+    if (cfg.min_deposit  !== undefined) tonMinDeposit  = cfg.min_deposit;
+    if (cfg.max_deposit  !== undefined) tonMaxDeposit  = cfg.max_deposit;
+    if (cfg.min_withdraw !== undefined) tonMinWithdraw = cfg.min_withdraw;
+    if (cfg.max_withdraw !== undefined) tonMaxWithdraw = cfg.max_withdraw;
+    if (cfg.withdraw_fee !== undefined) tonWithdrawFee = cfg.withdraw_fee;
+
+    // Обновляем атрибуты input-полей из реальных лимитов конфига
+    const depInput = document.getElementById('ton-deposit-amount');
+    if (depInput) { depInput.min = tonMinDeposit; depInput.max = tonMaxDeposit; }
+    const witInput = document.getElementById('ton-withdraw-amount');
+    if (witInput) { witInput.min = tonMinWithdraw; witInput.max = tonMaxWithdraw; }
+
+    // Обновляем строки лимитов в UI
+    _updateLimitsUI();
 }
 
 // ── Инициализация TonConnect ─────────────────────────────────────────────────
@@ -84,16 +164,60 @@ async function initTonConnect() {
     }
 }
 
+// ── Получение реального баланса кошелька из блокчейна ────────────────────────
+// Запрашивает /api/ton/wallet/balance, который проксирует запрос к Toncenter.
+// Результат кэшируется в walletBlockchainBalance и обновляет все открытые элементы.
+
+async function _fetchWalletBalance() {
+    if (!tonWalletAddress) {
+        walletBlockchainBalance = null;
+        _applyWalletBalanceToUI('—');
+        return null;
+    }
+
+    // Показываем индикатор загрузки
+    _applyWalletBalanceToUI('...');
+
+    try {
+        const resp = await fetch('/api/ton/wallet/balance', {
+            method: 'GET',
+            headers: getApiHeaders(),
+        });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const data = await resp.json();
+
+        if (data.wallet_balance !== null && data.wallet_balance !== undefined) {
+            walletBlockchainBalance = data.wallet_balance;
+            _applyWalletBalanceToUI(_fmtTon(walletBlockchainBalance));
+            return walletBlockchainBalance;
+        }
+    } catch (e) {
+        console.warn('[TON] Не удалось получить баланс кошелька:', e);
+    }
+
+    walletBlockchainBalance = null;
+    _applyWalletBalanceToUI('—');
+    return null;
+}
+
+/** Применяет строку балансa ко всем отображающим его элементам кошелька. */
+function _applyWalletBalanceToUI(text) {
+    const walletBal  = document.getElementById('ton-modal-balance');
+    const depositBal = document.getElementById('ton-deposit-bal');
+    if (walletBal)  walletBal.textContent  = text;
+    if (depositBal) depositBal.textContent = text;
+}
+
 // ── Обновление UI при смене статуса кошелька ─────────────────────────────────
 
 function _updateTonWalletUI(wallet) {
     const addr      = wallet ? wallet.account.address : null;
-    const shortAddr = addr ? (addr.slice(0, 6) + '...' + addr.slice(-4)) : '';
+    const shortAddr = addr ? _shortAddr(addr) : '';
 
-    // Профиль: кнопки connect / connected
-    const connectBtn     = document.getElementById('ton-connect-btn-profile');
-    const connectedPanel = document.getElementById('ton-connected-panel-profile');
-    const profileAddrEl  = document.getElementById('profile-ton-address-short');
+    // Профиль: кнопки connect / connected (элементы удалены, но проверки null-safe)
+    const connectBtn      = document.getElementById('ton-connect-btn-profile');
+    const connectedPanel  = document.getElementById('ton-connected-panel-profile');
+    const profileAddrEl   = document.getElementById('profile-ton-address-short');
     const profileWalletEl = document.getElementById('profile-ton-wallet-address');
 
     if (connectBtn)      connectBtn.classList.toggle('hidden', !!wallet);
@@ -105,14 +229,23 @@ function _updateTonWalletUI(wallet) {
     const modalDisconnected = document.getElementById('ton-modal-disconnected');
     const modalConnected    = document.getElementById('ton-modal-connected');
     const modalPreview      = document.getElementById('ton-modal-wallet-preview');
+    const modalAddr         = document.getElementById('ton-modal-addr');
     const modalBalance      = document.getElementById('ton-modal-balance');
 
     if (modalDisconnected) modalDisconnected.classList.toggle('hidden', !!wallet);
     if (modalConnected)    modalConnected.classList.toggle('hidden', !wallet);
     if (modalPreview)      modalPreview.textContent = shortAddr;
-    if (modalBalance && wallet) {
-        const bal = typeof myTonBalance !== 'undefined' ? formatBalance(myTonBalance) : '—';
-        modalBalance.textContent = `${bal} TON`;
+    if (modalAddr)         modalAddr.textContent = shortAddr;
+
+    // Баланс кошелька: показываем реальный блокчейн-баланс, а не баланс приложения
+    if (modalBalance) {
+        if (!wallet) {
+            modalBalance.textContent = '—';
+        } else if (walletBlockchainBalance !== null) {
+            modalBalance.textContent = _fmtTon(walletBlockchainBalance);
+        } else {
+            modalBalance.textContent = '...'; // идёт загрузка
+        }
     }
 }
 
@@ -126,7 +259,11 @@ async function connectTonWallet() {
 
     if (!tonConnectUI) {
         // CDN не загружен — скорее всего проблема с сетью
-        showNotify('Не удалось загрузить TonConnect. Проверьте интернет-соединение.', 'error');
+        const lang = typeof currentLang !== 'undefined' ? currentLang : 'ru';
+        const msg = (typeof i18n !== 'undefined' && i18n[lang]?.ton_connect_error)
+            ? i18n[lang].ton_connect_error
+            : 'Не удалось загрузить TonConnect. Проверьте интернет-соединение.';
+        showNotify(msg, 'error');
         return;
     }
 
@@ -134,7 +271,11 @@ async function connectTonWallet() {
         await tonConnectUI.openModal();
     } catch (e) {
         console.error('[TON] Ошибка открытия модала TonConnect:', e);
-        showNotify('Не удалось открыть TonConnect', 'error');
+        const lang = typeof currentLang !== 'undefined' ? currentLang : 'ru';
+        const msg = (typeof i18n !== 'undefined' && i18n[lang]?.ton_connect_modal_error)
+            ? i18n[lang].ton_connect_modal_error
+            : 'Не удалось открыть TonConnect';
+        showNotify(msg, 'error');
     }
 }
 
@@ -148,25 +289,14 @@ async function disconnectTonWallet() {
 // ── Модальное окно кошелька ───────────────────────────────────────────────────
 
 function openTonWalletModal() {
-    vibrate && vibrate('medium');
-    const modal = document.getElementById('ton-wallet-modal');
-    if (!modal) return;
-
-    // Обновляем баланс в модалке
-    const modalBalance = document.getElementById('ton-modal-balance');
-    if (modalBalance && typeof myTonBalance !== 'undefined') {
-        modalBalance.textContent = `${formatBalance(myTonBalance)} TON`;
-    }
-
-    // Синхронизируем состояние connected/disconnected
     _updateTonWalletUI(tonWalletAddress ? { account: { address: tonWalletAddress } } : null);
-
-    modal.classList.remove('hidden');
+    openModal('ton-wallet-modal');
+    // Асинхронно загружаем реальный баланс кошелька из блокчейна
+    if (tonWalletAddress) _fetchWalletBalance();
 }
 
 function closeTonWalletModal() {
-    const modal = document.getElementById('ton-wallet-modal');
-    if (modal) modal.classList.add('hidden');
+    closeModal('ton-wallet-modal');
 }
 
 // ── Модальное окно депозита ───────────────────────────────────────────────────
@@ -182,12 +312,26 @@ async function openTonDepositModal() {
     if (statusEl) statusEl.textContent = '';
     const amountEl = document.getElementById('ton-deposit-amount');
     if (amountEl) amountEl.value = '';
-    modal.classList.remove('hidden');
+
+    // Заполняем адрес кошелька
+    const addrEl = document.getElementById('ton-deposit-addr');
+    if (addrEl) addrEl.textContent = _shortAddr(tonWalletAddress);
+
+    // Показываем '...' пока грузится реальный баланс
+    const balEl = document.getElementById('ton-deposit-bal');
+    if (balEl) balEl.textContent = walletBlockchainBalance !== null ? _fmtTon(walletBlockchainBalance) : '...';
+
+    // Обновляем строки лимитов
+    _updateLimitsUI();
+
+    openModal('ton-deposit-modal');
+
+    // Загружаем актуальный баланс кошелька из блокчейна
+    _fetchWalletBalance();
 }
 
 function closeTonDepositModal() {
-    const modal = document.getElementById('ton-deposit-modal');
-    if (modal) modal.classList.add('hidden');
+    closeModal('ton-deposit-modal');
     if (depositPollInterval) {
         clearInterval(depositPollInterval);
         depositPollInterval = null;
@@ -221,13 +365,16 @@ async function startTonDeposit() {
     const amountInput = document.getElementById('ton-deposit-amount');
     const amount = parseFloat(amountInput?.value);
 
+    const lang = typeof currentLang !== 'undefined' ? currentLang : 'ru';
+    const t = (key, fallback) => (typeof i18n !== 'undefined' && i18n[lang]?.[key]) ? i18n[lang][key] : fallback;
+
     if (!amount || amount <= 0) {
-        showNotify('Введите сумму депозита', 'error');
+        showNotify(t('ton_deposit_error_amount', 'Введите сумму депозита'), 'error');
         return;
     }
 
     const statusEl = document.getElementById('ton-deposit-status');
-    if (statusEl) statusEl.textContent = 'Создаём сессию...';
+    if (statusEl) statusEl.textContent = t('ton_deposit_creating', 'Создаём сессию...');
 
     try {
         const createResp = await fetch('/api/ton/deposit/create', {
@@ -280,7 +427,7 @@ async function startTonDeposit() {
         });
 
         currentDepositMemo = memo;
-        if (statusEl) statusEl.textContent = 'Ожидаем подтверждения транзакции...';
+        if (statusEl) statusEl.textContent = t('ton_deposit_waiting', 'Ожидаем подтверждения транзакции...');
         depositPollInterval = setInterval(_pollDepositStatus, 5000);
 
     } catch (err) {
@@ -319,7 +466,12 @@ async function _pollDepositStatus() {
                 if (typeof updateUI === 'function') updateUI();
             }
             closeTonDepositModal();
-            showNotify(`✅ Депозит зачислен: ${(data.amount_ton || 0).toFixed(4)} TON`, 'success');
+
+            const lang = typeof currentLang !== 'undefined' ? currentLang : 'ru';
+            const tpl = (typeof i18n !== 'undefined' && i18n[lang]?.ton_deposit_success)
+                ? i18n[lang].ton_deposit_success
+                : '✅ Депозит зачислен: {amount} TON';
+            showNotify(tpl.replace('{amount}', (data.amount_ton || 0).toFixed(4)), 'success');
 
         } else if (!resp.ok) {
             // Гонка: если Poll A уже подтвердил депозит и обнулил currentDepositMemo,
@@ -339,37 +491,50 @@ async function _pollDepositStatus() {
 
 function openTonWithdrawModal() {
     if (!tonWalletAddress) {
-        showNotify('Сначала подключите TON-кошелёк', 'error');
+        const lang = typeof currentLang !== 'undefined' ? currentLang : 'ru';
+        const msg = (typeof i18n !== 'undefined' && i18n[lang]?.ton_no_wallet_error)
+            ? i18n[lang].ton_no_wallet_error
+            : 'Сначала подключите TON-кошелёк';
+        showNotify(msg, 'error');
         connectTonWallet();
         return;
     }
-    const addrEl = document.getElementById('withdraw-wallet-preview');
-    if (addrEl) {
-        addrEl.textContent = tonWalletAddress.slice(0, 8) + '...' + tonWalletAddress.slice(-6);
-    }
     const modal = document.getElementById('ton-withdraw-modal');
     if (!modal) return;
+
+    // Заполняем адрес и доступный баланс в приложении (не блокчейн-баланс!)
+    const addrEl = document.getElementById('withdraw-wallet-preview');
+    if (addrEl) addrEl.textContent = _shortAddr(tonWalletAddress);
+    const balEl = document.getElementById('ton-withdraw-bal');
+    if (balEl) balEl.textContent = typeof myTonBalance !== 'undefined' ? _fmtTon(myTonBalance) : '—';
+
     const amountEl = document.getElementById('ton-withdraw-amount');
     if (amountEl) amountEl.value = '';
-    modal.classList.remove('hidden');
+
+    // Обновляем строки лимитов и комиссию
+    _updateLimitsUI();
+
+    openModal('ton-withdraw-modal');
 }
 
 function closeTonWithdrawModal() {
-    const modal = document.getElementById('ton-withdraw-modal');
-    if (modal) modal.classList.add('hidden');
+    closeModal('ton-withdraw-modal');
 }
 
 async function submitTonWithdraw() {
     const amountInput = document.getElementById('ton-withdraw-amount');
     const amount = parseFloat(amountInput?.value);
 
+    const lang = typeof currentLang !== 'undefined' ? currentLang : 'ru';
+    const t = (key, fallback) => (typeof i18n !== 'undefined' && i18n[lang]?.[key]) ? i18n[lang][key] : fallback;
+
     if (!amount || amount <= 0) {
-        showNotify('Введите сумму вывода', 'error');
+        showNotify(t('ton_withdraw_error_amount', 'Введите сумму вывода'), 'error');
         return;
     }
 
     const btn = document.getElementById('ton-withdraw-btn');
-    if (btn) { btn.disabled = true; btn.textContent = 'Отправляем...'; }
+    if (btn) { btn.disabled = true; btn.textContent = t('ton_withdraw_sending', 'Отправляем...'); }
 
     try {
         const resp = await fetch('/api/ton/withdraw', {
@@ -390,14 +555,17 @@ async function submitTonWithdraw() {
             myBalance = data.new_balance;
             if (typeof updateUI === 'function') updateUI();
         }
+
+        const tpl = t('ton_withdraw_success_msg', '✅ Отправлено {amount} TON → {addr}...');
         showNotify(
-            `✅ Отправлено ${(data.amount_ton || 0).toFixed(4)} TON → ${(data.to_address || '').slice(0, 8)}...`,
+            tpl.replace('{amount}', (data.amount_ton || 0).toFixed(4))
+               .replace('{addr}', (data.to_address || '').slice(0, 8)),
             'success'
         );
     } catch (err) {
         showNotify(err.message || 'Ошибка вывода', 'error');
     } finally {
-        if (btn) { btn.disabled = false; btn.textContent = 'Вывести'; }
+        if (btn) { btn.disabled = false; btn.textContent = t('ton_withdraw_btn_label', 'Вывести'); }
     }
 }
 
@@ -408,6 +576,31 @@ function updateTonBalanceUI() {
     const el = document.getElementById('ton-balance-amount');
     if (el && typeof myTonBalance !== 'undefined') {
         el.textContent = formatBalance(myTonBalance);
+    }
+}
+
+// ── MAX-кнопки: вставить весь баланс в поле ввода ────────────────────────────
+
+/** Вставляет весь баланс кошелька в поле суммы депозита. */
+function fillDepositMax() {
+    if (walletBlockchainBalance === null || walletBlockchainBalance <= 0) return;
+    const input = document.getElementById('ton-deposit-amount');
+    if (input) {
+        vibrate('light');
+        // Округляем до 4 знаков и убираем лишние нули
+        input.value = parseFloat(walletBlockchainBalance.toFixed(4));
+        input.dispatchEvent(new Event('input'));
+    }
+}
+
+/** Вставляет весь баланс приложения в поле суммы вывода. */
+function fillWithdrawMax() {
+    if (typeof myTonBalance === 'undefined' || myTonBalance <= 0) return;
+    const input = document.getElementById('ton-withdraw-amount');
+    if (input) {
+        vibrate('light');
+        input.value = parseFloat(myTonBalance.toFixed(4));
+        input.dispatchEvent(new Event('input'));
     }
 }
 
@@ -429,3 +622,5 @@ window.openTonWithdrawModal  = openTonWithdrawModal;
 window.closeTonWithdrawModal = closeTonWithdrawModal;
 window.submitTonWithdraw     = submitTonWithdraw;
 window.updateTonBalanceUI    = updateTonBalanceUI;
+window.fillDepositMax        = fillDepositMax;
+window.fillWithdrawMax       = fillWithdrawMax;

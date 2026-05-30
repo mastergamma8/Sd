@@ -31,55 +31,6 @@
         <span data-i18n="promo_title">Промокод</span>
     </button>
 
-    <!-- TON Кошелёк -->
-    <div class="glass rounded-3xl p-4 mb-8 border border-[#0098EA]/20">
-        <div class="flex items-center justify-between mb-3">
-            <div class="flex items-center gap-2">
-                <div class="w-8 h-8 rounded-full flex items-center justify-center" style="background:rgba(0,152,234,0.15);">
-                    <img src="/gifts/ton.png" class="w-5 h-5 object-contain ton-icon-img"
-                         onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
-                    <svg class="w-5 h-5 ton-icon-svg hidden" viewBox="0 0 56 56" fill="#0098EA">
-                        <path d="M28 0C12.536 0 0 12.536 0 28s12.536 28 28 28 28-12.536 28-28S43.464 0 28 0zm13.156 17H14.844l13.312 22.781L41.156 17z"/>
-                    </svg>
-                </div>
-                <span class="text-white font-semibold text-sm">TON Кошелёк</span>
-            </div>
-            <span id="profile-ton-wallet-address" class="text-xs font-mono" style="color:#0098EA;"></span>
-        </div>
-
-        <!-- Не подключён -->
-        <button id="ton-connect-btn-profile"
-                onclick="connectTonWallet()"
-                class="w-full py-2.5 rounded-2xl font-bold text-sm text-white active:scale-95 transition-all"
-                style="background:linear-gradient(135deg,#0098EA,#00c6ff);">
-            Подключить кошелёк
-        </button>
-
-        <!-- Подключён -->
-        <div id="ton-connected-panel-profile" class="hidden flex flex-col gap-2">
-            <div class="flex items-center justify-between px-1 mb-1">
-                <span class="text-xs" style="color:rgba(255,255,255,0.4);">Кошелёк</span>
-                <span id="profile-ton-address-short" class="text-xs font-mono" style="color:rgba(0,198,255,0.8);"></span>
-            </div>
-            <div class="flex gap-2">
-                <button onclick="openTonDepositModal()"
-                        class="flex-1 py-2.5 rounded-xl font-bold text-sm text-white active:scale-95 transition-all"
-                        style="background:linear-gradient(135deg,#10b981,#0098EA);">
-                    ↓ Пополнить
-                </button>
-                <button onclick="openTonWithdrawModal()"
-                        class="flex-1 py-2.5 rounded-xl font-bold text-sm text-white active:scale-95 transition-all"
-                        style="background:linear-gradient(135deg,#f59e0b,#ef4444);">
-                    ↑ Вывести
-                </button>
-            </div>
-            <button onclick="disconnectTonWallet()"
-                    class="w-full py-2 rounded-xl text-xs active:scale-95 transition-all border border-white/10"
-                    style="color:rgba(255,255,255,0.4);background:rgba(255,255,255,0.05);">
-                Отключить кошелёк
-            </button>
-        </div>
-    </div>
     <div class="flex items-center justify-between mb-4">
         <h3 class="text-xl font-bold text-white" data-i18n="my_gifts">Мои подарки</h3>
         <span class="text-xs text-blue-300/50 uppercase tracking-wider font-semibold" data-i18n="for_withdraw">на вывод</span>

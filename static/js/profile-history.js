@@ -86,10 +86,20 @@ const HISTORY_ICONS = {
     season_prize_stars:    { icon: '🏆', color: 'amber',  sign: '+' },
     season_prize_gift:     { icon: '🏆', color: 'amber',  sign: null },
     season_prize_tg_gift:  { icon: '🏆', color: 'amber',  sign: null },
+
+    // ── TON wallet ───────────────────────────────────────────────────────────
+    ton_deposit:           { icon: '💎', color: 'ton',    sign: '+' },
+    ton_withdraw:          { icon: '💎', color: 'ton',    sign: '-' },
 };
 
 /** Action types that are internal / should never surface in the UI. */
-const HISTORY_HIDDEN_TYPES = new Set(['case_lucky_ratio', 'rocket_win_fake']);
+const HISTORY_HIDDEN_TYPES = new Set([
+    'case_lucky_ratio', 'rocket_win_fake',
+    // NFT Gallery operations — shown only on the NFT Gallery page
+    'nft_buy', 'nft_topup', 'nft_stars_topup',
+    'nft_market_buy', 'nft_market_sold',
+    'nft_auction_bid', 'nft_auction_won', 'nft_auction_outbid', 'nft_auction_sold',
+]);
 
 /** Action types denominated in stars (uses star icon). */
 const STAR_AMOUNT_TYPES = new Set([
@@ -107,6 +117,9 @@ const STAR_AMOUNT_TYPES = new Set([
     // Season prizes
     'season_prize_stars',
 ]);
+
+/** Action types denominated in TON (uses ton.png icon with 4-decimal formatting). */
+const TON_AMOUNT_TYPES = new Set(['ton_deposit', 'ton_withdraw']);
 
 // ── Localised labels ──────────────────────────────────────────────────────────
 
@@ -165,6 +178,9 @@ const HISTORY_LABELS = {
         season_prize_stars:   'Приз сезонного лидерборда',
         season_prize_gift:    'Приз сезонного лидерборда',
         season_prize_tg_gift: 'Приз сезонного лидерборда',
+        // TON
+        ton_deposit:          'Пополнение TON',
+        ton_withdraw:         'Вывод TON',
     },
     en: {
         topup_stars:          'Balance top-up',
@@ -220,6 +236,9 @@ const HISTORY_LABELS = {
         season_prize_stars:   'Season leaderboard prize',
         season_prize_gift:    'Season leaderboard prize',
         season_prize_tg_gift: 'Season leaderboard prize',
+        // TON
+        ton_deposit:          'TON deposit',
+        ton_withdraw:         'TON withdrawal',
     }
 };
 
@@ -240,6 +259,9 @@ function formatHistoryDate(ts) {
 function getHistoryGiftPhoto(entry) {
     // Free case always shows the free-case image
     if (entry.action_type === 'case_free_open') return '/gifts/freecase.png';
+
+    // TON wallet operations — show the TON coin icon
+    if (entry.action_type === 'ton_deposit' || entry.action_type === 'ton_withdraw') return '/gifts/ton.png';
 
     // TG Shop purchase — show the gift's photo, resolved from description tag
     if (entry.action_type === 'tg_shop_buy') {
@@ -330,10 +352,24 @@ function getHistoryGiftPhoto(entry) {
  */
 function _buildAmountHtml(entry, meta) {
     const useStars    = STAR_AMOUNT_TYPES.has(entry.action_type);
+    const useTon      = TON_AMOUNT_TYPES.has(entry.action_type);
     const currencyUrl = useStars ? '/gifts/stars.png' : '/gifts/dount.png';
     const rawAbs      = Math.abs(entry.amount);
     // For donut-denominated amounts use formatBalance so fractions render correctly
     const absAmount   = useStars ? rawAbs : formatBalance(rawAbs);
+
+    // TON-denominated entries — show amount with up to 4 significant decimal places
+    if (useTon) {
+        const tonAmt     = parseFloat(rawAbs.toFixed(4));
+        const isPositive = entry.amount >= 0;
+        const sign       = isPositive ? '+' : '−';
+        const colorClass = isPositive ? 'text-green-400' : 'text-red-400';
+        return `<span class="${colorClass} font-extrabold text-base flex items-center gap-1">
+                    ${sign}${tonAmt}
+                    <img src="/gifts/ton.png" class="w-4 h-4 object-contain"
+                         onerror="this.style.display='none'">
+                </span>`;
+    }
 
     if (entry.action_type === 'tg_shop_buy') {
         // Always show as negative stars, regardless of stored sign
@@ -440,6 +476,15 @@ function _buildEntryTitle(entry) {
         }
     }
 
+    // TON entries — append destination address for withdrawals
+    if (entry.action_type === 'ton_withdraw' && entry.description) {
+        const addrMatch = entry.description.match(/→ ([A-Za-z0-9_-]{6,})\.\.\./);
+        if (addrMatch) {
+            const shortAddr = addrMatch[1] + '...';
+            return (currentLang === 'ru' ? `Вывод TON → ${shortAddr}` : `TON withdrawal → ${shortAddr}`);
+        }
+    }
+
     // PvP entries — append round number and player count from description
     const pvpTypes = new Set([
         'pvp_bet_stars', 'pvp_bet_donuts', 'pvp_bet_gift',
@@ -466,6 +511,7 @@ function _borderClass(color) {
     if (color === 'red')    return 'border-red-500/20 bg-red-500/5';
     if (color === 'amber')  return 'border-amber-500/20 bg-amber-500/5';
     if (color === 'purple') return 'border-purple-500/20 bg-purple-500/5';
+    if (color === 'ton')    return 'border-[#0098EA]/20 bg-[#0098EA]/5';
     return 'border-white/5 bg-black/20';
 }
 
@@ -474,6 +520,7 @@ function _iconBgClass(color) {
     if (color === 'red')    return 'bg-red-500/20 border border-red-400/30';
     if (color === 'amber')  return 'bg-amber-500/20 border border-amber-400/30';
     if (color === 'purple') return 'bg-purple-500/20 border border-purple-400/30';
+    if (color === 'ton')    return 'bg-[#0098EA]/15 border border-[#0098EA]/30';
     return 'bg-white/5 border border-white/10';
 }
 

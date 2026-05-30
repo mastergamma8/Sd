@@ -289,6 +289,46 @@ const i18n = {
             hist_shop_buy_stars: 'Куплены звёзды в магазине',
             hist_shop_buy_donuts: 'Куплены пончики в магазине',
             hist_shop_buy_gift: 'Куплен подарок в магазине',
+
+            // TON КОШЕЛЁК
+            ton_wallet_title: 'TON Кошелёк',
+            ton_wallet_disconnect_desc: 'Подключите кошелёк Tonkeeper, MyTonWallet или другой для пополнения и вывода',
+            ton_wallet_connect_btn: 'Подключить кошелёк',
+            ton_wallet_deposit_btn: '↓ Пополнить',
+            ton_wallet_withdraw_btn: '↑ Вывести',
+            ton_wallet_disconnect_btn: 'Отключить кошелёк',
+
+            // TON ДЕПОЗИТ
+            ton_deposit_title: 'Пополнить TON',
+            ton_deposit_subtitle: 'Перевод напрямую из вашего кошелька',
+            ton_deposit_balance_label: 'В кошельке:',
+            ton_deposit_amount_label: 'Сумма депозита',
+            ton_deposit_send_btn: 'Депозит',
+            ton_deposit_creating: 'Создаём сессию...',
+            ton_deposit_waiting: 'Ожидаем подтверждения транзакции...',
+            ton_deposit_success: '✅ Депозит зачислен: {amount} TON',
+            ton_deposit_error_amount: 'Введите сумму депозита',
+            ton_deposit_limits: 'Мин. {min} TON · Макс. {max} TON',
+
+            // TON ВЫВОД
+            ton_withdraw_title: 'Вывести TON',
+            ton_withdraw_balance_label: 'В приложении:',
+            ton_withdraw_amount_label: 'Сумма вывода',
+            ton_withdraw_fee_label: 'Сетевая комиссия',
+            ton_withdraw_btn_label: 'Вывести',
+            ton_withdraw_sending: 'Отправляем...',
+            ton_withdraw_success_msg: '✅ Отправлено {amount} TON → {addr}...',
+            ton_withdraw_error_amount: 'Введите сумму вывода',
+            ton_withdraw_limits: 'Мин. {min} TON · Макс. {max} TON',
+
+            // TON ОШИБКИ / УВЕДОМЛЕНИЯ
+            ton_connect_error: 'Не удалось загрузить TonConnect. Проверьте интернет-соединение.',
+            ton_connect_modal_error: 'Не удалось открыть TonConnect',
+            ton_no_wallet_error: 'Сначала подключите TON-кошелёк',
+
+            // ИСТОРИЯ TON
+            hist_ton_deposit: 'Пополнение TON',
+            hist_ton_withdraw: 'Вывод TON',
         },
         en: {
             maintenance_title: '🔧 Under Maintenance',
@@ -576,6 +616,46 @@ const i18n = {
             hist_shop_buy_stars: 'Stars purchased in shop',
             hist_shop_buy_donuts: 'Donuts purchased in shop',
             hist_shop_buy_gift: 'Gift purchased in shop',
+
+            // TON WALLET
+            ton_wallet_title: 'TON Wallet',
+            ton_wallet_disconnect_desc: 'Connect your Tonkeeper, MyTonWallet or another wallet to deposit and withdraw',
+            ton_wallet_connect_btn: 'Connect Wallet',
+            ton_wallet_deposit_btn: '↓ Deposit',
+            ton_wallet_withdraw_btn: '↑ Withdraw',
+            ton_wallet_disconnect_btn: 'Disconnect Wallet',
+
+            // TON DEPOSIT
+            ton_deposit_title: 'Deposit TON',
+            ton_deposit_subtitle: 'Direct transfer from your wallet',
+            ton_deposit_balance_label: 'Wallet balance:',
+            ton_deposit_amount_label: 'Deposit amount',
+            ton_deposit_send_btn: 'Deposit',
+            ton_deposit_creating: 'Creating session...',
+            ton_deposit_waiting: 'Waiting for transaction confirmation...',
+            ton_deposit_success: '✅ Deposit credited: {amount} TON',
+            ton_deposit_error_amount: 'Enter deposit amount',
+            ton_deposit_limits: 'Min. {min} TON · Max. {max} TON',
+
+            // TON WITHDRAWAL
+            ton_withdraw_title: 'Withdraw TON',
+            ton_withdraw_balance_label: 'App balance:',
+            ton_withdraw_amount_label: 'Withdrawal amount',
+            ton_withdraw_fee_label: 'Network fee',
+            ton_withdraw_btn_label: 'Withdraw',
+            ton_withdraw_sending: 'Sending...',
+            ton_withdraw_success_msg: '✅ Sent {amount} TON → {addr}...',
+            ton_withdraw_error_amount: 'Enter withdrawal amount',
+            ton_withdraw_limits: 'Min. {min} TON · Max. {max} TON',
+
+            // TON ERRORS / NOTIFICATIONS
+            ton_connect_error: 'Failed to load TonConnect. Please check your internet connection.',
+            ton_connect_modal_error: 'Failed to open TonConnect',
+            ton_no_wallet_error: 'Connect your TON wallet first',
+
+            // TON HISTORY
+            hist_ton_deposit: 'TON Deposit',
+            hist_ton_withdraw: 'TON Withdrawal',
         }
 };
 
@@ -633,6 +713,11 @@ function setLang(lang) {
     const nftSection = document.getElementById('nft-section');
     if (nftSection && nftSection.style.display !== 'none' && !nftSection.classList.contains('hidden')) {
         if (typeof nftApplyI18n === 'function') nftApplyI18n();
+    }
+
+    // Обновляем лимиты TON если они уже загружены
+    if (typeof _updateLimitsUI === 'function' && typeof tonConfigLoaded !== 'undefined' && tonConfigLoaded) {
+        _updateLimitsUI();
     }
 }
 
