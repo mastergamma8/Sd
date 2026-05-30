@@ -103,6 +103,9 @@ async def get_live_donuts_to_stars_rate() -> float:
 WITHDRAW_FEE_STARS = 25
 
 # ── TON Blockchain ────────────────────────────────────────────────────────────
+# TON_TESTNET=true  → testnet.toncenter.com + TonKeeper testnet-сеть (-3)
+# TON_TESTNET=false → toncenter.com (mainnet, по умолчанию)
+TON_IS_TESTNET: bool  = os.getenv("TON_TESTNET", "false").lower() == "true"
 TON_WALLET_ADDRESS: str   = os.getenv("TON_WALLET_ADDRESS", "")
 TON_CENTER_API_KEY: str   = os.getenv("TON_CENTER_API_KEY", "")
 TON_DEPOSIT_TIMEOUT: int  = 600          # 10 минут на подтверждение депозита

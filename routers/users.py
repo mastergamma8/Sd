@@ -57,6 +57,7 @@ async def init_user(current_user: dict = Depends(get_current_user)):
         "status": "ok",
         "balance": user_data.get("balance", 0),
         "stars":   user_data.get("stars", 0),
+        "ton_balance": user_data.get("ton_balance", 0),
         "user_gifts": user_gifts,
         "promo_case_credits": {str(k): v for k, v in promo_cases.items()},
         "user_settings": user_settings,

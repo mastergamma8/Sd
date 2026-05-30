@@ -401,6 +401,7 @@ async def init_rocket_games_table():
 
         # ── TON: адрес кошелька пользователя ─────────────────────────────────
         await db.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS ton_wallet TEXT DEFAULT NULL")
+        await db.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS ton_balance FLOAT8 DEFAULT 0")
 
         # ── TON: депозиты ─────────────────────────────────────────────────────
         await db.execute("""

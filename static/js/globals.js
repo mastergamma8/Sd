@@ -12,6 +12,7 @@ let rouletteConfig = {};
 let casesConfig = {}; 
 let myGifts = {};
 let myBalance = 0;
+let myTonBalance = 0; // <-- ОТДЕЛЬНЫЙ БАЛАНС TON
 let myStars = 0; // <-- НОВЫЙ БАЛАНС ЗВЕЗД
 let myPromoCases = {};
 let freeCaseConfig = null;

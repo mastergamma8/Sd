@@ -572,8 +572,8 @@ function nftRenderHistory(entries) {
                               d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
                 </div>
-                <p class="nft-muted-text text-sm font-bold mb-1">${nftT('nft_history_empty') || 'История пуста'}</p>
-                <p class="nft-muted-text text-xs opacity-60 mt-1">${nftT('nft_history_empty_sub') || 'Здесь будут отображаться ваши операции'}</p>
+                <p class="nft-muted-text text-sm font-bold mb-1">${nftT('nft_history_empty')}</p>
+                <p class="nft-muted-text text-xs opacity-60 mt-1">${nftT('nft_history_empty_sub')}</p>
             </div>`;
         return;
     }
@@ -630,7 +630,7 @@ function nftRenderHistory(entries) {
              style="background:rgba(255,255,255,0.015);border:1px solid rgba(255,255,255,0.04);">
             ${iconHTML}
             <div class="flex-1 min-w-0">
-                <p class="text-white text-xs font-bold leading-tight truncate">${escapeHtml(e.description)}</p>
+                <p class="text-white text-xs font-bold leading-tight truncate">${escapeHtml(nftBuildHistoryTitle(e))}</p>
                 <p class="text-[9px] mt-1 font-bold" style="color:rgba(255,255,255,0.35);">${dateStr}</p>
             </div>
             <div class="text-right flex-shrink-0">

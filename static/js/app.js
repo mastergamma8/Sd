@@ -143,6 +143,7 @@ async function initApp() {
         myGifts      = data.user_gifts;
         myBalance    = data.balance;
         myStars      = data.stars || 0;
+        myTonBalance = data.ton_balance || 0;
 
         // Загружаем настройки с сервера — они имеют приоритет над localStorage
         if (data.user_settings) {

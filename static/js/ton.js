@@ -1,32 +1,64 @@
 // =====================================================
 // ton.js — TonConnect: кошелёк, депозит, вывод TON
 // Зависимости: globals.js (getApiHeaders, showNotify, formatBalance)
-// CDN: @tonconnect/ui, tonweb (загружаются в header.html)
+// CDN: @tonconnect/ui, tonweb — подключены в <head> index.html
 // =====================================================
 
 // ── Глобальное состояние ─────────────────────────────────────────────────────
 
-let tonConnectUI       = null;
-let tonWalletAddress   = null;
-let currentDepositMemo = null;
+let tonConnectUI        = null;
+let tonWalletAddress    = null;
+let currentDepositMemo  = null;
 let depositPollInterval = null;
+let tonNetwork          = null;   // '-3' testnet | '-239' mainnet; загружается из /api/ton/config
+let tonConfigLoaded     = false;
+
+// ── Загрузка конфигурации сети с сервера ─────────────────────────────────────
+// Определяет сеть (testnet / mainnet) один раз и кэширует результат.
+// Вызывается из initTonConnect() до создания TonConnectUI.
+
+async function loadTonConfig() {
+    if (tonConfigLoaded) return;
+
+    const resp = await fetch('/api/ton/config', {
+        method: 'GET',
+        headers: getApiHeaders(),
+    });
+
+    if (!resp.ok) {
+        throw new Error('Не удалось загрузить TON config');
+    }
+
+    const cfg = await resp.json();
+    tonNetwork             = cfg.is_testnet ? '-3' : '-239';
+    window.__TON_TESTNET__ = !!cfg.is_testnet; // булевый флаг для startTonDeposit
+    tonConfigLoaded        = true;
+}
 
 // ── Инициализация TonConnect ─────────────────────────────────────────────────
+// CDN загружается синхронно в <head>, поэтому TON_CONNECT_UI гарантированно
+// доступен к моменту выполнения этого файла.
 
 async function initTonConnect() {
-    if (tonConnectUI) return;
+    if (tonConnectUI) return;   // уже инициализирован
 
-    // Ждём загрузки CDN-библиотеки
     if (typeof TON_CONNECT_UI === 'undefined') {
-        console.warn('[TON] TonConnect UI не загружен');
+        console.error(
+            '[TON] TON_CONNECT_UI не определён. ' +
+            'Убедитесь, что <script src="@tonconnect/ui"> находится в <head> index.html, ' +
+            'а не внутри партиала (скрипты в innerHTML/outerHTML не исполняются браузером).'
+        );
         return;
     }
 
     try {
+        await loadTonConfig();
+
         tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
             manifestUrl: `${window.location.origin}/tonconnect-manifest.json`,
         });
 
+        // Слушаем изменение статуса подключения
         tonConnectUI.onStatusChange(async wallet => {
             tonWalletAddress = wallet ? wallet.account.address : null;
             _updateTonWalletUI(wallet);
@@ -44,8 +76,11 @@ async function initTonConnect() {
                 }
             }
         });
+
+        console.log('[TON] TonConnect инициализирован');
     } catch (e) {
-        console.warn('[TON] Ошибка инициализации TonConnect:', e);
+        console.error('[TON] Ошибка инициализации TonConnect:', e);
+        tonConnectUI = null;
     }
 }
 
@@ -55,17 +90,15 @@ function _updateTonWalletUI(wallet) {
     const addr      = wallet ? wallet.account.address : null;
     const shortAddr = addr ? (addr.slice(0, 6) + '...' + addr.slice(-4)) : '';
 
-    // Header: элементы без изменений (баланс обновляется через updateUI)
-
-    // Профиль: кнопки connect/connected
-    const connectBtn    = document.getElementById('ton-connect-btn-profile');
+    // Профиль: кнопки connect / connected
+    const connectBtn     = document.getElementById('ton-connect-btn-profile');
     const connectedPanel = document.getElementById('ton-connected-panel-profile');
     const profileAddrEl  = document.getElementById('profile-ton-address-short');
     const profileWalletEl = document.getElementById('profile-ton-wallet-address');
 
-    if (connectBtn)     connectBtn.classList.toggle('hidden', !!wallet);
-    if (connectedPanel) connectedPanel.classList.toggle('hidden', !wallet);
-    if (profileAddrEl)  profileAddrEl.textContent = shortAddr;
+    if (connectBtn)      connectBtn.classList.toggle('hidden', !!wallet);
+    if (connectedPanel)  connectedPanel.classList.toggle('hidden', !wallet);
+    if (profileAddrEl)   profileAddrEl.textContent = shortAddr;
     if (profileWalletEl) profileWalletEl.textContent = shortAddr;
 
     // Модальное окно кошелька
@@ -78,22 +111,29 @@ function _updateTonWalletUI(wallet) {
     if (modalConnected)    modalConnected.classList.toggle('hidden', !wallet);
     if (modalPreview)      modalPreview.textContent = shortAddr;
     if (modalBalance && wallet) {
-        const bal = typeof myBalance !== 'undefined' ? formatBalance(myBalance) : '—';
-        if (modalBalance) modalBalance.textContent = `${bal} 🍩`;
+        const bal = typeof myTonBalance !== 'undefined' ? formatBalance(myTonBalance) : '—';
+        modalBalance.textContent = `${bal} TON`;
     }
 }
 
 // ── Подключение / отключение ─────────────────────────────────────────────────
 
 async function connectTonWallet() {
-    if (!tonConnectUI) await initTonConnect();
+    // На случай если initTonConnect ещё не вызывался (edge-case)
     if (!tonConnectUI) {
-        showNotify('TonConnect не загружен. Проверьте соединение.', 'error');
+        await initTonConnect();
+    }
+
+    if (!tonConnectUI) {
+        // CDN не загружен — скорее всего проблема с сетью
+        showNotify('Не удалось загрузить TonConnect. Проверьте интернет-соединение.', 'error');
         return;
     }
+
     try {
         await tonConnectUI.openModal();
     } catch (e) {
+        console.error('[TON] Ошибка открытия модала TonConnect:', e);
         showNotify('Не удалось открыть TonConnect', 'error');
     }
 }
@@ -114,17 +154,14 @@ function openTonWalletModal() {
 
     // Обновляем баланс в модалке
     const modalBalance = document.getElementById('ton-modal-balance');
-    if (modalBalance && typeof myBalance !== 'undefined') {
-        modalBalance.textContent = `${formatBalance(myBalance)} 🍩`;
+    if (modalBalance && typeof myTonBalance !== 'undefined') {
+        modalBalance.textContent = `${formatBalance(myTonBalance)} TON`;
     }
 
-    // Если кошелёк уже подключён — показываем панель connected
+    // Синхронизируем состояние connected/disconnected
     _updateTonWalletUI(tonWalletAddress ? { account: { address: tonWalletAddress } } : null);
 
     modal.classList.remove('hidden');
-
-    // Если ещё не инициализировали — инициализируем в фоне
-    if (!tonConnectUI) initTonConnect();
 }
 
 function closeTonWalletModal() {
@@ -140,13 +177,12 @@ async function openTonDepositModal() {
         return;
     }
     const modal = document.getElementById('ton-deposit-modal');
-    if (modal) {
-        modal.classList.remove('hidden');
-        const statusEl = document.getElementById('ton-deposit-status');
-        if (statusEl) statusEl.textContent = '';
-        const amountEl = document.getElementById('ton-deposit-amount');
-        if (amountEl) amountEl.value = '';
-    }
+    if (!modal) return;
+    const statusEl = document.getElementById('ton-deposit-status');
+    if (statusEl) statusEl.textContent = '';
+    const amountEl = document.getElementById('ton-deposit-amount');
+    if (amountEl) amountEl.value = '';
+    modal.classList.remove('hidden');
 }
 
 function closeTonDepositModal() {
@@ -156,9 +192,32 @@ function closeTonDepositModal() {
         clearInterval(depositPollInterval);
         depositPollInterval = null;
     }
+    currentDepositMemo = null; // ← очищаем memo при закрытии
+}
+
+// ── Построение BOC-payload для текстового комментария ────────────────────────
+// Заменяем ручной BOC на TonWeb.boc.Cell — официальный способ из документации TON.
+// Ручная сборка была подозрительным местом: незначительная ошибка в дескрипторных
+// байтах или выравнивании приводила бы к NPE внутри Android-кошелька.
+// Base64 по-прежнему через нативный btoa: TonWeb.utils.bytesToBase64 нестабилен
+// на Android и оставлен вне цепочки.
+
+async function _buildCommentPayload(text) {
+    const cell = new TonWeb.boc.Cell();
+    cell.bits.writeUint(0, 32);   // op-code = 0 → текстовый комментарий
+    cell.bits.writeString(text);
+    const bocBytes = await cell.toBoc(false); // Uint8Array; false = без CRC32
+    let binary = '';
+    bocBytes.forEach(b => { binary += String.fromCharCode(b); });
+    return btoa(binary);
 }
 
 async function startTonDeposit() {
+    // Остановить предыдущий цикл, если он ещё активен (двойной клик и т.п.)
+    if (depositPollInterval) {
+        clearInterval(depositPollInterval);
+        depositPollInterval = null;
+    }
     const amountInput = document.getElementById('ton-deposit-amount');
     const amount = parseFloat(amountInput?.value);
 
@@ -171,40 +230,56 @@ async function startTonDeposit() {
     if (statusEl) statusEl.textContent = 'Создаём сессию...';
 
     try {
-        // 1. Создаём сессию на сервере
         const createResp = await fetch('/api/ton/deposit/create', {
             method: 'POST',
             headers: getApiHeaders(),
             body: JSON.stringify({ amount_ton: amount })
         });
+
         if (!createResp.ok) {
-            const err = await createResp.json();
-            throw new Error(err.detail || 'Ошибка создания депозита');
+            const err = await createResp.json().catch(() => ({}));
+            throw new Error(err.detail || 'Ошибка создания сессии депозита');
         }
+
         const { memo, wallet_address, expires_at } = await createResp.json();
-        currentDepositMemo = memo;
 
-        // 2. Кодируем комментарий как TON BOC
-        if (typeof TonWeb === 'undefined') {
-            throw new Error('TonWeb не загружен');
+        const recipient = String(wallet_address || '').trim();
+        if (!recipient) {
+            throw new Error('Пустой адрес получателя TON');
         }
-        const cell = new TonWeb.boc.Cell();
-        cell.bits.writeUint(0, 32);     // opcode 0 = текстовый комментарий
-        cell.bits.writeString(memo);
-        const bocBytes = await cell.toBoc(false);
-        const payload  = TonWeb.utils.bytesToBase64(bocBytes);
 
-        // 3. Отправляем транзакцию через TonConnect
-        await tonConnectUI.sendTransaction({
-            validUntil: expires_at,
-            messages: [{
-                address: wallet_address,
-                amount:  String(Math.floor(amount * 1_000_000_000)),
-                payload: payload,
-            }]
+        const network = window.__TON_TESTNET__ ? '-3' : '-239';
+        const payload = await _buildCommentPayload(memo); // async: TonWeb.boc.Cell
+
+        console.log('[TON deposit tx]', {
+            network,
+            recipient,
+            amountNano: String(Math.floor(amount * 1_000_000_000)),
+            payloadLen: payload?.length || 0,
         });
 
-        // 4. Polling каждые 5 секунд
+        // ── ДИАГНОСТИКА ──────────────────────────────────────────────────────
+        // Если транзакция проходит без payload → проблема в _buildCommentPayload.
+        // Для теста: замените txMessages ниже на закомментированный вариант.
+        const txMessages = [{
+            address: recipient,
+            amount:  String(Math.floor(amount * 1_000_000_000)),
+            payload: payload,
+        }];
+        // Тест без payload:
+        // const txMessages = [{
+        //     address: recipient,
+        //     amount:  String(Math.floor(amount * 1_000_000_000)),
+        // }];
+        // ─────────────────────────────────────────────────────────────────────
+
+        await tonConnectUI.sendTransaction({
+            validUntil: Number(expires_at),
+            network,
+            messages: txMessages,
+        });
+
+        currentDepositMemo = memo;
         if (statusEl) statusEl.textContent = 'Ожидаем подтверждения транзакции...';
         depositPollInterval = setInterval(_pollDepositStatus, 5000);
 
@@ -213,14 +288,9 @@ async function startTonDeposit() {
             clearInterval(depositPollInterval);
             depositPollInterval = null;
         }
-        if (err?.message?.includes('User rejects') || err?.message?.includes('cancelled')) {
-            showNotify('Транзакция отклонена', 'error');
-            if (statusEl) statusEl.textContent = '';
-        } else {
-            showNotify(err.message || 'Ошибка отправки транзакции', 'error');
-            if (statusEl) statusEl.textContent = '';
-            console.error('[TON deposit]', err);
-        }
+        showNotify(err?.message || 'Ошибка отправки транзакции', 'error');
+        if (statusEl) statusEl.textContent = '';
+        console.error('[TON deposit]', err);
     }
 }
 
@@ -240,7 +310,10 @@ async function _pollDepositStatus() {
             depositPollInterval = null;
             currentDepositMemo  = null;
 
-            // Обновляем баланс в UI
+            if (typeof myTonBalance !== 'undefined' && data.new_ton_balance !== undefined) {
+                myTonBalance = data.new_ton_balance;
+                if (typeof updateTonBalanceUI === 'function') updateTonBalanceUI();
+            }
             if (typeof myBalance !== 'undefined' && data.new_balance !== undefined) {
                 myBalance = data.new_balance;
                 if (typeof updateUI === 'function') updateUI();
@@ -248,11 +321,13 @@ async function _pollDepositStatus() {
             closeTonDepositModal();
             showNotify(`✅ Депозит зачислен: ${(data.amount_ton || 0).toFixed(4)} TON`, 'success');
 
-        } else if (resp.status === 404 || resp.status === 409) {
+        } else if (!resp.ok) {
+            // Гонка: если Poll A уже подтвердил депозит и обнулил currentDepositMemo,
+            // Poll B не должен показывать ошибку.
+            if (!currentDepositMemo) return;
             clearInterval(depositPollInterval);
             depositPollInterval = null;
-            const err = await resp.json().catch(() => ({}));
-            showNotify(err.detail || 'Ошибка депозита', 'error');
+            showNotify(data.detail || 'Ошибка депозита', 'error');
         }
         // status === 'pending' — просто ждём дальше
     } catch (err) {
@@ -273,11 +348,10 @@ function openTonWithdrawModal() {
         addrEl.textContent = tonWalletAddress.slice(0, 8) + '...' + tonWalletAddress.slice(-6);
     }
     const modal = document.getElementById('ton-withdraw-modal');
-    if (modal) {
-        modal.classList.remove('hidden');
-        const amountEl = document.getElementById('ton-withdraw-amount');
-        if (amountEl) amountEl.value = '';
-    }
+    if (!modal) return;
+    const amountEl = document.getElementById('ton-withdraw-amount');
+    if (amountEl) amountEl.value = '';
+    modal.classList.remove('hidden');
 }
 
 function closeTonWithdrawModal() {
@@ -305,11 +379,13 @@ async function submitTonWithdraw() {
         });
         const data = await resp.json();
 
-        if (!resp.ok) {
-            throw new Error(data.detail || 'Ошибка вывода');
-        }
+        if (!resp.ok) throw new Error(data.detail || 'Ошибка вывода');
 
         closeTonWithdrawModal();
+        if (typeof myTonBalance !== 'undefined' && data.new_ton_balance !== undefined) {
+            myTonBalance = data.new_ton_balance;
+            if (typeof updateTonBalanceUI === 'function') updateTonBalanceUI();
+        }
         if (typeof myBalance !== 'undefined' && data.new_balance !== undefined) {
             myBalance = data.new_balance;
             if (typeof updateUI === 'function') updateUI();
@@ -326,23 +402,18 @@ async function submitTonWithdraw() {
 }
 
 // ── Обновление баланса TON в хэдере ─────────────────────────────────────────
-// Вызывается из updateUI() в globals.js автоматически
+// Вызывается из updateUI() в globals.js
 
 function updateTonBalanceUI() {
-    // Баланс TON в хэдере = баланс пончиков (1 TON = 1 пончик)
     const el = document.getElementById('ton-balance-amount');
-    if (el && typeof myBalance !== 'undefined') {
-        el.textContent = formatBalance(myBalance);
+    if (el && typeof myTonBalance !== 'undefined') {
+        el.textContent = formatBalance(myTonBalance);
     }
 }
 
-// ── Автозапуск ────────────────────────────────────────────────────────────────
+// ── Запуск: CDN в <head> гарантирует, что TON_CONNECT_UI доступен здесь ──────
 
-// Инициализируем TonConnect после загрузки страницы
-document.addEventListener('DOMContentLoaded', () => {
-    // Небольшая задержка для загрузки CDN-скриптов
-    setTimeout(initTonConnect, 500);
-});
+initTonConnect();
 
 // ── Экспорт ───────────────────────────────────────────────────────────────────
 

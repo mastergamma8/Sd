@@ -25,7 +25,11 @@ from handlers.security import get_current_user
 
 router = APIRouter(prefix="/api/ton", tags=["ton"])
 
-TON_CENTER_API = "https://toncenter.com/api/v2"
+TON_CENTER_API = (
+    "https://testnet.toncenter.com/api/v2"
+    if config.TON_IS_TESTNET
+    else "https://toncenter.com/api/v2"
+)
 
 
 # ── Pydantic-модели ────────────────────────────────────────────────────────────
@@ -110,6 +114,7 @@ async def ton_config():
         raise HTTPException(503, "TON deposits are not configured")
     return {
         "wallet_address": config.TON_WALLET_ADDRESS,
+        "is_testnet":     config.TON_IS_TESTNET,
         "min_deposit":    config.TON_MIN_DEPOSIT,
         "max_deposit":    config.TON_MAX_DEPOSIT,
         "timeout_sec":    config.TON_DEPOSIT_TIMEOUT,
@@ -167,6 +172,18 @@ async def verify_deposit(
 
     session = await db_ton.get_pending_deposit(user_id, memo)
     if not session:
+        # Гонка: параллельный poll уже успел подтвердить эту сессию.
+        # Возвращаем confirmed вместо 404, чтобы фронтенд корректно завершил поток.
+        confirmed = await db_ton.get_confirmed_deposit(user_id, memo)
+        if confirmed:
+            updated = await database.get_user_data(user_id)
+            return {
+                "status":          "confirmed",
+                "amount_ton":      confirmed.get("actual_amount", 0),
+                "new_ton_balance": updated.get("ton_balance", 0),
+                "new_balance":     updated.get("balance", 0),
+                "new_stars":       updated.get("stars", 0),
+            }
         raise HTTPException(
             404,
             "Сессия депозита не найдена или истекла. Создайте новый депозит."
@@ -193,8 +210,8 @@ async def verify_deposit(
         # Подтверждаем депозит в БД
         await db_ton.confirm_deposit(session["id"], amount, tx_hash)
 
-        # Начисляем пончики на баланс (1 TON = 1 пончик)
-        await database.add_points_to_user(user_id, amount)
+        # Начисляем на TON-баланс (отдельный от пончиков)
+        await database.add_ton_balance(user_id, amount)
 
         # Логируем в историю
         await database.log_action(
@@ -206,10 +223,11 @@ async def verify_deposit(
 
         updated = await database.get_user_data(user_id)
         return {
-            "status":      "confirmed",
-            "amount_ton":  amount,
-            "new_balance": updated.get("balance", 0),
-            "new_stars":   updated.get("stars", 0),
+            "status":          "confirmed",
+            "amount_ton":      amount,
+            "new_ton_balance": updated.get("ton_balance", 0),
+            "new_balance":     updated.get("balance", 0),
+            "new_stars":       updated.get("stars", 0),
         }
 
     # Транзакция ещё не найдена в блокчейне
@@ -291,10 +309,10 @@ async def withdraw_ton(
             wait_min = (cooldown - elapsed) // 60
             raise HTTPException(429, f"Следующий вывод доступен через {wait_min} мин.")
 
-    # ── 2. Атомарное списание balance ─────────────────────────────────────────
-    deducted = await database.deduct_balance(user_id, amount_ton)
+    # ── 2. Атомарное списание ton_balance ───────────────────────────────────────
+    deducted = await database.deduct_ton_balance(user_id, amount_ton)
     if not deducted:
-        raise HTTPException(400, "Недостаточно пончиков на балансе")
+        raise HTTPException(400, "Недостаточно TON на балансе")
 
     # ── 3. Создаём запись в БД ────────────────────────────────────────────────
     withdrawal_id = await db_ton.create_withdrawal_record(
@@ -312,8 +330,8 @@ async def withdraw_ton(
         await db_ton.mark_withdrawal_sent(withdrawal_id, boc)
 
     except Exception as err:
-        # Отправка не удалась → возвращаем баланс пользователю
-        await database.add_points_to_user(user_id, amount_ton)
+        # Отправка не удалась → возвращаем TON-баланс пользователю
+        await database.add_ton_balance(user_id, amount_ton)
         await db_ton.mark_withdrawal_failed(withdrawal_id, str(err))
         raise HTTPException(502, "Ошибка отправки: не удалось перевести TON. Баланс возвращён.")
 
@@ -327,11 +345,12 @@ async def withdraw_ton(
 
     updated = await database.get_user_data(user_id)
     return {
-        "status":      "sent",
-        "amount_ton":  net_amount,
-        "fee_ton":     fee,
-        "to_address":  to_address,
-        "new_balance": updated.get("balance", 0),
+        "status":          "sent",
+        "amount_ton":      net_amount,
+        "fee_ton":         fee,
+        "to_address":      to_address,
+        "new_ton_balance": updated.get("ton_balance", 0),
+        "new_balance":     updated.get("balance", 0),
     }
 
 

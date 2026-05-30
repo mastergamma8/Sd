@@ -39,6 +39,21 @@ async def get_pending_deposit(user_id: int, memo: str) -> dict | None:
             return dict(row) if row else None
 
 
+async def get_confirmed_deposit(user_id: int, memo: str) -> dict | None:
+    """Возвращает уже подтверждённую сессию депозита по user_id + memo."""
+    async with aiosqlite.connect(DB_NAME) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            """
+            SELECT * FROM ton_deposits
+            WHERE user_id = ? AND memo = ? AND status = 'confirmed'
+            """,
+            (user_id, memo)
+        ) as cur:
+            row = await cur.fetchone()
+            return dict(row) if row else None
+
+
 async def confirm_deposit(deposit_id: int, actual_amount: float, tx_hash: str) -> None:
     """Переводит депозит в статус 'confirmed'. Идемпотентно — безопасно вызывать повторно."""
     async with aiosqlite.connect(DB_NAME) as db:

@@ -544,8 +544,86 @@ function nftApplyI18n() {
     }
 }
 
-window.nftT            = nftT;
-window.nftPaintingWord = nftPaintingWord;
-window.nftI18n         = nftI18n;
-window.nftI18nFlat     = nftI18nFlat;
-window.nftApplyI18n    = nftApplyI18n;
+// ─── Метки истории NFT-операций ───────────────────────────────────────────────
+// Аналог HISTORY_LABELS из profile-history.js.
+// Каждый action_type → короткая человекочитаемая метка на ru/en.
+// Описание из БД содержит название картины в формате «Название»,
+// которое nftBuildHistoryTitle() извлекает и подставляет в конец метки.
+
+const NFT_HISTORY_LABELS = {
+    ru: {
+        nft_buy:            'Куплена картина',
+        nft_topup:          'Пополнение NFT-звёзд',
+        nft_stars_topup:    'Пополнение NFT-звёзд',
+        nft_market_buy:     'Куплено на маркете',
+        nft_market_sold:    'Продано на маркете',
+        nft_auction_bid:    'Ставка на аукционе',
+        nft_auction_won:    'Победа в аукционе',
+        nft_auction_sold:   'Продано на аукционе',
+        nft_auction_outbid: 'Ставка перебита — возврат',
+    },
+    en: {
+        nft_buy:            'Painting purchased',
+        nft_topup:          'NFT stars top-up',
+        nft_stars_topup:    'NFT stars top-up',
+        nft_market_buy:     'Bought on market',
+        nft_market_sold:    'Sold on market',
+        nft_auction_bid:    'Auction bid',
+        nft_auction_won:    'Auction won',
+        nft_auction_sold:   'Sold at auction',
+        nft_auction_outbid: 'Outbid — refunded',
+    },
+};
+
+// ─── Построение заголовка записи истории (аналог _buildEntryTitle) ────────────
+// Логика разбора описаний, которые бэкенд формирует в следующих форматах:
+//   nft_buy:            "Куплена картина «Title» #N"
+//   nft_topup:          "Пополнение NFT-звёзд на N ⭐"
+//   nft_market_buy:     "Куплена картина «Title» с маркетплейса за N ⭐"
+//   nft_market_sold:    "Картина «Title» продана на маркетплейсе за N ⭐"
+//   nft_auction_bid:    "Ставка N ⭐ на картину «Title» (аукцион #N)"
+//   nft_auction_won:    "Выиграна картина «Title» на аукционе за N ⭐"
+//   nft_auction_sold:   "Картина «Title» продана на аукционе за N ⭐"
+//   nft_auction_outbid: "Ставка перебита — N ⭐ возвращены (аукцион «Title»)"
+
+function nftBuildHistoryTitle(entry) {
+    const lang   = (typeof currentLang !== 'undefined' ? currentLang : 'ru');
+    const labels = NFT_HISTORY_LABELS[lang] || NFT_HISTORY_LABELS['ru'];
+    const base   = labels[entry.action_type];
+
+    // Неизвестный тип — показываем description как есть (поддержка будущих типов)
+    if (!base) return entry.description || entry.action_type;
+
+    // ── Пополнение: добавляем сумму из entry.amount ───────────────────────────
+    if (entry.action_type === 'nft_topup' || entry.action_type === 'nft_stars_topup') {
+        if (!entry.amount) return base;
+        return lang === 'ru'
+            ? `${base} на ${entry.amount} ⭐`
+            : `${base}: +${entry.amount} ⭐`;
+    }
+
+    // ── Outbid: название картины спрятано после «аукцион «...»» ──────────────
+    if (entry.action_type === 'nft_auction_outbid') {
+        if (entry.description) {
+            const m = entry.description.match(/аукцион\s*«([^»]+)»/);
+            if (m) return `${base}: «${m[1]}»`;
+        }
+        return base;
+    }
+
+    // ── Все остальные типы: первое «...» в description — это название картины ─
+    if (entry.description) {
+        const m = entry.description.match(/«([^»]+)»/);
+        if (m) return `${base}: «${m[1]}»`;
+    }
+
+    return base;
+}
+
+window.nftT                  = nftT;
+window.nftPaintingWord       = nftPaintingWord;
+window.nftI18n               = nftI18n;
+window.nftI18nFlat           = nftI18nFlat;
+window.nftApplyI18n          = nftApplyI18n;
+window.NFT_HISTORY_LABELS    = NFT_HISTORY_LABELS;
+window.nftBuildHistoryTitle  = nftBuildHistoryTitle;

@@ -40,10 +40,10 @@ async def get_user_data(user_id: int):
     async with aiosqlite.connect(DB_NAME) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
-            "SELECT balance, stars, last_free_spin, last_free_case FROM users WHERE tg_id = ?", (user_id,)
+            "SELECT balance, stars, last_free_spin, last_free_case, COALESCE(ton_balance, 0) as ton_balance FROM users WHERE tg_id = ?", (user_id,)
         ) as cursor:
             row = await cursor.fetchone()
-            return dict(row) if row else {"balance": 0, "stars": 0, "last_free_spin": 0, "last_free_case": 0}
+            return dict(row) if row else {"balance": 0, "stars": 0, "last_free_spin": 0, "last_free_case": 0, "ton_balance": 0}
 
 async def get_all_user_ids() -> list[int]:
     async with aiosqlite.connect(DB_NAME) as db:
@@ -91,6 +91,28 @@ async def deduct_balance(user_id: int, amount: float) -> bool:
     async with aiosqlite.connect(DB_NAME) as db:
         cur = await db.execute(
             "UPDATE users SET balance = balance - ? WHERE tg_id = ? AND balance >= ?",
+            (amount, user_id, amount)
+        )
+        await db.commit()
+        return cur.rowcount == 1
+
+async def add_ton_balance(user_id: int, amount: float) -> None:
+    """Начисляет TON на отдельный TON-баланс пользователя."""
+    async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute(
+            "UPDATE users SET ton_balance = COALESCE(ton_balance, 0) + ? WHERE tg_id = ?",
+            (amount, user_id)
+        )
+        await db.commit()
+
+async def deduct_ton_balance(user_id: int, amount: float) -> bool:
+    """
+    Атомарное списание TON-баланса: UPDATE ... WHERE ton_balance >= amount.
+    Возвращает True только если строка реально обновилась.
+    """
+    async with aiosqlite.connect(DB_NAME) as db:
+        cur = await db.execute(
+            "UPDATE users SET ton_balance = ton_balance - ? WHERE tg_id = ? AND COALESCE(ton_balance, 0) >= ?",
             (amount, user_id, amount)
         )
         await db.commit()

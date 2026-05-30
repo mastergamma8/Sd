@@ -6,6 +6,9 @@
   <title>Space Donut app</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <!-- TonConnect: загружаем синхронно в <head>, иначе скрипты внутри партиалов не выполняются -->
+  <script src="https://unpkg.com/@tonconnect/ui@2.0.12/dist/tonconnect-ui.min.js"></script>
+  <script src="https://unpkg.com/tonweb@0.0.62/dist/tonweb.js"></script>
   <link rel="stylesheet" href="/static/styles.css?v=1.8">
 </head>
 <body class="relative">
@@ -97,7 +100,7 @@
   <script src="/static/js/partials-loader.js"></script>
 
   <!-- основные скрипты приложения -->
-  <script src="/static/js/globals.js?v=2.4"></script>
+  <script src="/static/js/globals.js?v=2.5"></script>
   <script src="/static/js/i18n.js?v=3.1"></script>
   <script src="/static/js/subscription.js"></script>
   <script src="/static/js/nav.js?v=1.3"></script>
@@ -113,21 +116,21 @@
   <script src="/static/js/shop.js?v=2.4"></script>
   <script src="/static/js/profile-core.js?v=1.2"></script>
   <script src="/static/js/profile-withdraw.js"></script>
-  <script src="/static/js/profile-history.js?v=1.5"></script>
+  <script src="/static/js/profile-history.js?v=1.6"></script>
   <script src="/static/js/leaderboard.js?v=2.2"></script>
 
   <!-- NFT Галерея: разделена на пять файлов вместо nft.js + nft-market.js -->
   <!-- Порядок подключения строго важен — каждый файл зависит от предыдущих -->
-  <script src="/static/js/nft-i18n.js?v=1.1"></script>
+  <script src="/static/js/nft-i18n.js?v=1.2"></script>
   <script src="/static/js/nft-core.js?v=1.6"></script>       <!-- состояние, open/close, утилиты -->
   <script src="/static/js/nft-shop.js?v=2.7"></script>       <!-- вкладка «Магазин» -->
-  <script src="/static/js/nft-gallery.js?v=2.5"></script>    <!-- «Моя галерея», «Галереи», «История» -->
+  <script src="/static/js/nft-gallery.js?v=2.6"></script>    <!-- «Моя галерея», «Галереи», «История» -->
   <script src="/static/js/nft-modal.js?v=2.0"></script>      <!-- модальное окно картины -->
   <script src="/static/js/nft-market.js?v=2.1"></script>     <!-- маркетплейс и аукционы -->
 
   <!-- TON Connect: кошелёк, депозит, вывод -->
-  <script src="/static/js/ton.js?v=1.0"></script>
+  <script src="/static/js/ton.js?v=1.7"></script>
 
-  <script src="/static/js/app.js?v=2.3"></script>
+  <script src="/static/js/app.js?v=2.4"></script>
 </body>
 </html>

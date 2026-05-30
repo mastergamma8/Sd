@@ -50,6 +50,8 @@ from db.db_users import (  # noqa: F401
     get_user_gifts,
     get_user_settings,
     update_user_settings,
+    add_ton_balance,
+    deduct_ton_balance,
 )
 
 from db.db_history import (  # noqa: F401
