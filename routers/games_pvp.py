@@ -79,10 +79,10 @@ ROLLING_DURATION   = 6.5    # секунд анимации шарика
 FINISHED_DURATION  = 7.0    # секунд показа победителя
 
 MIN_BET_STARS   = 15
-MIN_BET_DONUTS  = 0.1
+MIN_BET_TON     = 0.1
 
 COMMISSION_STARS  = 0.05    # 5% комиссия на звёзды
-COMMISSION_DONUTS = 0.05    # 5% комиссия на пончики
+COMMISSION_TON    = 0.05    # 5% комиссия на TON
 
 SOLO_TIMEOUT = 300.0        # 5 минут ожидания соперника, затем возврат ставок
 
@@ -101,29 +101,29 @@ _lock = asyncio.Lock()
 # КЭШИРОВАННЫЙ ЖИВОЙ КУРС ПОНЧИК → ЗВЁЗДЫ
 # ─────────────────────────────────────────────────────────────
 
-_cached_live_donuts_rate: float = 0.0
+_cached_live_ton_rate: float = 0.0
 _cached_rate_timestamp: float = 0.0
-DONUTS_RATE_CACHE_TTL: float = 30.0  # обновляем каждые 30 секунд
+TON_RATE_CACHE_TTL: float = 30.0  # обновляем каждые 30 секунд
 
 
-async def _get_live_donuts_to_stars_rate() -> float:
-    """Возвращает актуальный курс 1 TON (= 1 пончик) → звёзды.
+async def _get_live_ton_to_stars_rate() -> float:
+    """Возвращает актуальный курс 1 TON → звёзды.
     Данные берутся из того же API, что и в разделе обмена.
     При недоступности API возвращает config.DONUTS_TO_STARS_RATE."""
-    global _cached_live_donuts_rate, _cached_rate_timestamp
+    global _cached_live_ton_rate, _cached_rate_timestamp
     now = time.time()
     if _live_exchange_available and (
-        now - _cached_rate_timestamp > DONUTS_RATE_CACHE_TTL
-        or _cached_live_donuts_rate <= 0
+        now - _cached_rate_timestamp > TON_RATE_CACHE_TTL
+        or _cached_live_ton_rate <= 0
     ):
         try:
             rate = await _fetch_ton_to_stars_rate()
             if rate and rate > 0:
-                _cached_live_donuts_rate = float(rate)
+                _cached_live_ton_rate = float(rate)
                 _cached_rate_timestamp = now
         except Exception as e:
-            print(f"[PvP] failed to fetch live donut rate: {e}")
-    return _cached_live_donuts_rate if _cached_live_donuts_rate > 0 else config.DONUTS_TO_STARS_RATE
+            print(f"[PvP] failed to fetch live TON rate: {e}")
+    return _cached_live_ton_rate if _cached_live_ton_rate > 0 else config.DONUTS_TO_STARS_RATE
 
 
 def _make_round_state_snapshot() -> dict:
@@ -274,14 +274,14 @@ async def _get_live_gift_value_stars(gift_id: int, gift_info: dict) -> int:
 
 def _player_total_stars(player: dict, donuts_rate: float = 0) -> float:
     """Суммарная стоимость ставок игрока в эквиваленте звёзд.
-    donuts_rate: живой курс пончик→звёзды (1 пончик = 1 TON в звёздах);
+    donuts_rate: живой курс TON→звёзды (1 TON = курс в звёздах);
     если 0, берётся из config."""
     rate = donuts_rate if donuts_rate > 0 else config.DONUTS_TO_STARS_RATE
     total = 0.0
     for bet in player["bets"]:
         if bet["type"] == "stars":
             total += bet["amount"]
-        elif bet["type"] == "donuts":
+        elif bet["type"] == "ton":
             total += bet["amount"] * rate
         elif bet["type"] == "gift":
             total += bet.get("value_stars", 1)
@@ -301,7 +301,7 @@ def _build_player_list(donuts_rate: float = 0.0) -> list:
             "color":      player["color"],
             "win_chance": round(win_chance, 1),
             "stars_bet":  sum(b["amount"] for b in player["bets"] if b["type"] == "stars"),
-            "donuts_bet": round(sum(b["amount"] for b in player["bets"] if b["type"] == "donuts"), 2),
+            "ton_bet":    round(sum(b["amount"] for b in player["bets"] if b["type"] == "ton"), 2),
             "gift_bets":  [b for b in player["bets"] if b["type"] == "gift"],
             "value_stars": round(ps, 2),
         })
@@ -309,8 +309,8 @@ def _build_player_list(donuts_rate: float = 0.0) -> list:
 
 
 async def _determine_winner() -> Optional[int]:
-    """Случайный выбор победителя с весами по стоимости ставок (живой курс пончиков)."""
-    live_rate = await _get_live_donuts_to_stars_rate()
+    """Случайный выбор победителя с весами по стоимости ставок (живой курс TON)."""
+    live_rate = await _get_live_ton_to_stars_rate()
     weights = {
         uid: _player_total_stars(player, live_rate)
         for uid, player in pvp_round["players"].items()
@@ -339,8 +339,8 @@ async def _payout_winner(winner_id: int):
             sum(b["amount"] for b in p["bets"] if b["type"] == "stars")
             for p in players.values()
         )
-        total_donuts = sum(
-            sum(b["amount"] for b in p["bets"] if b["type"] == "donuts")
+        total_ton = sum(
+            sum(b["amount"] for b in p["bets"] if b["type"] == "ton")
             for p in players.values()
         )
         all_gift_bets = [
@@ -349,12 +349,12 @@ async def _payout_winner(winner_id: int):
         ]
 
         payout_stars  = int(total_stars * (1 - COMMISSION_STARS))
-        payout_donuts = round(total_donuts * (1 - COMMISSION_DONUTS), 4)
+        payout_ton    = round(total_ton * (1 - COMMISSION_TON), 4)
 
         # ── Запись ставок для ВСЕХ игроков (для истории и лидерборда) ─────────
         for uid, player in players.items():
             stars_bet  = sum(b["amount"] for b in player["bets"] if b["type"] == "stars")
-            donuts_bet = round(sum(b["amount"] for b in player["bets"] if b["type"] == "donuts"), 4)
+            ton_bet    = round(sum(b["amount"] for b in player["bets"] if b["type"] == "ton"), 4)
             gift_bets  = [b for b in player["bets"] if b["type"] == "gift"]
 
             if stars_bet > 0:
@@ -363,11 +363,11 @@ async def _payout_winner(winner_id: int):
                     f"Ставка в Space PvP (раунд #{round_id}, {num_players} игр.)",
                     -stars_bet,
                 )
-            if donuts_bet > 0:
+            if ton_bet > 0:
                 await database.add_history_entry(
-                    uid, "pvp_bet_donuts",
-                    f"Ставка в Space PvP (раунд #{round_id}, {num_players} игр.)",
-                    -donuts_bet,
+                    uid, "pvp_bet_ton",
+                    f"Ставка в Space PvP — TON (раунд #{round_id}, {num_players} игр.)",
+                    -ton_bet,
                 )
             for gb in gift_bets:
                 await database.add_history_entry(
@@ -385,12 +385,12 @@ async def _payout_winner(winner_id: int):
                 payout_stars,
             )
 
-        if payout_donuts > 0:
-            await database.add_points_to_user(winner_id, payout_donuts)
+        if payout_ton > 0:
+            await database.add_ton_balance(winner_id, payout_ton)
             await database.add_history_entry(
-                winner_id, "pvp_win_donuts",
-                f"Победа в Space PvP — пончики (раунд #{round_id})",
-                payout_donuts,
+                winner_id, "pvp_win_ton",
+                f"Победа в Space PvP — TON (раунд #{round_id})",
+                payout_ton,
             )
 
         for gb in all_gift_bets:
@@ -405,7 +405,7 @@ async def _payout_winner(winner_id: int):
         gifts_value_stars = sum(b.get("value_stars", 1) for b in all_gift_bets)
         total_value_stars = (
             int(payout_stars)
-            + int(payout_donuts * config.DONUTS_TO_STARS_RATE)
+            + int(payout_ton * config.DONUTS_TO_STARS_RATE)
             + int(gifts_value_stars * (1 - COMMISSION_STARS))
         )
         # Проверяем анонимность победителя — перезаписываем имя/аватар
@@ -419,7 +419,7 @@ async def _payout_winner(winner_id: int):
             "avatar":            winner_avatar,
             "color":             players[winner_id]["color"],
             "total_stars":       payout_stars,
-            "total_donuts":      payout_donuts,
+            "total_ton":         payout_ton,
             "gifts_count":       len(all_gift_bets),
             "player_count":      num_players,
             "total_value_stars": total_value_stars,
@@ -448,20 +448,20 @@ async def _payout_winner(winner_id: int):
         payout_gift_value     = int(gifts_value_stars * (1 - COMMISSION_STARS))
         await database.bank_record_pvp_game(
             total_stars=total_stars,
-            total_donuts=total_donuts,
+            total_donuts=total_ton,
             total_gift_value=gifts_value_stars_int,
             payout_stars=payout_stars,
-            payout_donuts=payout_donuts,
+            payout_donuts=payout_ton,
             payout_gift_value=payout_gift_value,
         )
 
         # ── Записать завершённую игру в глобальную историю PvP ───────────────
-        winner_stars_bet  = sum(b["amount"] for b in players[winner_id]["bets"] if b["type"] == "stars")
-        winner_donuts_bet = sum(b["amount"] for b in players[winner_id]["bets"] if b["type"] == "donuts")
-        winner_gifts_val  = sum(b.get("value_stars", 1) for b in players[winner_id]["bets"] if b["type"] == "gift")
-        winner_bet_value  = (
+        winner_stars_bet = sum(b["amount"] for b in players[winner_id]["bets"] if b["type"] == "stars")
+        winner_ton_bet   = sum(b["amount"] for b in players[winner_id]["bets"] if b["type"] == "ton")
+        winner_gifts_val = sum(b.get("value_stars", 1) for b in players[winner_id]["bets"] if b["type"] == "gift")
+        winner_bet_value = (
             winner_stars_bet
-            + winner_donuts_bet * config.DONUTS_TO_STARS_RATE
+            + winner_ton_bet * config.DONUTS_TO_STARS_RATE
             + winner_gifts_val
         )
         multiplier = round(total_value_stars / winner_bet_value, 2) if winner_bet_value > 0 else 1.0
@@ -472,7 +472,7 @@ async def _payout_winner(winner_id: int):
             winner_avatar=winner_avatar,
             player_count=num_players,
             total_stars=payout_stars,
-            total_donuts=payout_donuts,
+            total_donuts=payout_ton,
             gifts_count=len(all_gift_bets),
             total_value_stars=total_value_stars,
             winner_bet_value_stars=round(winner_bet_value, 2),
@@ -518,11 +518,11 @@ async def _cancel_and_refund(players_snapshot: dict, round_id: int):
                         f"Возврат ставки Space PvP — звёзды (раунд #{round_id}, нет соперника, таймаут 5 мин)",
                         bet["amount"],
                     )
-                elif bet["type"] == "donuts":
-                    await database.add_points_to_user(uid, bet["amount"])
+                elif bet["type"] == "ton":
+                    await database.add_ton_balance(uid, bet["amount"])
                     await database.add_history_entry(
-                        uid, "pvp_refund_donuts",
-                        f"Возврат ставки Space PvP — пончики (раунд #{round_id}, нет соперника, таймаут 5 мин)",
+                        uid, "pvp_refund_ton",
+                        f"Возврат ставки Space PvP — TON (раунд #{round_id}, нет соперника, таймаут 5 мин)",
                         bet["amount"],
                     )
                 elif bet["type"] == "gift":
@@ -624,7 +624,7 @@ async def pvp_round_manager():
                 if time.time() >= pvp_round["countdown_end"]:
                     async with _lock:
                         if pvp_round["state"] == "countdown":
-                            live_rate = await _get_live_donuts_to_stars_rate()
+                            live_rate = await _get_live_ton_to_stars_rate()
                             winner_id = await _determine_winner()
                             ball_seed = random.randint(1, 999999)
 
@@ -760,7 +760,7 @@ async def get_pvp_state(current_user: dict = Depends(get_current_user)):
     # Обновляем присутствие пользователя при каждом poll состояния
     await touch_online(current_user["id"])
     # Fetch live donut→stars rate BEFORE acquiring the lock (network call)
-    live_rate = await _get_live_donuts_to_stars_rate()
+    live_rate = await _get_live_ton_to_stars_rate()
 
     async with _lock:
         state            = pvp_round["state"]
@@ -777,7 +777,7 @@ async def get_pvp_state(current_user: dict = Depends(get_current_user)):
 
     time_left = max(0.0, countdown_end - time.time()) if countdown_end > 0 else 0.0
     total_stars  = sum(p.get("stars_bet", 0) for p in players)
-    total_donuts = round(sum(p.get("donuts_bet", 0) for p in players), 2)
+    total_donuts = round(sum(p.get("ton_bet", 0) for p in players), 4)
     total_gifts  = sum(len(p.get("gift_bets", [])) for p in players)
 
     # Collect unique gift previews (photo + name) for pot display in UI
@@ -817,7 +817,7 @@ async def get_pvp_state(current_user: dict = Depends(get_current_user)):
         "ball_target_y":   ball_target_y,
         "players":         players,
         "winner":          winner_data,
-        "pot":             {"stars": total_stars, "donuts": total_donuts, "gifts": total_gifts, "gift_previews": gift_previews},
+        "pot":             {"stars": total_stars, "ton": total_donuts, "gifts": total_gifts, "gift_previews": gift_previews},
         "last_game":       await _apply_game_anonymity(last_game),
         "best_game":       await _apply_game_anonymity(best_game),
         "online_count":    await get_online_count(),
@@ -873,21 +873,21 @@ async def bet_stars(data: BetStarsRequest, current_user: dict = Depends(get_curr
             "gifts": await database.get_user_gifts(tg_id)}
 
 
-@router.post("/bet/donuts")
-async def bet_donuts(data: BetDonutsRequest, current_user: dict = Depends(get_current_user)):
+@router.post("/bet/ton")
+async def bet_ton(data: BetDonutsRequest, current_user: dict = Depends(get_current_user)):
     tg_id  = current_user["id"]
-    amount = round(data.amount, 2)
+    amount = round(data.amount, 4)
 
-    if amount < MIN_BET_DONUTS:
-        raise HTTPException(400, f"Минимальная ставка {MIN_BET_DONUTS} 🍩")
+    if amount < MIN_BET_TON:
+        raise HTTPException(400, f"Минимальная ставка {MIN_BET_TON} TON")
 
     async with _lock:
         if pvp_round["state"] not in ("waiting", "countdown"):
             raise HTTPException(400, "Ставки сейчас не принимаются")
 
-    ok = await database.deduct_balance(tg_id, amount)
+    ok = await database.deduct_ton_balance(tg_id, amount)
     if not ok:
-        raise HTTPException(400, "Недостаточно пончиков")
+        raise HTTPException(400, "Недостаточно TON")
 
     settings = await database.get_user_settings(tg_id)
     display_name   = "Anonim" if settings["is_anonymous"] else None
@@ -896,10 +896,10 @@ async def bet_donuts(data: BetDonutsRequest, current_user: dict = Depends(get_cu
     _save_args = None
     async with _lock:
         if pvp_round["state"] not in ("waiting", "countdown"):
-            await database.add_points_to_user(tg_id, amount)
+            await database.add_ton_balance(tg_id, amount)
             raise HTTPException(400, "Ставки сейчас не принимаются")
         _ensure_player(tg_id, current_user, display_name, display_avatar)
-        pvp_round["players"][tg_id]["bets"].append({"type": "donuts", "amount": amount})
+        pvp_round["players"][tg_id]["bets"].append({"type": "ton", "amount": amount})
         _save_args = (pvp_round["id"], pvp_round["last_game"], pvp_round["best_game"],
                       _make_round_state_snapshot())
 
@@ -907,8 +907,8 @@ async def bet_donuts(data: BetDonutsRequest, current_user: dict = Depends(get_cu
 
     updated = await database.get_user_data(tg_id)
     updated_gifts = await database.get_user_gifts(tg_id)
-    return {"status": "ok", "balance": updated["balance"], "stars": updated["stars"],
-            "gifts": updated_gifts}
+    return {"status": "ok", "ton_balance": updated.get("ton_balance", 0), "balance": updated["balance"],
+            "stars": updated["stars"], "gifts": updated_gifts}
 
 
 @router.post("/bet/gift")
@@ -1041,5 +1041,6 @@ async def get_user_balance(current_user: dict = Depends(get_current_user)):
     return {
         "balance": user_data.get("balance", 0),
         "stars":   user_data.get("stars", 0),
+        "ton_balance": user_data.get("ton_balance", 0),
         "gifts":   user_gifts,
             }

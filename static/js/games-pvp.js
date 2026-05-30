@@ -10,7 +10,7 @@ let pvpState = {
     time_left: 0,
     players: [],
     winner: null,
-    pot: { stars: 0, donuts: 0, gifts: 0 },
+    pot: { stars: 0, ton: 0, gifts: 0 },
     last_game: null,
     best_game: null,
 };
@@ -18,7 +18,7 @@ let pvpState = {
 let pvpPollTimer          = null;
 let pvpPollingActive      = false;  // страж от race-condition при закрытии
 let pvpBallAnimFrame      = null;
-let pvpBetTab             = 'stars';   // 'stars' | 'donuts' | 'gift'
+let pvpBetTab             = 'stars';   // 'stars' | 'ton' | 'gift'
 let pvpInventory          = [];
 let pvpBallPos            = { x: 50, y: 50 };
 let pvpBallTrail          = [];
@@ -58,7 +58,7 @@ function _pvpStarIcon(size) {
     return `<img src="/gifts/stars.png" class="inline-block object-contain" style="width:${size}px;height:${size}px;vertical-align:middle;" onerror="this.outerHTML='★'">`;
 }
 function _pvpDonutIcon(size) {
-    return `<img src="/gifts/dount.png" class="inline-block object-contain" style="width:${size}px;height:${size}px;vertical-align:middle;" onerror="this.outerHTML='🍩'">`;
+    return `<img src="/gifts/ton.png" class="inline-block object-contain" style="width:${size}px;height:${size}px;vertical-align:middle;" onerror="this.outerHTML='💎'">`;
 }
 function _pvpGiftIcon(size) {
     return `<img src="/gifts/spacedount.png" class="inline-block object-contain" style="width:${size}px;height:${size}px;vertical-align:middle;" onerror="this.outerHTML='🎁'">`;
@@ -465,9 +465,12 @@ function pvpInitBallFromSeed(seed, winnerId, serverTarget = null) {
     // ── Bounce thresholds for haptic feedback ────────────────────────────
     //   Each threshold is the startT of a wall-bounce segment (skip segment 0
     //   which starts at center, and skip the last "glide to target" segment).
+    //   Thresholds beyond 0.82 are excluded to prevent multiple rapid vibrations
+    //   in the final stretch just before the winner reveal haptic fires.
     pvpBounceThresholds = pvpTrajectorySegments
         .slice(1, pvpTrajectorySegments.length - 1)
-        .map(seg => ({ t: seg.startT, fired: false }));
+        .map(seg => ({ t: seg.startT, fired: false }))
+        .filter(bth => bth.t < 0.82);
 
     // Reset tail
     pvpBallTailPositions = [];
@@ -785,7 +788,7 @@ function updatePvpStatus() {
     // This is the primary fix for the "animate-pulse dot restarts every 600ms" bug:
     // the dot element was being recreated on every poll even when state didn't change.
     const p = pvpState.pot;
-    const statusHash = pvpState.state + '|' + (p?.stars||0) + '|' + (p?.donuts||0) + '|' + (p?.gifts||0) + '|' +
+    const statusHash = pvpState.state + '|' + (p?.stars||0) + '|' + (p?.ton||0) + '|' + (p?.gifts||0) + '|' +
         JSON.stringify(p?.gift_previews||[]) + '|winner:' + (pvpState.winner?.user_id ?? 'none');
     const skipStatusRebuild = (statusHash === _pvpStatusHash);
     if (!skipStatusRebuild) {
@@ -834,10 +837,10 @@ function updatePvpStatus() {
         if (p.stars > 0) {
             html += `<span class="pvp-pot-badge pvp-pot-badge-stars">${p.stars}<img src="/gifts/stars.png" onerror="this.outerHTML='★'"></span>`;
         }
-        if (p.donuts > 0) {
+        if (p.ton > 0) {
             if (html) html += `<span class="text-white/30 text-xs font-black self-center">+</span>`;
-            const dn = typeof formatDonut === 'function' ? formatDonut(p.donuts) : p.donuts;
-            html += `<span class="pvp-pot-badge pvp-pot-badge-donuts">${dn}<img src="/gifts/dount.png" onerror="this.outerHTML='🍩'"></span>`;
+            const tn = p.ton.toFixed(2);
+            html += `<span class="pvp-pot-badge pvp-pot-badge-donuts">${tn}<img src="/gifts/ton.png" onerror="this.outerHTML='💎'"></span>`;
         }
 
         const previews = p.gift_previews || [];
@@ -877,7 +880,7 @@ function renderPvpParticipants() {
 
     // Skip rebuild if player list + winner state unchanged
     const partsHash = pvpState.state + '|' + pvpState.round_id + '|' +
-        players.map(p => p.user_id + ':' + p.win_chance.toFixed(2) + ':' + (p.stars_bet||0) + ':' + (p.donuts_bet||0)).join(',') +
+        players.map(p => p.user_id + ':' + p.win_chance.toFixed(2) + ':' + (p.stars_bet||0) + ':' + (p.ton_bet||0)).join(',') +
         '|winner:' + (pvpState.winner?.user_id ?? 'none');
     if (partsHash === _pvpPartsHash) return;
     _pvpPartsHash = partsHash;
@@ -892,7 +895,7 @@ function renderPvpParticipants() {
     list.innerHTML = players.map(p => {
         const betParts = [];
         if (p.stars_bet  > 0) betParts.push(`<span class="inline-flex items-center gap-1 text-yellow-300 font-bold text-xs">${p.stars_bet}${_pvpStarIcon(13)}</span>`);
-        if (p.donuts_bet > 0) betParts.push(`<span class="inline-flex items-center gap-1 text-orange-300 font-bold text-xs">${p.donuts_bet}${_pvpDonutIcon(13)}</span>`);
+        if (p.ton_bet > 0) betParts.push(`<span class="inline-flex items-center gap-1 text-blue-300 font-bold text-xs">${p.ton_bet}${_pvpDonutIcon(13)}</span>`);
 
         // Render each gift with photo + value_stars
         if (p.gift_bets?.length > 0) {
@@ -951,7 +954,7 @@ function renderPvpBetPanel() {
 
 function pvpSwitchBetTab(tab) {
     pvpBetTab = tab;
-    ['stars', 'donuts', 'gift'].forEach(t => {
+    ['stars', 'ton', 'gift'].forEach(t => {
         const btn    = document.getElementById(`pvp-tab-${t}`);
         const pane   = document.getElementById(`pvp-pane-${t}`);
         const active = t === tab;
@@ -995,9 +998,10 @@ async function pvpRefreshUserData() {
     try {
         const res  = await fetch('/api/pvp/user_balance', { headers: getApiHeaders() });
         const data = await res.json();
-        if (data.balance !== undefined) myBalance = data.balance;
-        if (data.stars   !== undefined) myStars   = data.stars;
-        if (data.gifts   !== undefined) myGifts   = data.gifts;
+        if (data.balance     !== undefined) myBalance    = data.balance;
+        if (data.ton_balance !== undefined) myTonBalance = data.ton_balance;
+        if (data.stars       !== undefined) myStars      = data.stars;
+        if (data.gifts       !== undefined) myGifts      = data.gifts;
         if (typeof updateUI      === 'function') updateUI();
         if (typeof renderProfile === 'function') renderProfile();
     } catch (_) {}
@@ -1021,13 +1025,13 @@ async function placePvpBet() {
         }
         await sendPvpBet('/api/pvp/bet/stars', { amount });
 
-    } else if (pvpBetTab === 'donuts') {
-        const amount = parseFloat(document.getElementById('pvp-donuts-input')?.value || '0');
+    } else if (pvpBetTab === 'ton') {
+        const amount = parseFloat(document.getElementById('pvp-ton-input')?.value || '0');
         if (!amount || amount < 0.1) {
-            if (typeof showNotify === 'function') showNotify(_pvpT('pvp_min_donuts_warn', 'Minimum 0.1 🍩'), 'warning');
+            if (typeof showNotify === 'function') showNotify(_pvpT('pvp_min_ton_warn', 'Minimum 0.1 TON'), 'warning');
             return;
         }
-        await sendPvpBet('/api/pvp/bet/donuts', { amount });
+        await sendPvpBet('/api/pvp/bet/ton', { amount });
     }
 }
 
@@ -1059,6 +1063,7 @@ async function sendPvpBet(url, body) {
         }
         if (typeof showNotify === 'function') showNotify(_pvpT('pvp_bet_accepted', 'Bet accepted! 🎯'), 'success');
         if (data.balance !== undefined) myBalance = data.balance;
+        if (data.ton_balance !== undefined) myTonBalance = data.ton_balance;
         if (data.stars   !== undefined) myStars   = data.stars;
         if (data.gifts   !== undefined) myGifts   = data.gifts;
         if (typeof updateUI      === 'function') updateUI();
@@ -1080,12 +1085,12 @@ function setPvpStarsBet(preset) {
     else                        inp.value = preset;
 }
 
-function setPvpDonutsBet(preset) {
-    const inp = document.getElementById('pvp-donuts-input');
+function setPvpTonBet(preset) {
+    const inp = document.getElementById('pvp-ton-input');
     if (!inp) return;
-    const balance = (typeof myBalance !== 'undefined' ? myBalance : 0);
+    const balance = (typeof myTonBalance !== 'undefined' ? myTonBalance : 0);
     if (preset === 'min')      inp.value = 0.1;
-    else if (preset === 'x2')  inp.value = Math.min(balance, Math.max(0.1, parseFloat(inp.value || '0.1') * 2));
+    else if (preset === 'x2')  inp.value = Math.min(balance, Math.max(0.1, parseFloat(inp.value || '0.1') * 2)).toFixed(2);
     else if (preset === 'max') inp.value = balance;
     else                       inp.value = preset;
 }
@@ -1102,7 +1107,7 @@ function showPvpWinnerReveal(winner) {
     const pot = pvpState.pot;
     const potStr = [];
     if (pot.stars  > 0) potStr.push(`${Math.floor(pot.stars  * 0.95)}${_pvpStarIcon(16)}`);
-    if (pot.donuts > 0) potStr.push(`${(pot.donuts * 0.95).toFixed(2)}${_pvpDonutIcon(16)}`);
+    if (pot.ton > 0) potStr.push(`${(pot.ton * 0.95).toFixed(2)}${_pvpDonutIcon(16)}`);
 
     // Show actual gift images with their star value
     const previews = pot.gift_previews || [];

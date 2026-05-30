@@ -64,7 +64,7 @@ function _buildPvpHistoryCard(entry) {
     }
     if (entry.total_donuts > 0) {
         const d = (typeof formatBalance === 'function') ? formatBalance(entry.total_donuts) : entry.total_donuts;
-        parts.push(`<span class="flex items-center gap-0.5 text-amber-300 font-bold text-xs">+${d}<img src="/gifts/dount.png" class="w-3.5 h-3.5 object-contain ml-0.5"></span>`);
+        parts.push(`<span class="flex items-center gap-0.5 text-blue-300 font-bold text-xs">+${d}<img src="/gifts/ton.png" class="w-3.5 h-3.5 object-contain ml-0.5"></span>`);
     }
     if (entry.gifts_count > 0) {
         parts.push(`<span class="text-purple-300 font-bold text-xs">+${entry.gifts_count} 🎁</span>`);

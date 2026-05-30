@@ -50,12 +50,15 @@ const HISTORY_ICONS = {
     // ── Space PvP ────────────────────────────────────────────────────────────
     pvp_bet_stars:        { icon: '⚔️', color: 'red',    sign: '-' },
     pvp_bet_donuts:       { icon: '⚔️', color: 'red',    sign: '-' },
+    pvp_bet_ton:          { icon: '⚔️', color: 'red',    sign: '-' },
     pvp_bet_gift:         { icon: '⚔️', color: 'red',    sign: null },
     pvp_win_stars:        { icon: '🏆', color: 'green',  sign: '+' },
     pvp_win_donuts:       { icon: '🏆', color: 'green',  sign: '+' },
+    pvp_win_ton:          { icon: '🏆', color: 'green',  sign: '+' },
     pvp_win_gift:         { icon: '🏆', color: 'green',  sign: null },
     pvp_refund_stars:     { icon: '↩️', color: 'amber',  sign: '+' },
     pvp_refund_donuts:    { icon: '↩️', color: 'amber',  sign: '+' },
+    pvp_refund_ton:       { icon: '↩️', color: 'amber',  sign: '+' },
     pvp_refund_gift:      { icon: '↩️', color: 'amber',  sign: null },
 
     // ── Promo codes ───────────────────────────────────────────────────────────
@@ -67,7 +70,7 @@ const HISTORY_ICONS = {
     withdraw_gift:        { icon: '📤', color: 'gray',   sign: null },
     withdraw_tg_gift:     { icon: '📤', color: 'gray',   sign: null },
     exchange_tg_gift:     { icon: '🔁', color: 'amber',  sign: '+' },
-    exchange_gift_donuts: { icon: '🍩', color: 'green',  sign: '+' },
+    exchange_gift_donuts: { icon: '💎', color: 'green',  sign: '+' },
     exchange_gift_stars:  { icon: '⭐', color: 'amber',  sign: '+' },
 
     // ── Tasks & referrals ────────────────────────────────────────────────────
@@ -151,21 +154,24 @@ const HISTORY_LABELS = {
 
         pvp_bet_stars:        'Ставка в Space PvP',
         pvp_bet_donuts:       'Ставка в Space PvP',
+        pvp_bet_ton:          'Ставка в Space PvP — TON',
         pvp_bet_gift:         'Подарок в Space PvP',
         pvp_win_stars:        'Победа в Space PvP',
         pvp_win_donuts:       'Победа в Space PvP',
+        pvp_win_ton:          'Победа в Space PvP — TON',
         pvp_win_gift:         'Победа в Space PvP — подарок',
         pvp_refund_stars:     'Возврат ставки PvP — звёзды',
-        pvp_refund_donuts:    'Возврат ставки PvP — пончики',
+        pvp_refund_donuts:    'Возврат ставки PvP — TON',
+        pvp_refund_ton:       'Возврат ставки PvP — TON',
         pvp_refund_gift:      'Возврат подарка PvP',
 
-        promo_donuts:         'Промокод — пончики',
+        promo_donuts:         'Промокод — TON',
         promo_stars:          'Промокод — звёзды',
         claim_gift:           'Получение NFT-подарка',
         withdraw_gift:        'Вывод NFT-подарка',
         withdraw_tg_gift:     'Вывод Telegram-подарка',
         exchange_tg_gift:     'Обмен Telegram-подарка',
-        exchange_gift_donuts: 'Обмен NFT-подарка на пончики',
+        exchange_gift_donuts: 'Обмен NFT-подарка на TON',
         exchange_gift_stars:  'Обмен NFT-подарка на звёзды',
         task_reward:          'Награда за задание',
         task_reward_stars:    'Награда за задание',
@@ -209,21 +215,24 @@ const HISTORY_LABELS = {
 
         pvp_bet_stars:        'Space PvP bet',
         pvp_bet_donuts:       'Space PvP bet',
+        pvp_bet_ton:          'Space PvP bet — TON',
         pvp_bet_gift:         'Space PvP gift bet',
         pvp_win_stars:        'Space PvP win',
         pvp_win_donuts:       'Space PvP win',
+        pvp_win_ton:          'Space PvP win — TON',
         pvp_win_gift:         'Space PvP win — gift',
         pvp_refund_stars:     'PvP bet refunded — stars',
-        pvp_refund_donuts:    'PvP bet refunded — donuts',
+        pvp_refund_donuts:    'PvP bet refunded — TON',
+        pvp_refund_ton:       'PvP bet refunded — TON',
         pvp_refund_gift:      'PvP gift refunded',
 
-        promo_donuts:         'Promo code — donuts',
+        promo_donuts:         'Promo code — TON',
         promo_stars:          'Promo code — stars',
         claim_gift:           'NFT gift claimed',
         withdraw_gift:        'NFT Gift withdrawn',
         withdraw_tg_gift:     'Telegram gift withdrawn',
         exchange_tg_gift:     'Telegram gift exchanged',
-        exchange_gift_donuts: 'NFT gift exchanged for donuts',
+        exchange_gift_donuts: 'NFT gift exchanged for TON',
         exchange_gift_stars:  'NFT gift exchanged for stars',
         task_reward:          'Task reward',
         task_reward_stars:    'Task reward',
@@ -288,7 +297,7 @@ function getHistoryGiftPhoto(entry) {
     if (entry.action_type === 'admin_add_stars') return '/gifts/stars.png';
 
     // Season leaderboard prizes — resolve icon by prize type
-    if (entry.action_type === 'season_prize_donuts') return '/gifts/dount.png';
+    if (entry.action_type === 'season_prize_donuts') return '/gifts/ton.png';
     if (entry.action_type === 'season_prize_stars')  return '/gifts/stars.png';
     if ((entry.action_type === 'season_prize_gift' || entry.action_type === 'season_prize_tg_gift') && entry.description) {
         const m = entry.description.match(/\[gift_id:([^\]]+)\]/);
@@ -299,8 +308,9 @@ function getHistoryGiftPhoto(entry) {
     }
 
     // PvP general events (non-gift) — use pvp.png banner image
-    const pvpBannerTypes = new Set(['pvp_bet_stars', 'pvp_bet_donuts', 'pvp_win_stars', 'pvp_win_donuts',
-                                    'pvp_refund_stars', 'pvp_refund_donuts']);
+    const pvpBannerTypes = new Set(['pvp_bet_stars', 'pvp_bet_donuts', 'pvp_bet_ton',
+                                    'pvp_win_stars', 'pvp_win_donuts', 'pvp_win_ton',
+                                    'pvp_refund_stars', 'pvp_refund_donuts', 'pvp_refund_ton']);
     if (pvpBannerTypes.has(entry.action_type)) return '/gifts/pvp.png';
 
     // PvP gift events — resolve the actual gift photo via [gift_id:...] tag
@@ -353,7 +363,7 @@ function getHistoryGiftPhoto(entry) {
 function _buildAmountHtml(entry, meta) {
     const useStars    = STAR_AMOUNT_TYPES.has(entry.action_type);
     const useTon      = TON_AMOUNT_TYPES.has(entry.action_type);
-    const currencyUrl = useStars ? '/gifts/stars.png' : '/gifts/dount.png';
+    const currencyUrl = useStars ? '/gifts/stars.png' : '/gifts/ton.png';
     const rawAbs      = Math.abs(entry.amount);
     // For donut-denominated amounts use formatBalance so fractions render correctly
     const absAmount   = useStars ? rawAbs : formatBalance(rawAbs);
@@ -487,9 +497,9 @@ function _buildEntryTitle(entry) {
 
     // PvP entries — append round number and player count from description
     const pvpTypes = new Set([
-        'pvp_bet_stars', 'pvp_bet_donuts', 'pvp_bet_gift',
-        'pvp_win_stars', 'pvp_win_donuts', 'pvp_win_gift',
-        'pvp_refund_stars', 'pvp_refund_donuts', 'pvp_refund_gift',
+        'pvp_bet_stars', 'pvp_bet_donuts', 'pvp_bet_ton', 'pvp_bet_gift',
+        'pvp_win_stars', 'pvp_win_donuts', 'pvp_win_ton', 'pvp_win_gift',
+        'pvp_refund_stars', 'pvp_refund_donuts', 'pvp_refund_ton', 'pvp_refund_gift',
     ]);
     if (pvpTypes.has(entry.action_type) && entry.description) {
         const roundMatch   = entry.description.match(/раунд #(\d+)/);

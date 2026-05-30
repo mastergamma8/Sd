@@ -283,9 +283,9 @@
                     <img src="/gifts/stars.png" class="w-4 h-4 object-contain" onerror="this.style.display='none'">
                     <span data-i18n="pvp_tab_stars">Звёзды</span>
                 </button>
-                <button id="pvp-tab-donuts" onclick="pvpSwitchBetTab('donuts')" class="flex-1 py-2.5 text-xs font-black text-white/40 tracking-wide transition-colors flex items-center justify-center gap-1.5">
-                    <img src="/gifts/dount.png" class="w-4 h-4 object-contain" onerror="this.style.display='none'">
-                    <span data-i18n="pvp_tab_donuts">Пончики</span>
+                <button id="pvp-tab-ton" onclick="pvpSwitchBetTab('ton')" class="flex-1 py-2.5 text-xs font-black text-white/40 tracking-wide transition-colors flex items-center justify-center gap-1.5">
+                    <img src="/gifts/ton.png" class="w-4 h-4 object-contain" onerror="this.style.display='none'">
+                    <span data-i18n="pvp_tab_ton">TON</span>
                 </button>
                 <button id="pvp-tab-gift" onclick="pvpSwitchBetTab('gift')" class="flex-1 py-2.5 text-xs font-black text-white/40 tracking-wide transition-colors flex items-center justify-center gap-1.5">
     <img src="/gifts/pepe.png" class="w-4 h-4 object-contain" alt="Pepe" onerror="this.style.display='none'">
@@ -314,24 +314,24 @@
                 </button>
             </div>
 
-            <!-- Donuts pane -->
-            <div id="pvp-pane-donuts" class="p-3 hidden">
-                <label class="block text-[10px] font-bold text-white/50 mb-1 uppercase tracking-wider" data-i18n="pvp_min_donuts">Ставка (мин. 0.1 🍩)</label>
+            <!-- TON pane -->
+            <div id="pvp-pane-ton" class="p-3 hidden">
+                <label class="block text-[10px] font-bold text-white/50 mb-1 uppercase tracking-wider" data-i18n="pvp_min_ton">Ставка (мин. 0.1 TON)</label>
                 <div class="flex items-center gap-2 mb-2">
                     <div class="relative flex-1">
-                        <input type="number" id="pvp-donuts-input" value="0.1" min="0.1" step="0.1"
-                            class="w-full bg-black/40 border border-white/10 rounded-xl pl-3 pr-9 py-2 text-sm font-bold text-white focus:outline-none focus:border-rose-500/50 transition-colors">
-                        <img src="/gifts/dount.png" class="w-4 h-4 absolute right-2.5 top-2.5 object-contain opacity-80" onerror="this.style.display='none'">
+                        <input type="number" id="pvp-ton-input" value="0.1" min="0.1" step="0.01"
+                            class="w-full bg-black/40 border border-white/10 rounded-xl pl-3 pr-9 py-2 text-sm font-bold text-white focus:outline-none focus:border-blue-500/50 transition-colors">
+                        <img src="/gifts/ton.png" class="w-4 h-4 absolute right-2.5 top-2.5 object-contain opacity-80" onerror="this.style.display='none'">
                     </div>
-                    <button onclick="setPvpDonutsBet('min')" class="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs font-bold text-white/80 active:scale-95">MIN</button>
-                    <button onclick="setPvpDonutsBet('x2')"  class="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs font-bold text-white/80 active:scale-95">×2</button>
-                    <button onclick="setPvpDonutsBet('max')" class="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs font-bold text-white/80 active:scale-95">MAX</button>
+                    <button onclick="setPvpTonBet('min')" class="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs font-bold text-white/80 active:scale-95">MIN</button>
+                    <button onclick="setPvpTonBet('x2')"  class="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs font-bold text-white/80 active:scale-95">×2</button>
+                    <button onclick="setPvpTonBet('max')" class="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs font-bold text-white/80 active:scale-95">MAX</button>
                 </div>
                 <button onclick="placePvpBet()"
                     class="w-full py-2.5 rounded-xl font-black text-sm text-white active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
-                    style="background:linear-gradient(135deg,#f97316,#c2410c);box-shadow:0 4px 20px rgba(249,115,22,0.4)">
-                    <span data-i18n="pvp_bet_btn_donuts">Поставить</span>
-                    <img src="/gifts/dount.png" class="w-4 h-4 object-contain" onerror="this.style.display='none'">
+                    style="background:linear-gradient(135deg,#0098EA,#0077c2);box-shadow:0 4px 20px rgba(0,152,234,0.4)">
+                    <span data-i18n="pvp_bet_btn_ton">Поставить</span>
+                    <img src="/gifts/ton.png" class="w-4 h-4 object-contain" onerror="this.style.display='none'">
                 </button>
             </div>
 

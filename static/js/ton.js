@@ -372,6 +372,18 @@ async function startTonDeposit() {
         showNotify(t('ton_deposit_error_amount', 'Введите сумму депозита'), 'error');
         return;
     }
+    if (amount < tonMinDeposit) {
+        showNotify(t('ton_deposit_error_min', 'Минимальная сумма пополнения: {min} TON').replace('{min}', tonMinDeposit), 'error');
+        return;
+    }
+    if (amount > tonMaxDeposit) {
+        showNotify(t('ton_deposit_error_max', 'Максимальная сумма пополнения: {max} TON').replace('{max}', tonMaxDeposit), 'error');
+        return;
+    }
+    if (walletBlockchainBalance !== null && amount > walletBlockchainBalance) {
+        showNotify(t('ton_deposit_error_no_funds', 'Недостаточно TON в кошельке'), 'error');
+        return;
+    }
 
     const statusEl = document.getElementById('ton-deposit-status');
     if (statusEl) statusEl.textContent = t('ton_deposit_creating', 'Создаём сессию...');
@@ -384,8 +396,12 @@ async function startTonDeposit() {
         });
 
         if (!createResp.ok) {
-            const err = await createResp.json().catch(() => ({}));
-            throw new Error(err.detail || 'Ошибка создания сессии депозита');
+            const errData = await createResp.json().catch(() => ({}));
+            // Map known server-side error codes to user-friendly i18n keys
+            if (createResp.status === 503 || createResp.status === 500) {
+                throw Object.assign(new Error(errData.detail || ''), { _i18nKey: 'ton_deposit_error_session' });
+            }
+            throw new Error(errData.detail || 'Ошибка создания сессии депозита');
         }
 
         const { memo, wallet_address, expires_at } = await createResp.json();
@@ -435,7 +451,29 @@ async function startTonDeposit() {
             clearInterval(depositPollInterval);
             depositPollInterval = null;
         }
-        showNotify(err?.message || 'Ошибка отправки транзакции', 'error');
+
+        // Classify error for a user-friendly message
+        const errMsg  = (err?.message || '').toLowerCase();
+        const errCode = err?.code;
+
+        let notifyMsg;
+        if (err?._i18nKey) {
+            // Server mapped a specific key (e.g. session creation failure)
+            notifyMsg = t(err._i18nKey, err.message);
+        } else if (errCode === 300 || errMsg.includes('reject') || errMsg.includes('cancel') || errMsg.includes('declined') || errMsg.includes('user closed')) {
+            // User tapped "Cancel" / closed the wallet popup
+            notifyMsg = t('ton_deposit_cancelled', 'Транзакция отменена');
+        } else if (errMsg.includes('expired') || errMsg.includes('timeout') || errMsg.includes('valid until')) {
+            // Transaction window expired before the user confirmed
+            notifyMsg = t('ton_deposit_expired', 'Время сессии истекло. Начните заново');
+        } else if (errMsg.includes('failed to fetch') || errMsg.includes('networkerror') || errMsg.includes('network') || errMsg.includes('connection')) {
+            // Internet / server unreachable
+            notifyMsg = t('ton_deposit_error_network', 'Ошибка соединения. Попробуйте ещё раз');
+        } else {
+            notifyMsg = t('ton_deposit_error_generic', 'Ошибка при отправке транзакции. Попробуйте ещё раз');
+        }
+
+        showNotify(notifyMsg, 'error');
         if (statusEl) statusEl.textContent = '';
         console.error('[TON deposit]', err);
     }
@@ -532,6 +570,18 @@ async function submitTonWithdraw() {
         showNotify(t('ton_withdraw_error_amount', 'Введите сумму вывода'), 'error');
         return;
     }
+    if (amount < tonMinWithdraw) {
+        showNotify(t('ton_withdraw_error_min', 'Минимальная сумма вывода: {min} TON').replace('{min}', tonMinWithdraw), 'error');
+        return;
+    }
+    if (amount > tonMaxWithdraw) {
+        showNotify(t('ton_withdraw_error_max', 'Максимальная сумма вывода: {max} TON').replace('{max}', tonMaxWithdraw), 'error');
+        return;
+    }
+    if (typeof myTonBalance !== 'undefined' && amount > myTonBalance) {
+        showNotify(t('ton_withdraw_error_no_funds', 'Недостаточно TON для вывода'), 'error');
+        return;
+    }
 
     const btn = document.getElementById('ton-withdraw-btn');
     if (btn) { btn.disabled = true; btn.textContent = t('ton_withdraw_sending', 'Отправляем...'); }
@@ -544,7 +594,13 @@ async function submitTonWithdraw() {
         });
         const data = await resp.json();
 
-        if (!resp.ok) throw new Error(data.detail || 'Ошибка вывода');
+        if (!resp.ok) {
+            // Map known error codes to i18n keys
+            if (data.detail && data.detail.toLowerCase().includes('insuffic')) {
+                throw Object.assign(new Error(data.detail), { _i18nKey: 'ton_withdraw_error_no_funds' });
+            }
+            throw new Error(data.detail || '');
+        }
 
         closeTonWithdrawModal();
         if (typeof myTonBalance !== 'undefined' && data.new_ton_balance !== undefined) {
@@ -563,7 +619,18 @@ async function submitTonWithdraw() {
             'success'
         );
     } catch (err) {
-        showNotify(err.message || 'Ошибка вывода', 'error');
+        const errMsg = (err?.message || '').toLowerCase();
+        let notifyMsg;
+        if (err?._i18nKey) {
+            notifyMsg = t(err._i18nKey, err.message);
+        } else if (errMsg.includes('insuffic') || errMsg.includes('недостаточно')) {
+            notifyMsg = t('ton_withdraw_error_no_funds', 'Недостаточно TON для вывода');
+        } else if (errMsg.includes('failed to fetch') || errMsg.includes('network') || errMsg.includes('connection')) {
+            notifyMsg = t('ton_deposit_error_network', 'Ошибка соединения. Попробуйте ещё раз');
+        } else {
+            notifyMsg = t('ton_withdraw_error_generic', 'Ошибка при выводе средств. Попробуйте позже');
+        }
+        showNotify(notifyMsg, 'error');
     } finally {
         if (btn) { btn.disabled = false; btn.textContent = t('ton_withdraw_btn_label', 'Вывести'); }
     }
