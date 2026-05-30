@@ -79,7 +79,7 @@ function nftOpenPainting(paintingId, fromGallery = false, viewOnly = false, seri
             ? painting.available
             : (painting.total_supply - (painting.sold_count || 0));
         const displayRemaining = rawRemaining <= 0 ? painting.total_supply : rawRemaining;
-        badge.textContent  = `${displayRemaining} из ${painting.total_supply}`;
+        badge.textContent  = nftT('supply_of', { remaining: displayRemaining, total: painting.total_supply });
         badge.style.display = '';
     } else {
         badge.style.display = 'none';
@@ -93,11 +93,11 @@ function nftOpenPainting(paintingId, fromGallery = false, viewOnly = false, seri
                 ? painting.available
                 : (painting.total_supply - (painting.sold_count || 0));
             const displayRemaining = rawRemaining <= 0 ? painting.total_supply : rawRemaining;
-            supplyText.textContent = `${displayRemaining} из ${painting.total_supply}`;
+            supplyText.textContent = nftT('supply_of', { remaining: displayRemaining, total: painting.total_supply });
             supplyRow.classList.remove('hidden');
             supplyRow.style.display = 'flex';
         } else {
-            supplyText.textContent = '∞ Неограниченный';
+            supplyText.textContent = nftT('supply_unlimited');
             supplyRow.classList.remove('hidden');
             supplyRow.style.display = 'flex';
         }
@@ -107,10 +107,10 @@ function nftOpenPainting(paintingId, fromGallery = false, viewOnly = false, seri
     if (statusBadgeEl) {
         const st = painting.status || 'held';
         if (fromGallery && st === 'for_sale') {
-            statusBadgeEl.innerHTML = `<span class="nft-status-badge nft-status-for-sale">На продаже</span>`;
+            statusBadgeEl.innerHTML = `<span class="nft-status-badge nft-status-for-sale">${nftT('status_on_sale_modal')}</span>`;
             statusBadgeEl.classList.remove('hidden');
         } else if (fromGallery && st === 'in_auction') {
-            statusBadgeEl.innerHTML = `<span class="nft-status-badge nft-status-in-auction">На аукционе</span>`;
+            statusBadgeEl.innerHTML = `<span class="nft-status-badge nft-status-in-auction">${nftT('status_in_auction_modal')}</span>`;
             statusBadgeEl.classList.remove('hidden');
         } else {
             statusBadgeEl.classList.add('hidden');
@@ -145,12 +145,12 @@ function nftOpenPainting(paintingId, fromGallery = false, viewOnly = false, seri
                 <button onclick="nftOpenSellFromModal()"
                         class="py-3 rounded-2xl text-xs font-black active:scale-[0.97] transition-all"
                         style="background:rgba(252,211,77,0.95);color:#0a0704;box-shadow:0 8px 20px rgba(252,211,77,0.25);">
-                  🏷 Продать
+                  ${nftT('btn_sell')}
                 </button>
                 <button onclick="nftOpenAuctionFromModal()"
                         class="py-3 rounded-2xl text-xs font-black active:scale-[0.97] transition-all"
                         style="background:rgba(239,68,68,0.85);color:#ffffff;box-shadow:0 8px 20px rgba(239,68,68,0.2);">
-                  🔨 Аукцион
+                  ${nftT('btn_auction_start')}
                 </button>`;
             ownerActions.classList.remove('hidden');
 
@@ -161,7 +161,7 @@ function nftOpenPainting(paintingId, fromGallery = false, viewOnly = false, seri
                 <button onclick="nftCancelListingFromModal()"
                         class="w-full py-3 rounded-2xl text-xs font-black active:scale-[0.97] transition-all"
                         style="background:rgba(239,68,68,0.12);color:rgba(239,68,68,0.9);border:1px solid rgba(239,68,68,0.25);">
-                  ✕ Снять с продажи
+                  ${nftT('btn_cancel_listing')}
                 </button>`;
             ownerActions.classList.remove('hidden');
 
@@ -173,13 +173,13 @@ function nftOpenPainting(paintingId, fromGallery = false, viewOnly = false, seri
                     <button onclick="nftCancelAuctionFromModal()"
                             class="w-full py-3 rounded-2xl text-xs font-black active:scale-[0.97] transition-all"
                             style="background:rgba(239,68,68,0.12);color:rgba(239,68,68,0.95);border:1px solid rgba(239,68,68,0.25);">
-                      🔨 Отменить аукцион
+                      ${nftT('btn_cancel_auction_full')}
                     </button>`;
             } else {
                 ownerActions.innerHTML = `
                     <div class="w-full py-3 rounded-2xl text-[10px] font-bold text-center"
                          style="background:rgba(255,255,255,0.02);color:rgba(255,255,255,0.3);border:1px solid rgba(255,255,255,0.06);">
-                      Есть ставки — отмена невозможна
+                      ${nftT('bids_no_cancel')}
                     </div>`;
             }
             ownerActions.classList.remove('hidden');
@@ -202,13 +202,13 @@ function nftOpenPainting(paintingId, fromGallery = false, viewOnly = false, seri
 
         const isSoldOut = painting.available !== null && painting.available <= 0;
         if (isSoldOut) {
-            buyBtn.innerHTML        = 'Распродано';
+            buyBtn.innerHTML        = nftT('btn_sold_out');
             buyBtn.disabled         = true;
             buyBtn.style.background = 'rgba(239,68,68,0.2)';
             buyBtn.style.boxShadow  = 'none';
             buyBtn.style.color      = '#ffffff';
         } else {
-            buyBtn.innerHTML        = `Купить за ${painting.price} <img src="/gifts/stars.png" class="w-4 h-4 inline-block align-middle ml-1.5 object-contain" onerror="this.style.display='none'">`;
+            buyBtn.innerHTML        = `${nftT('btn_buy_for', { price: painting.price })} <img src="/gifts/stars.png" class="w-4 h-4 inline-block align-middle ml-1.5 object-contain" onerror="this.style.display='none'">`;
             buyBtn.disabled         = false;
             buyBtn.style.background = 'linear-gradient(135deg, #fcd34d 0%, #f59e0b 100%)';
             buyBtn.style.boxShadow  = '0 10px 24px -4px rgba(245,158,11,0.4)';
@@ -262,7 +262,7 @@ async function nftCancelListingFromModal() {
     }
 
     if (!listingId) {
-        showNotify('Не удалось найти листинг', 'error');
+        showNotify(nftT('notify_listing_not_found'), 'error');
         return;
     }
 
@@ -274,14 +274,14 @@ async function nftCancelListingFromModal() {
         });
         const data = await res.json();
         if (!res.ok) {
-            showNotify(data.detail || 'Ошибка отмены', 'error');
+            showNotify(data.detail || nftT('notify_cancel_error'), 'error');
         } else {
-            showNotify('✓ Снято с продажи', 'success');
+            showNotify(nftT('notify_cancel_sale'), 'success');
             vibrate('heavy');
             await nftLoadGallery(null);
         }
     } catch (e) {
-        showNotify('Ошибка соединения', 'error');
+        showNotify(nftT('notify_conn_error'), 'error');
     }
 }
 
@@ -310,7 +310,7 @@ async function nftCancelAuctionFromModal() {
     }
 
     if (!auctionId) {
-        showNotify('Не удалось найти аукцион', 'error');
+        showNotify(nftT('notify_auction_not_found'), 'error');
         return;
     }
 
@@ -322,14 +322,14 @@ async function nftCancelAuctionFromModal() {
         });
         const data = await res.json();
         if (!res.ok) {
-            showNotify(data.detail || 'Ошибка отмены', 'error');
+            showNotify(data.detail || nftT('notify_cancel_error'), 'error');
         } else {
-            showNotify('✓ Аукцион отменён', 'success');
+            showNotify(nftT('notify_cancel_auction'), 'success');
             vibrate('heavy');
             await nftLoadGallery(null);
         }
     } catch (e) {
-        showNotify('Ошибка соединения', 'error');
+        showNotify(nftT('notify_conn_error'), 'error');
     }
 }
 
@@ -341,7 +341,7 @@ async function nftBuyFromModal() {
 
     const btn = document.getElementById('nft-modal-buy-btn');
     const originalHTML = btn.innerHTML;
-    btn.textContent = 'Покупка...';
+    btn.textContent = nftT('btn_buying');
     btn.disabled    = true;
 
     try {
@@ -353,7 +353,7 @@ async function nftBuyFromModal() {
         const data = await res.json();
 
         if (!res.ok) {
-            showNotify(data.detail || 'Ошибка покупки', 'error');
+            showNotify(data.detail || nftT('notify_buy_error'), 'error');
             btn.innerHTML = originalHTML;
             btn.disabled  = false;
             return;
@@ -361,7 +361,7 @@ async function nftBuyFromModal() {
 
         nftStars = data.nft_stars;
         nftUpdateStarsUI();
-        showNotify('🎨 Картина добавлена в вашу коллекцию!', 'success');
+        showNotify(nftT('notify_buy_success'), 'success');
         vibrate('heavy');
 
         const shopItem = nftShopData.find(p => p.id === nftModalPainting.id);
@@ -377,7 +377,7 @@ async function nftBuyFromModal() {
         else nftLoadShop();
 
     } catch (e) {
-        showNotify('Ошибка соединения', 'error');
+        showNotify(nftT('notify_conn_error'), 'error');
         btn.innerHTML = originalHTML;
         btn.disabled  = false;
     }

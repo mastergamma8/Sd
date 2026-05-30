@@ -1,6 +1,7 @@
 // =====================================================
 // nft-core.js — NFT Галерея: ядро (состояние, навигация, утилиты)
 // Зависимости: globals.js (vibrate, getApiHeaders, showNotify, openModal)
+//              nft-i18n.js (nftT, nftApplyI18n)
 // =====================================================
 
 // ─── Глобальное состояние ─────────────────────────────────────────────────────
@@ -152,14 +153,14 @@ function nftViewUserGallery(userId, name) {
     const title    = document.getElementById('nft-gallery-title');
     const subtitle = document.getElementById('nft-gallery-subtitle');
     if (title)    title.textContent    = name;
-    if (subtitle) subtitle.textContent = 'Коллекция пользователя';
+    if (subtitle) subtitle.textContent = nftT('user_gallery_subtitle');
     nftLoadGallery(userId);
 }
 
 // ─── Поделиться — генерация ссылки ───────────────────────────────────────────
 
 /**
- * Устанавливает контекст для кнопки "Поделиться".
+ * Устанавливает контекст для кнопки «Поделиться».
  * Вызывается из nft-gallery.js и nft-modal.js при навигации.
  */
 function nftSetShareContext(ctx) {
@@ -180,7 +181,7 @@ function nftShareCurrentPage() {
 
     const bot = (window.botUsername || '').replace('@', '');
     if (!bot) {
-        if (typeof showNotify === 'function') showNotify('❌ Ссылка недоступна');
+        if (typeof showNotify === 'function') showNotify(nftT('share_link_unavailable'));
         return;
     }
 
@@ -188,25 +189,22 @@ function nftShareCurrentPage() {
 
     if (nftShareContext.type === 'pack' && nftShareContext.packId) {
         startParam = `nft_pack_${nftShareContext.packId}`;
-        const name = nftShareContext.packName || 'Пак';
-        shareText  = `📦 Посмотри пак «${name}» в NFT Галерее!`;
+        const name = nftShareContext.packName || nftT('pack_default_name');
+        shareText  = nftT('share_pack_text', { name });
     } else if (nftShareContext.type === 'painting' && nftShareContext.paintingId) {
         const serial = nftShareContext.paintingSerial || 1;
         startParam = `nft_painting_${nftShareContext.paintingId}_${serial}`;
-        const title = nftShareContext.paintingTitle || 'Картина';
-        shareText   = `🎨 Посмотри «${title} #${serial}» в NFT Галерее!`;
+        const title = nftShareContext.paintingTitle || '';
+        const titleSerial = title + (serial ? ' #' + serial : '');
+        shareText  = nftT('share_painting_text', { title: titleSerial });
     } else {
         startParam = 'nft_gallery';
-        shareText  = '🖼 Посмотри NFT Галерею!';
+        shareText  = nftT('share_gallery_text');
     }
 
-    // Формат ссылки: https://t.me/BotName/AppName?startapp=nft_gallery
-    // AppName берём из window.botAppName (приходит из /api/init → config.BOT_APP_NAME)
     const appName = (window.botAppName || 'app').replace(/^@/, '');
     const link    = `https://t.me/${bot}/${appName}?startapp=${startParam}`;
-    const tgApp   = window.Telegram && window.Telegram.WebApp;
 
-    // Telegram WebApp — нативный диалог выбора чата (используем tg — глобальный из globals.js, как в earn.js)
     const _tgApp = (typeof tg !== 'undefined' && tg) || (window.Telegram && window.Telegram.WebApp);
     if (_tgApp && _tgApp.openTelegramLink) {
         _tgApp.openTelegramLink(
@@ -215,16 +213,14 @@ function nftShareCurrentPage() {
         return;
     }
 
-    // Web Share API (мобильный браузер)
     if (navigator.share) {
-        navigator.share({ title: 'NFT Галерея', text: shareText, url: link }).catch(() => {});
+        navigator.share({ title: nftT('share_title'), text: shareText, url: link }).catch(() => {});
         return;
     }
 
-    // Fallback — копируем в буфер обмена
     if (navigator.clipboard) {
         navigator.clipboard.writeText(link).then(() => {
-            if (typeof showNotify === 'function') showNotify('✅ Ссылка скопирована!');
+            if (typeof showNotify === 'function') showNotify(nftT('share_link_copied'));
         });
     }
 }
@@ -248,17 +244,17 @@ function nftShareItem(type, id, serial, title) {
     let startParam, shareText;
     if (type === 'painting') {
         startParam = `nft_painting_${id}_${serial || 1}`;
-        shareText  = `🎨 Посмотри «${title}${serial ? ' #' + serial : ''}» в NFT Галерее!`;
+        const titleSerial = (title || '') + (serial ? ' #' + serial : '');
+        shareText  = nftT('share_painting_text', { title: titleSerial });
     } else {
         startParam = `nft_pack_${id}`;
-        shareText  = `📦 Посмотри пак «${title}» в NFT Галерее!`;
+        shareText  = nftT('share_pack_text', { name: title || nftT('pack_default_name') });
     }
 
     const link = bot
         ? `https://t.me/${bot}/${appName}?startapp=${startParam}`
         : `https://t.me/${appName}`;
 
-    // Используем tg (глобальный из globals.js) — та же логика, что и в earn.js
     if (typeof tg !== 'undefined' && tg && tg.openTelegramLink) {
         tg.openTelegramLink(
             `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(shareText)}`
@@ -266,12 +262,12 @@ function nftShareItem(type, id, serial, title) {
         return;
     }
     if (navigator.share) {
-        navigator.share({ title: 'NFT Галерея', text: shareText, url: link }).catch(() => {});
+        navigator.share({ title: nftT('share_title'), text: shareText, url: link }).catch(() => {});
         return;
     }
     if (navigator.clipboard) {
         navigator.clipboard.writeText(link).then(() => {
-            if (typeof showNotify === 'function') showNotify('✅ Ссылка скопирована!');
+            if (typeof showNotify === 'function') showNotify(nftT('share_link_copied'));
         });
     }
 }
@@ -315,18 +311,18 @@ function nftSharePaintingModal() {
 
 // ─── Экспорт ──────────────────────────────────────────────────────────────────
 
-window.openNFTSection      = openNFTSection;
-window.nftSharePaintingModal = nftSharePaintingModal;
-window.closeNFTSection     = closeNFTSection;
-window.nftSwitchTab        = nftSwitchTab;
-window.openNFTTopup        = openNFTTopup;
-window.nftUpdateStarsUI    = nftUpdateStarsUI;
-window.closeNFTModal       = closeNFTModal;
-window.nftLoadingHTML      = nftLoadingHTML;
-window.nftViewUserGallery  = nftViewUserGallery;
-window.nftRenderCollectors = nftRenderCollectors;
-window.nftSetShareContext   = nftSetShareContext;
-window.nftShareCurrentPage  = nftShareCurrentPage;
-window.nftShareItem         = nftShareItem;
+window.openNFTSection         = openNFTSection;
+window.nftSharePaintingModal  = nftSharePaintingModal;
+window.closeNFTSection        = closeNFTSection;
+window.nftSwitchTab           = nftSwitchTab;
+window.openNFTTopup           = openNFTTopup;
+window.nftUpdateStarsUI       = nftUpdateStarsUI;
+window.closeNFTModal          = closeNFTModal;
+window.nftLoadingHTML         = nftLoadingHTML;
+window.nftViewUserGallery     = nftViewUserGallery;
+window.nftRenderCollectors    = nftRenderCollectors;
+window.nftSetShareContext      = nftSetShareContext;
+window.nftShareCurrentPage     = nftShareCurrentPage;
+window.nftShareItem            = nftShareItem;
 window.nftShareGalleryPainting = nftShareGalleryPainting;
 window.nftShareGalleryPack     = nftShareGalleryPack;

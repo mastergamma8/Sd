@@ -1,6 +1,7 @@
 // =====================================================
 // nft-gallery.js — NFT Галерея: Моя галерея, Галереи, История
 // Зависимости: nft-core.js (nftGalleryData, nftLoadingHTML, getApiHeaders, escapeHtml)
+//              nft-i18n.js (nftT, nftPaintingWord)
 // =====================================================
 
 // ─── Моя галерея ─────────────────────────────────────────────────────────────
@@ -25,8 +26,8 @@ async function nftLoadGallery(userId = null) {
     empty.classList.add('hidden');
 
     if (userId === null) {
-        title.textContent    = 'Моя Галерея';
-        subtitle.textContent = 'Ваша коллекция NFT';
+        title.textContent    = nftT('my_gallery_title');
+        subtitle.textContent = nftT('my_gallery_subtitle');
         backBtn.classList.add('hidden');
 
         try {
@@ -46,11 +47,11 @@ async function nftLoadGallery(userId = null) {
                 setTimeout(() => nftOpenPainting(_pid, true, false, _ser), 150);
             }
         } catch (e) {
-            grid.innerHTML = `<div class="text-center py-8 text-red-400/60 text-sm col-span-2">Ошибка загрузки</div>`;
+            grid.innerHTML = `<div class="text-center py-8 text-red-400/60 text-sm col-span-2">${nftT('load_error')}</div>`;
         }
     } else {
         backBtn.classList.remove('hidden');
-        subtitle.textContent = 'Коллекция пользователя';
+        subtitle.textContent = nftT('user_gallery_subtitle');
         collectors.innerHTML = '';
 
         try {
@@ -60,7 +61,7 @@ async function nftLoadGallery(userId = null) {
             if (data.display_name) title.textContent = data.display_name;
             nftRenderGalleryGrid(nftGalleryData, false);
         } catch (e) {
-            grid.innerHTML = `<div class="text-center py-8 text-red-400/60 text-sm col-span-2">Ошибка загрузки</div>`;
+            grid.innerHTML = `<div class="text-center py-8 text-red-400/60 text-sm col-span-2">${nftT('load_error')}</div>`;
         }
     }
 }
@@ -97,7 +98,7 @@ function nftRenderGalleryGrid(items, isOwner = false) {
             if (!packsMap[p.pack_id]) {
                 packsMap[p.pack_id] = {
                     pack_id:   p.pack_id,
-                    pack_name: p.pack_name  || 'Пак',
+                    pack_name: p.pack_name  || nftT('pack_default_name'),
                     pack_cover: p.pack_cover || p.image_url,
                     paintings: [],
                 };
@@ -126,7 +127,7 @@ function nftRenderGalleryGrid(items, isOwner = false) {
         html += `
         <div class="col-span-2 flex items-center gap-2 mb-3">
             <div class="flex-1 h-px" style="background:rgba(255,255,255,0.06);"></div>
-            <span class="text-[9px] font-black tracking-widest uppercase" style="color:rgba(255,255,255,0.2);">Отдельные картины</span>
+            <span class="text-[9px] font-black tracking-widest uppercase" style="color:rgba(255,255,255,0.2);">${nftT('standalone_paintings')}</span>
             <div class="flex-1 h-px" style="background:rgba(255,255,255,0.06);"></div>
         </div>`;
     }
@@ -147,17 +148,17 @@ function nftGalleryCardHTML(p, isOwner) {
         ? `<span style="color:#fcd34d;"> #${serial}</span>`
         : '';
     const viewOnly = !isOwner;
-    const status   = p.status || 'held'; 
+    const status   = p.status || 'held';
 
     let statusBadge = '';
     if (status === 'for_sale') {
-        statusBadge = `<div class="nft-status-badge nft-status-for-sale">🏷 На продаже</div>`;
+        statusBadge = `<div class="nft-status-badge nft-status-for-sale">${nftT('status_for_sale')}</div>`;
     } else if (status === 'in_auction') {
-        statusBadge = `<div class="nft-status-badge nft-status-in-auction">🔨 Торги</div>`;
+        statusBadge = `<div class="nft-status-badge nft-status-in-auction">${nftT('status_in_auction')}</div>`;
     }
 
     const myBadge = isOwner
-        ? `<div class="nft-status-badge" style="top:8px;left:8px;right:auto;background:rgba(16,185,129,0.9);color:#ffffff;">✦ Моя</div>`
+        ? `<div class="nft-status-badge" style="top:8px;left:8px;right:auto;background:rgba(16,185,129,0.9);color:#ffffff;">${nftT('status_mine')}</div>`
         : '';
 
     const shareBtn = ''; // Кнопка поделиться убрана с карточки (только в модальном окне)
@@ -181,7 +182,7 @@ function nftGalleryCardHTML(p, isOwner) {
                 <div class="flex items-center gap-1 mt-1">
                     <img src="/gifts/stars.png" class="w-3 h-3 object-contain" onerror="this.style.display='none'">
                     <span class="text-[11px] font-black" style="color:#fcd34d;">${p.price}</span>
-                    <span class="text-[9px] font-bold" style="color:rgba(255,255,255,0.4);">звёзд</span>
+                    <span class="text-[9px] font-bold" style="color:rgba(255,255,255,0.4);">${nftT('stars_unit')}</span>
                 </div>
             </div>
         </div>
@@ -192,14 +193,14 @@ function nftGalleryCardHTML(p, isOwner) {
 
 function nftPackGalleryRowHTML(pack, isOwner) {
     const count     = pack.paintings.length;
-    const countWord = count === 1 ? 'картина' : count < 5 ? 'картины' : 'картин';
+    const countWord = nftPaintingWord(count);
 
     // Статусные бейджи: если есть картины на продаже/аукционе
     const forSale   = pack.paintings.filter(p => p.status === 'for_sale').length;
     const inAuction = pack.paintings.filter(p => p.status === 'in_auction').length;
     let statusBadges = '';
-    if (forSale > 0)   statusBadges += `<span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-lg text-[9px] font-black flex-shrink-0" style="background:rgba(252,211,77,0.18);color:#fcd34d;">🏷 ${forSale} на продаже</span>`;
-    if (inAuction > 0) statusBadges += `<span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-lg text-[9px] font-black flex-shrink-0" style="background:rgba(239,68,68,0.18);color:#f87171;">🔨 ${inAuction} аукцион</span>`;
+    if (forSale > 0)   statusBadges += `<span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-lg text-[9px] font-black flex-shrink-0" style="background:rgba(252,211,77,0.18);color:#fcd34d;">${nftT('pack_for_sale_count', { n: forSale })}</span>`;
+    if (inAuction > 0) statusBadges += `<span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-lg text-[9px] font-black flex-shrink-0" style="background:rgba(239,68,68,0.18);color:#f87171;">${nftT('pack_auction_count', { n: inAuction })}</span>`;
 
     const packShareBtn = ''; // Кнопка поделиться убрана со строки пака (только внутри страницы пака)
 
@@ -215,7 +216,7 @@ function nftPackGalleryRowHTML(pack, isOwner) {
         <div class="flex-1 min-w-0">
             <div class="flex items-center gap-1.5 mb-1 flex-wrap">
                 <span class="px-2 py-0.5 rounded-lg text-[9px] font-black flex-shrink-0"
-                      style="background:rgba(252,211,77,0.12);color:#fcd34d;">📦 Пак</span>
+                      style="background:rgba(252,211,77,0.12);color:#fcd34d;">${nftT('pack_badge')}</span>
                 ${statusBadges}
             </div>
             <p class="text-white font-bold text-sm truncate leading-tight">${escapeHtml(pack.pack_name)}</p>
@@ -233,18 +234,18 @@ function nftPackGalleryRowHTML(pack, isOwner) {
 function nftOpenPackInGallery(packId, isOwner) {
     vibrate('light');
 
-    const allItems = nftGalleryData;
+    const allItems  = nftGalleryData;
     const packItems = allItems.filter(p => p.pack_id === packId);
     if (!packItems.length) return;
 
-    const packName   = packItems[0].pack_name || 'Пак';
+    const packName  = packItems[0].pack_name || nftT('pack_default_name');
 
     // Обновляем контекст кнопки «Поделиться»
     if (typeof nftSetShareContext === 'function') {
         nftSetShareContext({ type: 'pack', packId: packId, packName: packName });
     }
-    const count      = packItems.length;
-    const countWord  = count === 1 ? 'картина' : count < 5 ? 'картины' : 'картин';
+    const count     = packItems.length;
+    const countWord = nftPaintingWord(count);
     nftGalleryPackView = { packId, isOwner };
 
     if (nftGalleryViewContext === 'others') {
@@ -266,7 +267,7 @@ function nftOpenPackInGallery(packId, isOwner) {
                 <div>
                     <p class="font-black text-base" style="color:#fef08a;font-family:-apple-system,BlinkMacSystemFont,sans-serif;">${escapeHtml(packName)}</p>
                     <p class="text-[9px] tracking-widest uppercase font-bold" style="color:rgba(252,211,77,0.55);">
-                        Пак · ${count} ${countWord}
+                        ${nftT('pack_subtitle', { n: count, word: countWord })}
                     </p>
                 </div>
                 ${_shareOtherBtn}
@@ -298,7 +299,7 @@ function nftOpenPackInGallery(packId, isOwner) {
         grid.innerHTML = `
             <div class="col-span-2 mb-3 flex items-center justify-between">
                 <p class="text-[9px] tracking-widest uppercase font-bold" style="color:rgba(252,211,77,0.5);">
-                    ${count} ${countWord} в паке
+                    ${nftT('pack_paintings_count', { n: count, word: countWord })}
                 </p>
                 ${_sharePackBtn}
             </div>
@@ -318,14 +319,14 @@ function nftGalleryBackToList() {
         const backBtn = document.getElementById('nft-gallery-back-btn');
         if (backBtn) backBtn.classList.add('hidden');
         const title = document.getElementById('nft-gallery-title');
-        if (title) title.textContent = nftViewingUserId === null ? 'Моя Галерея' : 'Галерея';
+        if (title) title.textContent = nftViewingUserId === null ? nftT('my_gallery_title') : nftT('tab_gallery');
         nftRenderGalleryGrid(nftGalleryData, nftViewingUserId === null);
     } else {
         nftLoadGallery(null);
     }
 }
 
-let nftGalleriesMode = 'list'; 
+let nftGalleriesMode = 'list';
 
 async function nftLoadGalleriesPage() {
     nftGalleriesMode = 'list';
@@ -341,7 +342,7 @@ async function nftLoadGalleriesPage() {
         const data = await res.json();
         nftRenderGalleriesList(data.collectors || []);
     } catch (e) {
-        content.innerHTML = `<div class="text-center py-8 text-red-400/60 text-sm">Ошибка загрузки</div>`;
+        content.innerHTML = `<div class="text-center py-8 text-red-400/60 text-sm">${nftT('load_error')}</div>`;
     }
 }
 
@@ -358,7 +359,7 @@ function nftRenderGalleriesList(collectors) {
                               d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
                     </svg>
                 </div>
-                <p class="nft-muted-text text-sm">Пока нет коллекционеров</p>
+                <p class="nft-muted-text text-sm">${nftT('collectors_empty')}</p>
             </div>`;
         return;
     }
@@ -372,7 +373,7 @@ function nftRenderGalleriesList(collectors) {
             return `<img src="${escapeHtml(c.photo_url)}" alt="${initial}"
                         class="w-11 h-11 rounded-full object-cover flex-shrink-0"
                         style="border:2px solid rgba(252,211,77,0.25);"
-                        onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<div class=\\'w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 text-white font-black text-base\\' style=\\'background:${color};border:2px solid rgba(252,211,77,0.2);\\'>${initial}</div>')">`; 
+                        onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<div class=\\'w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 text-white font-black text-base\\' style=\\'background:${color};border:2px solid rgba(252,211,77,0.2);\\'>${initial}</div>')">`;
         }
         return `<div class="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 text-white font-black text-base"
                      style="background:${color};border:2px solid rgba(252,211,77,0.2);">${initial}</div>`;
@@ -385,11 +386,11 @@ function nftRenderGalleriesList(collectors) {
     content.innerHTML = `<div class="space-y-2.5">
         ${collectors.map((c, i) => {
             const name = c.is_anonymous
-                ? 'Анонимный'
-                : (c.first_name || c.username || `User ${c.tg_id}`);
+                ? nftT('collectors_anonymous')
+                : (c.first_name || `User ${c.tg_id}`);
 
             const count     = c.collection_size;
-            const countWord = count === 1 ? 'картина' : count < 5 ? 'картины' : 'картин';
+            const countWord = nftPaintingWord(count);
 
             const isTop  = i < 3;
             const border = isTop ? topBorderGlow[i] : 'rgba(255,255,255,0.05)';
@@ -400,10 +401,6 @@ function nftRenderGalleriesList(collectors) {
                 : `<div class="w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-black flex-shrink-0"
                         style="background:rgba(252,211,77,0.1);color:rgba(252,211,77,0.7);">${i + 1}</div>`;
 
-            const usernameHtml = (!c.is_anonymous && c.username)
-                ? `<p class="text-[9px] font-bold truncate" style="color:rgba(255,255,255,0.3);">@${escapeHtml(c.username)}</p>`
-                : '';
-
             return `
             <div class="flex items-center gap-3 px-4 py-3.5 rounded-2xl cursor-pointer active:scale-[0.985] transition-all"
                  style="background:${bg};border:1px solid ${border};"
@@ -412,7 +409,6 @@ function nftRenderGalleriesList(collectors) {
                 ${makeCollectorAvatar(c, name)}
                 <div class="flex-1 min-w-0">
                     <p class="text-white text-xs font-bold leading-none mb-0.5 truncate">${escapeHtml(name)}</p>
-                    ${usernameHtml}
                     <div class="flex items-center gap-1 mt-1">
                         <span class="text-[9px] font-black" style="color:#fcd34d;">${count}</span>
                         <span class="text-[9px] font-bold" style="color:rgba(255,255,255,0.35);">${countWord}</span>
@@ -441,7 +437,7 @@ async function nftOpenUserGalleryPage(userId, name) {
     content.innerHTML = `
         <div class="mb-4">
             <p class="font-black text-base" style="color:#fef08a;font-family:-apple-system, BlinkMacSystemFont, sans-serif;">${escapeHtml(name)}</p>
-            <p class="text-[9px] tracking-widest uppercase font-bold" style="color:rgba(252,211,77,0.55);">Коллекция пользователя</p>
+            <p class="text-[9px] tracking-widest uppercase font-bold" style="color:rgba(252,211,77,0.55);">${nftT('user_gallery_subtitle')}</p>
         </div>
         <div class="grid grid-cols-2 gap-3.5">${nftLoadingHTML()}</div>`;
 
@@ -453,20 +449,20 @@ async function nftOpenUserGalleryPage(userId, name) {
         nftGalleryData = paintings;
 
         const total     = paintings.length;
-        const totalWord = total === 1 ? 'картина' : total < 5 ? 'картины' : 'картин';
+        const totalWord = nftPaintingWord(total);
 
         const headerHtml = `
             <div class="mb-5">
                 <p class="font-black text-base" style="color:#fef08a;font-family:-apple-system, BlinkMacSystemFont, sans-serif;">${escapeHtml(name)}</p>
                 <p class="text-[9px] tracking-widest uppercase font-bold" style="color:rgba(252,211,77,0.55);">
-                    Коллекция пользователя · ${total} ${totalWord}
+                    ${nftT('user_gallery_subtitle')} · ${total} ${totalWord}
                 </p>
             </div>`;
 
         if (paintings.length === 0) {
             content.innerHTML = headerHtml + `
                 <div class="text-center py-12">
-                    <p class="nft-muted-text text-xs font-bold">Галерея пуста</p>
+                    <p class="nft-muted-text text-xs font-bold">${nftT('gallery_empty')}</p>
                 </div>`;
             return;
         }
@@ -479,7 +475,7 @@ async function nftOpenUserGalleryPage(userId, name) {
                 if (!packsMap[p.pack_id]) {
                     packsMap[p.pack_id] = {
                         pack_id: p.pack_id,
-                        pack_name: p.pack_name || 'Пак',
+                        pack_name: p.pack_name || nftT('pack_default_name'),
                         pack_cover: p.pack_cover || p.image_url,
                         paintings: [],
                     };
@@ -506,7 +502,7 @@ async function nftOpenUserGalleryPage(userId, name) {
             gridHtml += `
             <div class="flex items-center gap-2 mb-3">
                 <div class="flex-1 h-px" style="background:rgba(255,255,255,0.06);"></div>
-                <span class="text-[9px] font-black tracking-widest uppercase" style="color:rgba(255,255,255,0.2);">Отдельные картины</span>
+                <span class="text-[9px] font-black tracking-widest uppercase" style="color:rgba(255,255,255,0.2);">${nftT('standalone_paintings')}</span>
                 <div class="flex-1 h-px" style="background:rgba(255,255,255,0.06);"></div>
             </div>`;
         }
@@ -523,7 +519,7 @@ async function nftOpenUserGalleryPage(userId, name) {
 
         content.innerHTML = headerHtml + gridHtml;
     } catch (e) {
-        content.innerHTML += `<div class="text-center py-8 text-red-400/60 text-sm">Ошибка загрузки</div>`;
+        content.innerHTML += `<div class="text-center py-8 text-red-400/60 text-sm">${nftT('load_error')}</div>`;
     }
 }
 
@@ -559,7 +555,7 @@ async function nftLoadHistory() {
         const data = await res.json();
         nftRenderHistory(data.history || []);
     } catch (e) {
-        list.innerHTML = `<div class="text-center py-8 text-red-400/60 text-sm">Ошибка загрузки</div>`;
+        list.innerHTML = `<div class="text-center py-8 text-red-400/60 text-sm">${nftT('load_error')}</div>`;
     }
 }
 
@@ -576,8 +572,8 @@ function nftRenderHistory(entries) {
                               d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
                 </div>
-                <p class="nft-muted-text text-sm font-bold mb-1">История пуста</p>
-                <p class="nft-muted-text text-xs opacity-60 mt-1">Здесь будут отображаться ваши операции</p>
+                <p class="nft-muted-text text-sm font-bold mb-1">${nftT('nft_history_empty') || 'История пуста'}</p>
+                <p class="nft-muted-text text-xs opacity-60 mt-1">${nftT('nft_history_empty_sub') || 'Здесь будут отображаться ваши операции'}</p>
             </div>`;
         return;
     }
@@ -603,6 +599,8 @@ function nftRenderHistory(entries) {
         'nft_market_buy':    { emoji: '🎨', bg: 'rgba(239,68,68,0.12)',   color: '#f87171' },
     };
 
+    const lang = (typeof currentLang !== 'undefined' ? currentLang : 'ru');
+
     list.innerHTML = entries.map(e => {
         const isSpend = SPEND_TYPES.has(e.action_type);
         const isEarn  = EARN_TYPES.has(e.action_type);
@@ -611,8 +609,9 @@ function nftRenderHistory(entries) {
         const sign      = isSpend ? '−' : '+';
 
         const date    = new Date(e.created_at * 1000);
-        const dateStr = date.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' })
-                      + ' ' + date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+        const locale  = lang === 'en' ? 'en-US' : 'ru-RU';
+        const dateStr = date.toLocaleDateString(locale, { day: '2-digit', month: 'short' })
+                      + ' ' + date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
 
         let iconHTML;
         if (e.painting_image) {

@@ -628,6 +628,12 @@ function setLang(lang) {
     if (el('page-games')       && !el('page-games').classList.contains('hidden-tab') && typeof renderCasesGrid === 'function') renderCasesGrid();
     if (rouletteConfig?.items  && el('page-roulette') && !el('page-roulette').classList.contains('hidden-tab') && typeof renderRouletteWheel === 'function') renderRouletteWheel();
     if (el('main-gift-modal')  && !el('main-gift-modal').classList.contains('hidden') && typeof renderBaseGiftsList === 'function') renderBaseGiftsList();
+
+    // ── Обновляем NFT-галерею если она открыта ────────────────────────────────
+    const nftSection = document.getElementById('nft-section');
+    if (nftSection && nftSection.style.display !== 'none' && !nftSection.classList.contains('hidden')) {
+        if (typeof nftApplyI18n === 'function') nftApplyI18n();
+    }
 }
 
 window.setLang = setLang;

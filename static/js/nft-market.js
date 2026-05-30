@@ -28,7 +28,7 @@ async function nftLoadMarket() {
         nftMarketListings = data.listings || [];
         nftRenderMarket();
     } catch (e) {
-        wrap.innerHTML = `<div class="text-center py-8 text-red-400/60 text-sm">Ошибка загрузки</div>`;
+        wrap.innerHTML = `<div class="text-center py-8 text-red-400/60 text-sm">${nftT('load_error')}</div>`;
     }
 }
 
@@ -45,8 +45,8 @@ function nftRenderMarket() {
                     d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
             </svg>
           </div>
-          <p class="nft-muted-text text-sm font-bold">Маркетплейс пуст</p>
-          <p class="nft-muted-text text-xs opacity-65 mt-1.5 leading-relaxed">Выставьте свою картину на продажу из «Моей галереи»</p>
+          <p class="nft-muted-text text-sm font-bold">${nftT('market_empty')}</p>
+          <p class="nft-muted-text text-xs opacity-65 mt-1.5 leading-relaxed">${nftT('market_empty_sub')}</p>
         </div>`;
         return;
     }
@@ -58,19 +58,19 @@ function nftListingCardHTML(l) {
     const serial     = l.serial_number > 0
         ? ` <span style="color:#fcd34d;">#${l.serial_number}</span>` : '';
     const sellerName = l.is_anonymous
-        ? 'Аноним'
-        : (l.username ? `@${escapeHtml(l.username)}` : escapeHtml(l.first_name || ''));
+        ? (window.nftT ? window.nftT('seller_anonymous') : 'Аноним')
+        : escapeHtml(l.first_name || '');
     const ago = nftTimeAgo(l.created_at);
 
     const actionBtn = l.is_mine
         ? `<button onclick="nftCancelListing(${l.id})"
                    class="w-full py-3.5 rounded-2xl text-xs font-black active:scale-[0.97] transition-all"
                    style="background:rgba(239,68,68,0.12);color:rgba(239,68,68,0.9);border:1px solid rgba(239,68,68,0.25);">
-             Снять с продажи
+             ${nftT('btn_remove_listing')}
            </button>`
         : `<button onclick="nftConfirmBuyListing(${l.id}, ${l.price}, '${escapeHtml(l.title)}')"
                    class="w-full py-3.5 rounded-2xl text-xs font-black active:scale-[0.97] transition-all nft-buy-btn">
-             Купить
+             ${nftT('btn_buy')}
            </button>`;
 
     return `
@@ -92,7 +92,7 @@ function nftListingCardHTML(l) {
           <div class="flex items-center gap-1.5 mt-1.5">
             <img src="/gifts/stars.png" class="w-4 h-4 object-contain" onerror="this.style.display='none'">
             <span class="font-black text-base" style="color:#fcd34d;">${l.price}</span>
-            <span class="text-[10px] font-bold" style="color:rgba(255,255,255,0.45);">NFT-звёзд</span>
+            <span class="text-[10px] font-bold" style="color:rgba(255,255,255,0.45);">${nftT('nft_stars_label')}</span>
           </div>
         </div>
       </div>
@@ -126,7 +126,7 @@ async function nftExecuteBuyListing() {
     vibrate('medium');
 
     const btn = document.getElementById('nft-buy-confirm-btn');
-    btn.textContent = 'Покупка...';
+    btn.textContent = nftT('btn_buying');
     btn.disabled    = true;
 
     try {
@@ -136,19 +136,19 @@ async function nftExecuteBuyListing() {
         const data = await res.json();
 
         if (!res.ok) {
-            showNotify(data.detail || 'Ошибка покупки', 'error');
+            showNotify(data.detail || nftT('notify_buy_error'), 'error');
         } else {
             nftStars = data.nft_stars;
             nftUpdateStarsUI();
-            showNotify('🎨 Картина добавлена в вашу коллекцию!', 'success');
+            showNotify(nftT('notify_buy_success'), 'success');
             vibrate('heavy');
             closeNFTModal('nft-buy-confirm-modal');
             await nftLoadMarket();
         }
     } catch (e) {
-        showNotify('Ошибка соединения', 'error');
+        showNotify(nftT('notify_conn_error'), 'error');
     } finally {
-        btn.textContent    = 'Подтвердить покупку';
+        btn.textContent    = nftT('btn_confirm_buy');
         btn.disabled       = false;
         nftMarketPendingId = null;
     }
@@ -162,13 +162,13 @@ async function nftCancelListing(listingId) {
         });
         const data = await res.json();
         if (!res.ok) {
-            showNotify(data.detail || 'Ошибка', 'error');
+            showNotify(data.detail || nftT('notify_generic_error'), 'error');
         } else {
-            showNotify('Листинг снят', 'success');
+            showNotify(nftT('notify_listing_cancelled'), 'success');
             await nftLoadMarket();
         }
     } catch (e) {
-        showNotify('Ошибка соединения', 'error');
+        showNotify(nftT('notify_conn_error'), 'error');
     }
 }
 
@@ -216,8 +216,8 @@ function nftOpenListingDetail(listingId) {
     const sellerName = document.getElementById('nft-modal-seller-name');
     if (sellerRow && sellerName) {
         const name = l.is_anonymous
-            ? 'Аноним'
-            : (l.username ? `@${l.username}` : (l.first_name || 'Пользователь'));
+            ? (window.nftT ? window.nftT('seller_anonymous') : 'Аноним')
+            : (l.first_name || (window.nftT ? window.nftT('seller_user') : 'Пользователь'));
         sellerName.textContent = name;
         sellerRow.classList.remove('hidden');
         sellerRow.style.display = 'flex';
@@ -225,7 +225,7 @@ function nftOpenListingDetail(listingId) {
 
     const statusBadgeEl = document.getElementById('nft-modal-status-badge');
     if (statusBadgeEl) {
-        statusBadgeEl.innerHTML = `<span class="nft-status-badge nft-status-for-sale">На продаже</span>`;
+        statusBadgeEl.innerHTML = `<span class="nft-status-badge nft-status-for-sale">${nftT('status_on_sale_modal')}</span>`;
         statusBadgeEl.classList.remove('hidden');
     }
 
@@ -239,7 +239,7 @@ function nftOpenListingDetail(listingId) {
             const remaining = (l.available !== null && l.available !== undefined)
                 ? l.available
                 : (l.total_supply - (l.sold_count || 0));
-            supplyText.textContent = `${remaining} из ${l.total_supply}`;
+            supplyText.textContent = nftT('supply_of', { remaining, total: l.total_supply });
             supplyRow.classList.remove('hidden');
             supplyRow.style.display = 'flex';
         } else {
@@ -263,7 +263,6 @@ function nftOpenListingDetail(listingId) {
 
     if (l.is_mine) {
         buyBtn.style.display = 'none';
-        // Показываем кнопку отмены листинга в ownerActions
         if (ownerActions) {
             ownerActions.style.display        = 'flex';
             ownerActions.style.gridTemplateColumns = '';
@@ -271,14 +270,14 @@ function nftOpenListingDetail(listingId) {
                 <button onclick="nftCancelListing(${l.id})"
                         class="w-full py-3.5 rounded-2xl text-xs font-black active:scale-[0.97] transition-all"
                         style="background:rgba(239,68,68,0.12);color:rgba(239,68,68,0.9);border:1px solid rgba(239,68,68,0.25);">
-                  ✕ Снять с продажи
+                  ${nftT('btn_cancel_listing')}
                 </button>`;
             ownerActions.classList.remove('hidden');
         }
     } else {
         buyBtn.style.display    = '';
         buyBtn.disabled         = false;
-        buyBtn.innerHTML        = `Купить за ${l.price} <img src="/gifts/stars.png" class="w-4 h-4 inline-block align-middle ml-1 object-contain" onerror="this.style.display='none'">`;
+        buyBtn.innerHTML        = `${nftT('btn_buy_for', { price: l.price })} <img src="/gifts/stars.png" class="w-4 h-4 inline-block align-middle ml-1 object-contain" onerror="this.style.display='none'">`;
         buyBtn.style.background = 'linear-gradient(135deg, #fcd34d 0%, #f59e0b 100%)';
         buyBtn.style.boxShadow  = '0 10px 24px -4px rgba(245,158,11,0.4)';
         buyBtn.style.color      = '#0a0704';
@@ -307,13 +306,13 @@ async function nftSubmitListing() {
     if (!nftSellTarget) return;
     const price = parseInt(document.getElementById('nft-list-price-input').value, 10);
     if (!price || price <= 0) {
-        showNotify('Укажите корректную цену', 'error');
+        showNotify(nftT('notify_price_invalid'), 'error');
         return;
     }
 
     vibrate('medium');
     const btn = document.getElementById('nft-list-submit-btn');
-    btn.textContent = 'Выставляем...';
+    btn.textContent = nftT('btn_listing_progress');
     btn.disabled    = true;
 
     try {
@@ -325,18 +324,18 @@ async function nftSubmitListing() {
         const data = await res.json();
 
         if (!res.ok) {
-            showNotify(data.detail || 'Ошибка', 'error');
+            showNotify(data.detail || nftT('notify_generic_error'), 'error');
         } else {
-            showNotify('🏷 Картина выставлена на продажу!', 'success');
+            showNotify(nftT('notify_sell_success'), 'success');
             vibrate('heavy');
             closeNFTModal('nft-list-modal');
             nftSellTarget = null;
             await nftLoadGallery(null);
         }
     } catch (e) {
-        showNotify('Ошибка соединения', 'error');
+        showNotify(nftT('notify_conn_error'), 'error');
     } finally {
-        btn.textContent = 'Выставить на продажу';
+        btn.textContent = nftT('btn_submit_listing');
         btn.disabled    = false;
     }
 }
@@ -358,7 +357,7 @@ async function nftLoadAuctions() {
         nftAuctions = data.auctions || [];
         nftRenderAuctions();
     } catch (e) {
-        wrap.innerHTML = `<div class="text-center py-8 text-red-400/60 text-sm">Ошибка загрузки</div>`;
+        wrap.innerHTML = `<div class="text-center py-8 text-red-400/60 text-sm">${nftT('load_error')}</div>`;
     }
 }
 
@@ -375,8 +374,8 @@ function nftRenderAuctions() {
                     d="M15 10l4.553-2.069A1 1 0 0121 8.87V15.13a1 1 0 01-1.447.9L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
             </svg>
           </div>
-          <p class="nft-muted-text text-sm font-bold">Нет активных аукционов</p>
-          <p class="nft-muted-text text-xs opacity-65 mt-1.5 leading-relaxed">Запустите торги из «Моей галереи»</p>
+          <p class="nft-muted-text text-sm font-bold">${nftT('auctions_empty')}</p>
+          <p class="nft-muted-text text-xs opacity-65 mt-1.5 leading-relaxed">${nftT('auctions_empty_sub')}</p>
         </div>`;
         return;
     }
@@ -390,8 +389,8 @@ function nftAuctionCardHTML(a) {
     const serial     = a.serial_number > 0
         ? ` <span style="color:#fcd34d;">#${a.serial_number}</span>` : '';
     const sellerName = a.is_anonymous
-        ? 'Аноним'
-        : (a.username ? `@${escapeHtml(a.username)}` : escapeHtml(a.first_name || ''));
+        ? (window.nftT ? window.nftT('seller_anonymous') : 'Аноним')
+        : escapeHtml(a.first_name || '');
     const hasBids = !!a.current_bidder;
 
     let actionBtn;
@@ -399,29 +398,29 @@ function nftAuctionCardHTML(a) {
         actionBtn = `<button onclick="nftCancelAuction(${a.id})"
                              class="w-full py-3.5 rounded-2xl text-xs font-black active:scale-[0.97] transition-all"
                              style="background:rgba(239,68,68,0.12);color:rgba(239,68,68,0.9);border:1px solid rgba(239,68,68,0.25);">
-                       Отменить аукцион
+                       ${nftT('btn_cancel_auction_short')}
                      </button>`;
     } else if (a.is_mine) {
         actionBtn = `<div class="w-full py-3.5 rounded-2xl text-xs font-black text-center"
                           style="background:rgba(252,211,77,0.06);color:rgba(252,211,77,0.5);border:1px solid rgba(252,211,77,0.15);">
-                       🔨 Ваш аукцион · Идут торги
+                       ${nftT('auction_your_live')}
                      </div>`;
     } else if (a.is_leading) {
         actionBtn = `<button onclick="nftOpenBidModal(${a.id}, ${a.current_price}, '${escapeHtml(a.title)}')"
                              class="w-full py-3.5 rounded-2xl text-xs font-black active:scale-[0.97] transition-all"
                              style="background:rgba(16,185,129,0.15);color:rgba(16,185,129,0.9);border:1px solid rgba(16,185,129,0.3);">
-                       ✓ Вы лидируете · Перебить
+                       ${nftT('auction_leading')}
                      </button>`;
     } else {
         actionBtn = `<button onclick="nftOpenBidModal(${a.id}, ${a.current_price}, '${escapeHtml(a.title)}')"
                              class="w-full py-3.5 rounded-2xl text-xs font-black active:scale-[0.97] transition-all nft-buy-btn">
-                       🔨 Сделать ставку
+                       ${nftT('btn_place_bid')}
                      </button>`;
     }
 
     const bidInfo = hasBids
-        ? `<span class="text-[9px] font-bold" style="color:rgba(255,255,255,0.455);">Текущая ставка</span>`
-        : `<span class="text-[9px] font-bold" style="color:rgba(255,255,255,0.455);">Начальная цена</span>`;
+        ? `<span class="text-[9px] font-bold" style="color:rgba(255,255,255,0.455);">${nftT('current_bid_label')}</span>`
+        : `<span class="text-[9px] font-bold" style="color:rgba(255,255,255,0.455);">${nftT('starting_price_label')}</span>`;
 
     return `
     <div class="nft-card mb-4">
@@ -434,7 +433,7 @@ function nftAuctionCardHTML(a) {
                class="art-img"
                onerror="this.src='https://via.placeholder.com/80x80?text=NFT'">
           <div class="absolute top-1.5 left-1.5 z-20 px-2 py-0.5 rounded-lg text-[8px] font-black"
-               style="background:rgba(252,211,77,0.95);color:#0a0704;box-shadow:0 2px 6px rgba(0,0,0,0.35);">ТОРГИ</div>
+               style="background:rgba(252,211,77,0.95);color:#0a0704;box-shadow:0 2px 6px rgba(0,0,0,0.35);">${nftT('auction_live_badge')}</div>
         </div>
         <div class="flex-1 min-w-0 flex flex-col justify-between">
           <div>
@@ -478,7 +477,7 @@ function nftStartCountdown(auctionId, endsAt) {
     function tick() {
         const secs = endsAt - Math.floor(Date.now() / 1000);
         if (secs <= 0) {
-            el.textContent = 'Завершён';
+            el.textContent = window.nftT ? nftT('auction_finished') : 'Завершён';
             el.style.color = 'rgba(239,68,68,0.7)';
             const reloadId = setTimeout(() => nftLoadAuctions(), 2000);
             _auctionIntervalIds.push(reloadId);
@@ -527,7 +526,7 @@ async function nftSubmitAuction() {
     if (!nftAuctionTarget) return;
     const startPrice = parseInt(document.getElementById('nft-auction-start-price').value, 10);
     if (!startPrice || startPrice <= 0) {
-        showNotify('Укажите начальную цену', 'error');
+        showNotify(nftT('notify_auction_price_req'), 'error');
         return;
     }
     const activeBtn     = document.querySelector('.nft-duration-btn.active-duration');
@@ -535,7 +534,7 @@ async function nftSubmitAuction() {
 
     vibrate('medium');
     const btn = document.getElementById('nft-auction-submit-btn');
-    btn.textContent = 'Создаём...';
+    btn.textContent = nftT('btn_creating_auction');
     btn.disabled    = true;
 
     try {
@@ -551,18 +550,18 @@ async function nftSubmitAuction() {
         const data = await res.json();
 
         if (!res.ok) {
-            showNotify(data.detail || 'Ошибка', 'error');
+            showNotify(data.detail || nftT('notify_generic_error'), 'error');
         } else {
-            showNotify('🔨 Аукцион запущен!', 'success');
+            showNotify(nftT('notify_auction_created'), 'success');
             vibrate('heavy');
             closeNFTModal('nft-auction-create-modal');
             nftAuctionTarget = null;
             await nftLoadGallery(null);
         }
     } catch (e) {
-        showNotify('Ошибка соединения', 'error');
+        showNotify(nftT('notify_conn_error'), 'error');
     } finally {
-        btn.textContent = '🔨 Запустить аукцион';
+        btn.textContent = nftT('btn_launch_auction');
         btn.disabled    = false;
     }
 }
@@ -584,13 +583,13 @@ async function nftSubmitBid() {
     if (!nftAuctionPending) return;
     const amount = parseInt(document.getElementById('nft-bid-amount-input').value, 10);
     if (!amount || amount <= nftAuctionPending.current_price) {
-        showNotify(`Ставка должна быть выше ${nftAuctionPending.current_price} ⭐`, 'error');
+        showNotify(nftT('notify_bid_min', { price: nftAuctionPending.current_price }), 'error');
         return;
     }
 
     vibrate('medium');
     const btn = document.getElementById('nft-bid-submit-btn');
-    btn.textContent = 'Ставим...';
+    btn.textContent = nftT('btn_bidding');
     btn.disabled    = true;
 
     try {
@@ -602,20 +601,20 @@ async function nftSubmitBid() {
         const data = await res.json();
 
         if (!res.ok) {
-            showNotify(data.detail || 'Ошибка ставки', 'error');
+            showNotify(data.detail || nftT('notify_bid_error'), 'error');
         } else {
             nftStars = data.nft_stars;
             nftUpdateStarsUI();
-            showNotify(`🔨 Ставка ${amount} ⭐ принята!`, 'success');
+            showNotify(nftT('notify_bid_accepted', { amount }), 'success');
             vibrate('heavy');
             closeNFTModal('nft-bid-modal');
             nftAuctionPending = null;
             await nftLoadAuctions();
         }
     } catch (e) {
-        showNotify('Ошибка соединения', 'error');
+        showNotify(nftT('notify_conn_error'), 'error');
     } finally {
-        btn.textContent = '🔨 Поставить';
+        btn.textContent = nftT('btn_submit_bid_label');
         btn.disabled    = false;
     }
 }
@@ -631,13 +630,13 @@ async function nftCancelAuction(auctionId) {
         });
         const data = await res.json();
         if (!res.ok) {
-            showNotify(data.detail || 'Ошибка', 'error');
+            showNotify(data.detail || nftT('notify_generic_error'), 'error');
         } else {
-            showNotify('Аукцион отменён', 'success');
+            showNotify(nftT('notify_auction_cancelled'), 'success');
             await nftLoadAuctions();
         }
     } catch (e) {
-        showNotify('Ошибка соединения', 'error');
+        showNotify(nftT('notify_conn_error'), 'error');
     }
 }
 
@@ -679,8 +678,8 @@ function nftOpenAuctionDetail(auctionId) {
     const sellerName = document.getElementById('nft-modal-seller-name');
     if (sellerRow && sellerName) {
         const name = a.is_anonymous
-            ? 'Аноним'
-            : (a.username ? `@${a.username}` : (a.first_name || 'Пользователь'));
+            ? (window.nftT ? window.nftT('seller_anonymous') : 'Аноним')
+            : (a.first_name || (window.nftT ? window.nftT('seller_user') : 'Пользователь'));
         sellerName.textContent = name;
         sellerRow.classList.remove('hidden');
         sellerRow.style.display = 'flex';
@@ -688,12 +687,12 @@ function nftOpenAuctionDetail(auctionId) {
 
     const statusBadgeEl = document.getElementById('nft-modal-status-badge');
     if (statusBadgeEl) {
-        statusBadgeEl.innerHTML = `<span class="nft-status-badge nft-status-in-auction">На аукционе</span>`;
+        statusBadgeEl.innerHTML = `<span class="nft-status-badge nft-status-in-auction">${nftT('status_in_auction_modal')}</span>`;
         statusBadgeEl.classList.remove('hidden');
     }
 
     const priceLabel = document.querySelector('.nft-price-block .nft-price-label');
-    if (priceLabel) priceLabel.textContent = a.current_bidder ? 'Текущая ставка' : 'Начальная цена';
+    if (priceLabel) priceLabel.textContent = a.current_bidder ? nftT('current_bid_label') : nftT('starting_price_label');
 
     const badge = document.getElementById('nft-modal-badge');
     if (badge) badge.style.display = 'none';
@@ -705,7 +704,7 @@ function nftOpenAuctionDetail(auctionId) {
             const remainingA = (a.available !== null && a.available !== undefined)
                 ? a.available
                 : (a.total_supply - (a.sold_count || 0));
-            supplyTextA.textContent = `${remainingA} из ${a.total_supply}`;
+            supplyTextA.textContent = nftT('supply_of', { remaining: remainingA, total: a.total_supply });
             supplyRowA.classList.remove('hidden');
             supplyRowA.style.display = 'flex';
         } else {
@@ -738,13 +737,13 @@ function nftOpenAuctionDetail(auctionId) {
                     <button onclick="nftCancelAuction(${a.id})"
                             class="w-full py-3.5 rounded-2xl text-xs font-black active:scale-[0.97] transition-all"
                             style="background:rgba(239,68,68,0.12);color:rgba(239,68,68,0.95);border:1px solid rgba(239,68,68,0.25);">
-                      🔨 Отменить аукцион
+                      ${nftT('btn_cancel_auction_full')}
                     </button>`;
             } else {
                 ownerActions.innerHTML = `
                     <div class="w-full py-3.5 rounded-2xl text-[10px] font-bold text-center"
                          style="background:rgba(255,255,255,0.02);color:rgba(255,255,255,0.3);border:1px solid rgba(255,255,255,0.06);">
-                      Есть ставки — отмена невозможна
+                      ${nftT('bids_no_cancel')}
                     </div>`;
             }
             ownerActions.classList.remove('hidden');
@@ -752,7 +751,7 @@ function nftOpenAuctionDetail(auctionId) {
     } else if (a.is_leading) {
         buyBtn.style.display    = '';
         buyBtn.disabled         = false;
-        buyBtn.innerHTML        = `✓ Вы лидируете · Перебить`;
+        buyBtn.innerHTML        = nftT('auction_leading');
         buyBtn.style.background = 'rgba(16,185,129,0.22)';
         buyBtn.style.boxShadow  = '0 8px 20px rgba(16,185,129,0.15)';
         buyBtn.style.color      = '#ffffff';
@@ -763,7 +762,7 @@ function nftOpenAuctionDetail(auctionId) {
     } else {
         buyBtn.style.display    = '';
         buyBtn.disabled         = false;
-        buyBtn.innerHTML        = `🔨 Сделать ставку`;
+        buyBtn.innerHTML        = nftT('btn_place_bid');
         buyBtn.style.background = 'linear-gradient(135deg, #fcd34d 0%, #f59e0b 100%)';
         buyBtn.style.boxShadow  = '0 10px 24px -4px rgba(245,158,11,0.4)';
         buyBtn.style.color      = '#0a0704';
@@ -780,10 +779,10 @@ function nftOpenAuctionDetail(auctionId) {
 
 function nftTimeAgo(ts) {
     const diff = Math.floor(Date.now() / 1000) - ts;
-    if (diff < 60)    return 'только что';
-    if (diff < 3600)  return `${Math.floor(diff / 60)} мин назад`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)} ч назад`;
-    return `${Math.floor(diff / 86400)} д назад`;
+    if (diff < 60)    return nftT('time_just_now');
+    if (diff < 3600)  return nftT('time_min_ago', { n: Math.floor(diff / 60) });
+    if (diff < 86400) return nftT('time_h_ago',   { n: Math.floor(diff / 3600) });
+    return nftT('time_d_ago', { n: Math.floor(diff / 86400) });
 }
 
 // ─── Экспорт ──────────────────────────────────────────────────────────────────

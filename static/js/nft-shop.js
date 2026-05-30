@@ -47,7 +47,7 @@ async function nftLoadShop() {
         nftArchivedPacksData = data.archived_packs || [];
         nftRenderShop();
     } catch (e) {
-        list.innerHTML = `<div class="text-center py-8 text-red-400/60 text-sm">Ошибка загрузки</div>`;
+        list.innerHTML = `<div class="text-center py-8 text-red-400/60 text-sm">${nftT('load_error')}</div>`;
     }
 }
 
@@ -71,8 +71,8 @@ function nftRenderShop() {
                               d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                     </svg>
                 </div>
-                <p class="text-yellow-500/70 text-sm font-bold">Нет доступных картин</p>
-                <p class="text-yellow-500/40 text-xs mt-1">Скоро появятся новые работы</p>
+                <p class="text-yellow-500/70 text-sm font-bold">${nftT('shop_no_paintings')}</p>
+                <p class="text-yellow-500/40 text-xs mt-1">${nftT('shop_soon')}</p>
             </div>`;
         return;
     }
@@ -85,7 +85,7 @@ function nftRenderShop() {
         <div class="mb-6">
           <div class="flex items-center gap-2 mb-3.5 px-0.5">
             <div class="flex-1 h-px" style="background:rgba(252,211,77,0.12);"></div>
-            <span class="text-[10px] font-black tracking-[0.18em] uppercase" style="color:rgba(252,211,77,0.55);">📦 Паки</span>
+            <span class="text-[10px] font-black tracking-[0.18em] uppercase" style="color:rgba(252,211,77,0.55);">${nftT('section_packs')}</span>
             <div class="flex-1 h-px" style="background:rgba(252,211,77,0.12);"></div>
           </div>
           <div class="space-y-4">
@@ -103,7 +103,7 @@ function nftRenderShop() {
             html += `
             <div class="flex items-center gap-2 mb-3.5 px-0.5">
                 <div class="flex-1 h-px" style="background:rgba(252,211,77,0.12);"></div>
-                <span class="text-[10px] font-black tracking-[0.18em] uppercase" style="color:rgba(252,211,77,0.55);">🎨 Картины</span>
+                <span class="text-[10px] font-black tracking-[0.18em] uppercase" style="color:rgba(252,211,77,0.55);">${nftT('section_paintings')}</span>
                 <div class="flex-1 h-px" style="background:rgba(252,211,77,0.12);"></div>
             </div>`;
         }
@@ -112,13 +112,13 @@ function nftRenderShop() {
             // Горизонтальная свайп-карусель
             html += `
             <div class="nft-swipe-hint text-[9px] text-center mb-2 font-bold tracking-widest uppercase"
-                 style="color:rgba(252,211,77,0.35);">← свайп →</div>
+                 style="color:rgba(252,211,77,0.35);">${nftT('swipe_hint')}</div>
             <div class="nft-shop-carousel flex gap-3 overflow-x-auto pb-3 -mx-4 px-4"
                  style="scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;">
               ${available.map(p => nftShopCarouselCardHTML(p)).join('')}
             </div>`;
         } else {
-            html += `<div class="text-center py-8"><p class="text-yellow-500/50 text-sm font-medium">Все картины временно распроданы</p></div>`;
+            html += `<div class="text-center py-8"><p class="text-yellow-500/50 text-sm font-medium">${nftT('shop_all_sold')}</p></div>`;
         }
 
         if (archived.length > 0) {
@@ -126,7 +126,7 @@ function nftRenderShop() {
             <div class="mt-8 mb-4">
                 <div class="flex items-center gap-3">
                     <div class="flex-1 h-px" style="background:linear-gradient(90deg,transparent,rgba(255,255,255,0.1),transparent);"></div>
-                    <span class="text-[10px] font-black tracking-[0.2em] uppercase" style="color:rgba(252,211,77,0.55);">Архив</span>
+                    <span class="text-[10px] font-black tracking-[0.2em] uppercase" style="color:rgba(252,211,77,0.55);">${nftT('section_archive')}</span>
                     <div class="flex-1 h-px" style="background:linear-gradient(90deg,transparent,rgba(255,255,255,0.1),transparent);"></div>
                 </div>
             </div>
@@ -143,7 +143,7 @@ function nftRenderShop() {
         <div class="mt-8 mb-4">
             <div class="flex items-center gap-3">
                 <div class="flex-1 h-px" style="background:linear-gradient(90deg,transparent,rgba(255,255,255,0.1),transparent);"></div>
-                <span class="text-[10px] font-black tracking-[0.2em] uppercase" style="color:rgba(252,211,77,0.35);">🗄 Архив паков</span>
+                <span class="text-[10px] font-black tracking-[0.2em] uppercase" style="color:rgba(252,211,77,0.35);">${nftT('section_archive_packs')}</span>
                 <div class="flex-1 h-px" style="background:linear-gradient(90deg,transparent,rgba(255,255,255,0.1),transparent);"></div>
             </div>
         </div>
@@ -165,10 +165,10 @@ function nftShopCarouselCardHTML(p) {
     const badgeHTML = limited
         ? `<div class="absolute top-3 left-3 px-2.5 py-1 rounded-xl text-[10px] font-black"
                 style="background:rgba(252,211,77,0.95);color:#0a0704;box-shadow:0 4px 10px rgba(0,0,0,0.3);">
-               ${isSoldOut ? `🔴 0 из ${p.total_supply}` : `🔥 ${remain} из ${p.total_supply}`}
+               ${isSoldOut ? nftT('sold_out_count', { total: p.total_supply }) : nftT('remaining_count', { remain, total: p.total_supply })}
            </div>`
         : `<div class="absolute top-3 left-3 px-2.5 py-1 rounded-xl text-[10px] font-black"
-                style="background:rgba(99,102,241,0.85);color:#fff;box-shadow:0 4px 10px rgba(0,0,0,0.3);">♾ Безлимит</div>`;
+                style="background:rgba(99,102,241,0.85);color:#fff;box-shadow:0 4px 10px rgba(0,0,0,0.3);">${nftT('unlimited_badge')}</div>`;
 
     return `
     <div class="flex-shrink-0 nft-card cursor-pointer relative overflow-hidden"
@@ -185,7 +185,7 @@ function nftShopCarouselCardHTML(p) {
               <div class="flex items-center gap-1.5">
                 <img src="/gifts/stars.png" class="w-4 h-4 object-contain" onerror="this.style.display='none'">
                 <span class="font-black text-sm" style="color:#fcd34d;">${p.price}</span>
-                <span class="text-[10px] font-bold" style="color:rgba(255,255,255,0.45);">звёзд</span>
+                <span class="text-[10px] font-bold" style="color:rgba(255,255,255,0.45);">${nftT('stars_unit')}</span>
               </div>
               <button onclick="event.stopPropagation();nftShareItem('painting',${p.id},0,'${escapeHtml(p.title).replace(/'/g,"\\'")}');"
                       class="w-8 h-8 rounded-xl flex items-center justify-center active:scale-90 transition-all flex-shrink-0"
@@ -204,7 +204,7 @@ function nftShopCarouselCardHTML(p) {
 
 function nftPackCardHTML(pack) {
     const count     = pack.paintings.length;
-    const countWord = count === 1 ? 'картина' : count < 5 ? 'картины' : 'картин';
+    const countWord = nftPaintingWord(count);
     const cover     = pack.cover_image_url || (pack.paintings[0]?.image_url || '');
 
     // Маленькие превью картин (до 4-х)
@@ -232,7 +232,7 @@ function nftPackCardHTML(pack) {
                  onerror="this.src='https://via.placeholder.com/400x208?text=Pack'">
             <div class="absolute inset-0 z-10" style="background:linear-gradient(to bottom,rgba(10,7,4,0.05) 0%,rgba(10,7,4,0.90) 100%);"></div>
             <div class="absolute top-3 left-3 z-20 px-2.5 py-1 rounded-xl text-[10px] font-black"
-                 style="background:rgba(252,211,77,0.95);color:#0a0704;">📦 Пак · ${count} ${countWord}</div>
+                 style="background:rgba(252,211,77,0.95);color:#0a0704;">${nftT('pack_badge')} · ${count} ${countWord}</div>
             <div class="absolute bottom-3 left-4 right-4 z-20">
                 <h4 class="text-white font-black text-base leading-tight truncate">${escapeHtml(pack.name)}</h4>
                 ${pack.description ? `<p class="text-[11px] mt-0.5 line-clamp-1" style="color:rgba(255,255,255,0.55);">${escapeHtml(pack.description)}</p>` : ''}
@@ -246,7 +246,7 @@ function nftPackCardHTML(pack) {
             <div class="flex items-center gap-2">
               <button class="flex-shrink-0 px-4 py-2 rounded-xl text-xs font-black active:scale-95 transition-all nft-buy-btn"
                       onclick="event.stopPropagation();nftOpenPackModal(${pack.id})">
-                Открыть пак
+                ${nftT('btn_open_pack')}
               </button>
               <button onclick="event.stopPropagation();nftShareItem('pack',${pack.id},0,'${escapeHtml(pack.name).replace(/'/g,"\\'")}');"
                       class="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center active:scale-90 transition-all"
@@ -339,24 +339,24 @@ function _nftRenderPackSelected(idx) {
 
     const supplyBadge = isArchived
         ? `<span class="px-2.5 py-0.5 rounded-xl text-[10px] font-black"
-                style="background:rgba(100,100,100,0.2);color:rgba(255,255,255,0.4);">🗄 Архив</span>`
+                style="background:rgba(100,100,100,0.2);color:rgba(255,255,255,0.4);">${nftT('archive_badge')}</span>`
         : limited
             ? `<span class="px-2.5 py-0.5 rounded-xl text-[10px] font-black"
                     style="background:${isSoldOut ? 'rgba(239,68,68,0.15)' : 'rgba(252,211,77,0.12)'};color:${isSoldOut ? '#f87171' : '#fcd34d'};">
-                   ${isSoldOut ? `🔴 0 из ${p.total_supply}` : `🔥 ${remain} из ${p.total_supply}`}
+                   ${isSoldOut ? nftT('sold_out_count', { total: p.total_supply }) : nftT('remaining_count', { remain, total: p.total_supply })}
                </span>`
             : `<span class="px-2.5 py-0.5 rounded-xl text-[10px] font-black"
-                    style="background:rgba(99,102,241,0.15);color:#a5b4fc;">♾ Безлимит</span>`;
+                    style="background:rgba(99,102,241,0.15);color:#a5b4fc;">${nftT('unlimited_badge')}</span>`;
 
     const actionBlock = isArchived
         ? `<div class="w-full py-4 rounded-2xl font-black text-sm text-center mb-2.5"
                 style="background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.3);">
-               🗄 Пак в архиве — все картины распроданы
+               ${nftT('pack_archived_notice')}
            </div>`
         : `<button onclick="nftBuyFromPackModal()"
                 class="w-full py-4 rounded-2xl font-black text-sm active:scale-[0.97] transition-all ${isSoldOut ? '' : 'nft-buy-btn'} mb-2.5"
                 ${isSoldOut ? 'disabled style="background:rgba(239,68,68,0.2);color:#ffffff;"' : ''}>
-               ${isSoldOut ? `Распродано · 0 из ${p.total_supply}` : `Купить за ${p.price} <img src="/gifts/stars.png" class="w-4 h-4 inline-block align-middle" style="vertical-align:-2px;" onerror="this.style.display='none'">`}
+               ${isSoldOut ? nftT('btn_sold_out_count', { total: p.total_supply }) : `${nftT('btn_buy_for', { price: p.price })} <img src="/gifts/stars.png" class="w-4 h-4 inline-block align-middle" style="vertical-align:-2px;" onerror="this.style.display='none'">`}
            </button>`;
 
     info.innerHTML = `
@@ -369,11 +369,11 @@ function _nftRenderPackSelected(idx) {
         </div>
         ${p.description ? `<p class="text-xs mb-3 leading-relaxed" style="color:rgba(255,255,255,0.5);">${escapeHtml(p.description)}</p>` : ''}
         <div class="flex items-center justify-between p-3.5 rounded-2xl mb-4 nft-price-block">
-            <span class="text-xs nft-price-label">Цена</span>
+            <span class="text-xs nft-price-label">${nftT('price_label')}</span>
             <div class="flex items-center gap-1.5">
                 <img src="/gifts/stars.png" class="w-5 h-5 object-contain" onerror="this.style.display='none'">
                 <span class="font-black text-lg nft-price-value">${p.price}</span>
-                <span class="text-[10px] nft-price-unit">звёзд</span>
+                <span class="text-[10px] nft-price-unit">${nftT('stars_unit')}</span>
             </div>
         </div>
         ${actionBlock}`;
@@ -414,7 +414,7 @@ function nftShareCurrentPackModal() {
 
 function nftArchivedPackCardHTML(pack) {
     const count     = pack.paintings.length;
-    const countWord = count === 1 ? 'картина' : count < 5 ? 'картины' : 'картин';
+    const countWord = nftPaintingWord(count);
     const cover     = pack.cover_image_url || (pack.paintings[0]?.image_url || '');
 
     const paintingRows = pack.paintings.map(p =>
@@ -429,7 +429,7 @@ function nftArchivedPackCardHTML(pack) {
             </div>
             <div class="flex-shrink-0 text-[10px] font-black px-2 py-0.5 rounded-lg"
                  style="background:rgba(239,68,68,0.12);color:#f87171;">
-                0 из ${p.total_supply}
+                ${nftT('sold_out_bare', { total: p.total_supply })}
             </div>
         </div>`
     ).join('');
@@ -444,10 +444,10 @@ function nftArchivedPackCardHTML(pack) {
                  onerror="this.src='https://via.placeholder.com/400x208?text=Pack'">
             <div class="absolute inset-0 z-10" style="background:linear-gradient(to bottom,rgba(10,7,4,0.1) 0%,rgba(10,7,4,0.92) 100%);"></div>
             <div class="absolute top-3 left-3 px-2.5 py-1 rounded-xl text-[10px] font-black"
-                 style="background:rgba(100,100,100,0.7);color:#ccc;">🗄 Архив · ${count} ${countWord}</div>
+                 style="background:rgba(100,100,100,0.7);color:#ccc;">${nftT('archive_pack_badge', { n: count, word: countWord })}</div>
             <div class="absolute bottom-3 left-4 right-4">
                 <h4 class="font-black text-base leading-tight truncate" style="color:rgba(255,255,255,0.6);">${escapeHtml(pack.name)}</h4>
-                <p class="text-[11px] mt-0.5" style="color:rgba(255,255,255,0.35);">Все картины распроданы</p>
+                <p class="text-[11px] mt-0.5" style="color:rgba(255,255,255,0.35);">${nftT('pack_all_sold')}</p>
             </div>
         </div>
         <div class="px-4 pt-3 pb-1">
@@ -455,7 +455,7 @@ function nftArchivedPackCardHTML(pack) {
         </div>
         <div class="px-4 py-3 flex justify-end">
             <div class="px-4 py-2 rounded-xl text-xs font-black"
-                 style="background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.3);">Посмотреть пак →</div>
+                 style="background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.3);">${nftT('pack_view_btn')}</div>
         </div>
     </div>`;
 }

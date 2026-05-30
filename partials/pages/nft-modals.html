@@ -45,13 +45,13 @@
 
         <!-- Серийный номер -->
         <div id="nft-modal-serial-row" class="hidden items-center justify-center gap-2 mb-3">
-          <span class="text-[10px] tracking-widest uppercase font-bold" style="color:rgba(252,211,77,0.5);">Серийный №</span>
+          <span class="text-[10px] tracking-widest uppercase font-bold" style="color:rgba(252,211,77,0.5);" data-i18n="nft_serial_label">Серийный №</span>
           <span id="nft-modal-serial-num" class="font-black text-xs" style="color:#fcd34d;"></span>
         </div>
 
         <!-- Тираж -->
         <div id="nft-modal-supply-row" class="hidden items-center justify-center gap-2 mb-3">
-          <span class="text-[10px] tracking-widest uppercase font-bold" style="color:rgba(252,211,77,0.5);">Тираж</span>
+          <span class="text-[10px] tracking-widest uppercase font-bold" style="color:rgba(252,211,77,0.5);" data-i18n="nft_supply_label">Тираж</span>
           <span id="nft-modal-supply-text" class="font-black text-xs" style="color:#fcd34d;"></span>
         </div>
 
@@ -61,7 +61,7 @@
           <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:rgba(252,211,77,0.65);">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
           </svg>
-          <span class="text-[10px]" style="color:rgba(255,255,255,0.45);">Продавец:</span>
+          <span class="text-[10px]" style="color:rgba(255,255,255,0.45);" data-i18n="nft_seller_label">Продавец:</span>
           <span id="nft-modal-seller-name" class="text-xs font-bold" style="color:#ffffff;"></span>
         </div>
 
@@ -69,11 +69,11 @@
 
         <!-- Ценовой блок -->
         <div class="flex items-center justify-between mb-5 p-3.5 rounded-2xl nft-price-block">
-          <span class="text-xs nft-price-label">Стоимость</span>
+          <span class="text-xs nft-price-label" data-i18n="nft_price_cost_label">Стоимость</span>
           <div class="flex items-center gap-1.5">
             <img src="/gifts/stars.png" class="w-5 h-5 object-contain" onerror="this.style.display='none'">
             <span id="nft-modal-price" class="font-black text-lg nft-price-value"></span>
-            <span class="text-[10px] nft-price-unit">звёзд</span>
+            <span class="text-[10px] nft-price-unit" data-i18n="nft_price_unit">звёзд</span>
           </div>
         </div>
 
@@ -82,7 +82,7 @@
 
         <!-- Кнопка покупки -->
         <button id="nft-modal-buy-btn" onclick="nftBuyFromModal()"
-                class="w-full py-4 rounded-2xl font-black text-sm mb-2.5 active:scale-[0.97] transition-all nft-buy-btn">
+                class="w-full py-4 rounded-2xl font-black text-sm mb-2.5 active:scale-[0.97] transition-all nft-buy-btn" data-i18n="listing_buy_btn">
           Купить
         </button>
         
@@ -91,7 +91,7 @@
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/>
           </svg>
-          Назад
+          <span data-i18n="nft_modal_back">Назад</span>
         </button>
       </div>
     </div>
@@ -112,31 +112,31 @@
                   d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
           </svg>
         </div>
-        <h3 class="font-black text-lg mb-1" style="color:#ffffff;">Купить картину</h3>
+        <h3 class="font-black text-lg mb-1" style="color:#ffffff;" data-i18n="nft_buy_confirm_title">Купить картину</h3>
         <p id="nft-buy-confirm-title" class="text-xs" style="color:rgba(255,255,255,0.5);"></p>
       </div>
       <div class="flex items-center justify-between p-3.5 rounded-2xl mb-3 nft-price-block">
-        <span class="text-xs nft-price-label">Цена</span>
+        <span class="text-xs nft-price-label" data-i18n="nft_buy_confirm_price">Цена</span>
         <div class="flex items-center gap-1.5">
           <img src="/gifts/stars.png" class="w-5 h-5 object-contain" onerror="this.style.display='none'">
           <span id="nft-buy-confirm-price" class="font-black text-lg nft-price-value"></span>
-          <span class="text-[10px] nft-price-unit">звёзд</span>
+          <span class="text-[10px] nft-price-unit" data-i18n="nft_price_unit">звёзд</span>
         </div>
       </div>
       <div class="flex items-center justify-between p-3.5 rounded-2xl mb-5"
            style="background:rgba(255,255,255,0.015);border:1px solid rgba(255,255,255,0.05);">
-        <span class="text-xs font-bold" style="color:rgba(255,255,255,0.45);">Ваш баланс</span>
+        <span class="text-xs font-bold" style="color:rgba(255,255,255,0.45);" data-i18n="nft_balance_label">Ваш баланс</span>
         <div class="flex items-center gap-1">
           <img src="/gifts/stars.png" class="w-4 h-4 object-contain" onerror="this.style.display='none'">
           <span id="nft-buy-confirm-stars" class="font-black text-xs" style="color:rgba(252,211,77,0.8);"></span>
         </div>
       </div>
       <button id="nft-buy-confirm-btn" onclick="nftExecuteBuyListing()"
-              class="w-full py-4 rounded-2xl font-black text-sm mb-2.5 active:scale-[0.97] transition-all nft-buy-btn">
+              class="w-full py-4 rounded-2xl font-black text-sm mb-2.5 active:scale-[0.97] transition-all nft-buy-btn" data-i18n="nft_buy_confirm_btn">
         Подтвердить покупку
       </button>
       <button onclick="closeNFTModal('nft-buy-confirm-modal')"
-              class="w-full py-3.5 rounded-2xl font-bold text-xs active:scale-95 transition-all nft-close-btn">
+              class="w-full py-3.5 rounded-2xl font-bold text-xs active:scale-95 transition-all nft-close-btn" data-i18n="nft_cancel_btn">
         Отмена
       </button>
     </div>
@@ -156,27 +156,27 @@
           <img id="nft-list-modal-img" src="" class="art-img">
         </div>
         <div>
-          <p class="text-[9px] uppercase tracking-wider font-bold mb-0.5" style="color:rgba(252,211,77,0.65);">Продажа картины</p>
+          <p class="text-[9px] uppercase tracking-wider font-bold mb-0.5" style="color:rgba(252,211,77,0.65);" data-i18n="nft_sell_sub_label">Продажа картины</p>
           <p id="nft-list-modal-title" class="font-black text-sm" style="color:#ffffff;"></p>
         </div>
       </div>
-      <label class="block mb-2 text-xs font-bold" style="color:rgba(252,211,77,0.85);">
+      <label class="block mb-2 text-xs font-bold" style="color:rgba(252,211,77,0.85);" data-i18n="nft_sell_price_label">
         Цена продажи (NFT-звёзды)
       </label>
       <div class="flex items-center gap-2.5 p-3.5 rounded-2xl mb-5 animate-pulse"
            style="background:rgba(252,211,77,0.03);border:1px solid rgba(252,211,77,0.18);">
         <img src="/gifts/stars.png" class="w-5 h-5 object-contain flex-shrink-0" onerror="this.style.display='none'">
-        <input id="nft-list-price-input" type="number" min="1" max="1000000" placeholder="Например, 100"
+        <input id="nft-list-price-input" type="number" min="1" max="1000000" data-i18n-placeholder="nft_sell_placeholder"
                class="flex-1 bg-transparent outline-none text-base font-black"
                style="color:#fcd34d;caret-color:#fcd34d;"
                oninput="this.value=this.value.replace(/[^0-9]/g,'')">
       </div>
       <button id="nft-list-submit-btn" onclick="nftSubmitListing()"
-              class="w-full py-4 rounded-2xl font-black text-sm mb-2.5 active:scale-[0.97] transition-all nft-buy-btn">
+              class="w-full py-4 rounded-2xl font-black text-sm mb-2.5 active:scale-[0.97] transition-all nft-buy-btn" data-i18n="nft_sell_submit_btn">
         Выставить на продажу
       </button>
       <button onclick="closeNFTModal('nft-list-modal')"
-              class="w-full py-3.5 rounded-2xl font-bold text-xs active:scale-95 transition-all nft-close-btn">
+              class="w-full py-3.5 rounded-2xl font-bold text-xs active:scale-95 transition-all nft-close-btn" data-i18n="nft_cancel_btn">
         Отмена
       </button>
     </div>
@@ -196,44 +196,44 @@
           <img id="nft-auction-modal-img" src="" class="art-img">
         </div>
         <div>
-          <p class="text-[9px] uppercase tracking-wider font-bold mb-0.5" style="color:rgba(252,211,77,0.65);">Запустить аукцион</p>
+          <p class="text-[9px] uppercase tracking-wider font-bold mb-0.5" style="color:rgba(252,211,77,0.65);" data-i18n="nft_auction_sub_label">Запустить аукцион</p>
           <p id="nft-auction-modal-title" class="font-black text-sm" style="color:#ffffff;"></p>
         </div>
       </div>
-      <label class="block mb-2 text-xs font-bold" style="color:rgba(252,211,77,0.85);">
+      <label class="block mb-2 text-xs font-bold" style="color:rgba(252,211,77,0.85);" data-i18n="nft_auction_price_label">
         Начальная цена (NFT-звёзды)
       </label>
       <div class="flex items-center gap-2.5 p-3.5 rounded-2xl mb-4"
            style="background:rgba(252,211,77,0.03);border:1px solid rgba(252,211,77,0.18);">
         <img src="/gifts/stars.png" class="w-5 h-5 object-contain flex-shrink-0" onerror="this.style.display='none'">
-        <input id="nft-auction-start-price" type="number" min="1" max="1000000" placeholder="Например, 50"
+        <input id="nft-auction-start-price" type="number" min="1" max="1000000" data-i18n-placeholder="nft_auction_placeholder"
                class="flex-1 bg-transparent outline-none text-base font-black"
                style="color:#fcd34d;caret-color:#fcd34d;"
                oninput="this.value=this.value.replace(/[^0-9]/g,'')">
       </div>
-      <label class="block mb-2.5 text-xs font-bold" style="color:rgba(252,211,77,0.85);">
+      <label class="block mb-2.5 text-xs font-bold" style="color:rgba(252,211,77,0.85);" data-i18n="nft_duration_label">
         Длительность
       </label>
       <div class="grid grid-cols-3 gap-2 mb-5">
         <button class="nft-duration-btn py-2.5 rounded-xl text-[11px] font-black active:scale-95 transition-all" data-hours="1"
-                onclick="nftSelectDuration(this, 1)">1 час</button>
+                onclick="nftSelectDuration(this, 1)" data-i18n="nft_dur_1h">1 час</button>
         <button class="nft-duration-btn py-2.5 rounded-xl text-[11px] font-black active:scale-95 transition-all" data-hours="3"
-                onclick="nftSelectDuration(this, 3)">3 часа</button>
+                onclick="nftSelectDuration(this, 3)" data-i18n="nft_dur_3h">3 часа</button>
         <button class="nft-duration-btn py-2.5 rounded-xl text-[11px] font-black active:scale-95 transition-all" data-hours="6"
-                onclick="nftSelectDuration(this, 6)">6 часов</button>
+                onclick="nftSelectDuration(this, 6)" data-i18n="nft_dur_6h">6 часов</button>
         <button class="nft-duration-btn py-2.5 rounded-xl text-[11px] font-black active:scale-95 transition-all" data-hours="12"
-                onclick="nftSelectDuration(this, 12)">12 часов</button>
+                onclick="nftSelectDuration(this, 12)" data-i18n="nft_dur_12h">12 часов</button>
         <button class="nft-duration-btn active-duration py-2.5 rounded-xl text-[11px] font-black active:scale-95 transition-all" data-hours="24"
-                onclick="nftSelectDuration(this, 24)">24 часа</button>
+                onclick="nftSelectDuration(this, 24)" data-i18n="nft_dur_24h">24 часа</button>
         <button class="nft-duration-btn py-2.5 rounded-xl text-[11px] font-black active:scale-95 transition-all" data-hours="48"
-                onclick="nftSelectDuration(this, 48)">48 часов</button>
+                onclick="nftSelectDuration(this, 48)" data-i18n="nft_dur_48h">48 часов</button>
       </div>
       <button id="nft-auction-submit-btn" onclick="nftSubmitAuction()"
-              class="w-full py-4 rounded-2xl font-black text-sm mb-2.5 active:scale-[0.97] transition-all nft-buy-btn">
+              class="w-full py-4 rounded-2xl font-black text-sm mb-2.5 active:scale-[0.97] transition-all nft-buy-btn" data-i18n="nft_auction_submit_btn">
         🔨 Запустить аукцион
       </button>
       <button onclick="closeNFTModal('nft-auction-create-modal')"
-              class="w-full py-3.5 rounded-2xl font-bold text-xs active:scale-95 transition-all nft-close-btn">
+              class="w-full py-3.5 rounded-2xl font-bold text-xs active:scale-95 transition-all nft-close-btn" data-i18n="nft_cancel_btn">
         Отмена
       </button>
     </div>
@@ -254,11 +254,11 @@
                   d="M15 10l4.553-2.069A1 1 0 0121 8.87V15.13a1 1 0 01-1.447.9L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
           </svg>
         </div>
-        <h3 class="font-black text-lg mb-1" style="color:#ffffff;">Сделать ставку</h3>
+        <h3 class="font-black text-lg mb-1" style="color:#ffffff;" data-i18n="nft_bid_title">Сделать ставку</h3>
         <p id="nft-bid-modal-title" class="text-xs" style="color:rgba(255,255,255,0.5);"></p>
       </div>
       <div class="flex items-center justify-between p-3.5 rounded-2xl mb-3 nft-price-block">
-        <span class="text-xs nft-price-label">Текущая ставка</span>
+        <span class="text-xs nft-price-label" data-i18n="nft_bid_current_label">Текущая ставка</span>
         <div class="flex items-center gap-1.5">
           <img src="/gifts/stars.png" class="w-4 h-4 object-contain" onerror="this.style.display='none'">
           <span id="nft-bid-current-price" class="font-black text-base nft-price-value"></span>
@@ -267,13 +267,13 @@
       </div>
       <div class="flex items-center justify-between p-3.5 rounded-2xl mb-4"
            style="background:rgba(255,255,255,0.015);border:1px solid rgba(255,255,255,0.05);">
-        <span class="text-xs font-bold" style="color:rgba(255,255,255,0.45);">Ваш баланс</span>
+        <span class="text-xs font-bold" style="color:rgba(255,255,255,0.45);" data-i18n="nft_balance_label">Ваш баланс</span>
         <div class="flex items-center gap-1">
           <img src="/gifts/stars.png" class="w-4 h-4 object-contain" onerror="this.style.display='none'">
           <span id="nft-bid-your-balance" class="font-black text-xs" style="color:rgba(252,211,77,0.8);"></span>
         </div>
       </div>
-      <label class="block mb-2 text-xs font-bold" style="color:rgba(252,211,77,0.85);">
+      <label class="block mb-2 text-xs font-bold" style="color:rgba(252,211,77,0.85);" data-i18n="nft_bid_amount_label">
         Ваша ставка (должна быть выше текущей)
       </label>
       <div class="flex items-center gap-2.5 p-3.5 rounded-2xl mb-5"
@@ -285,11 +285,11 @@
                oninput="this.value=this.value.replace(/[^0-9]/g,'')">
       </div>
       <button id="nft-bid-submit-btn" onclick="nftSubmitBid()"
-              class="w-full py-4 rounded-2xl font-black text-sm mb-2.5 active:scale-[0.97] transition-all nft-buy-btn">
+              class="w-full py-4 rounded-2xl font-black text-sm mb-2.5 active:scale-[0.97] transition-all nft-buy-btn" data-i18n="nft_bid_submit_btn">
         🔨 Поставить
       </button>
       <button onclick="closeNFTModal('nft-bid-modal')"
-              class="w-full py-3.5 rounded-2xl font-bold text-xs active:scale-95 transition-all nft-close-btn">
+              class="w-full py-3.5 rounded-2xl font-bold text-xs active:scale-95 transition-all nft-close-btn" data-i18n="nft_cancel_btn">
         Отмена
       </button>
     </div>
@@ -321,7 +321,7 @@
         </button>
         <!-- Бейдж пака -->
         <div class="absolute top-4 left-4 px-2.5 py-1 rounded-xl text-[10px] font-black"
-             style="background:rgba(252,211,77,0.92);color:#0a0704;">📦 Пак</div>
+             style="background:rgba(252,211,77,0.92);color:#0a0704;" data-i18n="nft_pack_badge">📦 Пак</div>
       </div>
 
       <!-- Информация о паке -->
@@ -340,7 +340,7 @@
 
         <!-- Полоса миниатюр — свайп для просмотра картин в паке -->
         <p class="text-[9px] tracking-widest uppercase font-black text-center mb-2"
-           style="color:rgba(252,211,77,0.45);">Картины в паке</p>
+           style="color:rgba(252,211,77,0.45);" data-i18n="nft_pack_paintings_label">Картины в паке</p>
         <div id="nft-pack-modal-thumbs"
              class="flex gap-2 overflow-x-auto pb-2 mb-5 justify-center"
              style="scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-snap-type:x mandatory;">
@@ -357,7 +357,7 @@
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/>
           </svg>
-          Закрыть
+          <span data-i18n="nft_close_btn">Закрыть</span>
         </button>
       </div>
     </div>
