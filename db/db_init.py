@@ -446,4 +446,68 @@ async def init_rocket_games_table():
             "CREATE INDEX IF NOT EXISTS idx_ton_withdrawals_user ON ton_withdrawals (user_id, status)"
         )
 
+        # ── TG NFT инвентарь (уникальные Telegram-подарки через Business) ─────
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS tg_nft_inventory (
+                id               BIGSERIAL PRIMARY KEY,
+                user_id          BIGINT  NOT NULL,
+                tg_gift_id       TEXT    NOT NULL,
+                owned_gift_id    TEXT    NOT NULL DEFAULT '',
+                gift_name        TEXT    NOT NULL DEFAULT '',
+                base_name        TEXT    NOT NULL DEFAULT '',
+                number           INTEGER NOT NULL DEFAULT 0,
+                sticker_emoji    TEXT    NOT NULL DEFAULT '',
+                sticker_file_id  TEXT    NOT NULL DEFAULT '',
+                business_conn_id TEXT    NOT NULL DEFAULT '',
+                received_at      INTEGER NOT NULL,
+                UNIQUE (tg_gift_id)
+            )
+        """)
+        await db.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tg_nft_user "
+            "ON tg_nft_inventory (user_id, received_at DESC)"
+        )
+        # Migrations для уже существующих таблиц (idempotent, PostgreSQL-синтаксис)
+        await db.execute(
+            "ALTER TABLE tg_nft_inventory ADD COLUMN IF NOT EXISTS owned_gift_id    TEXT    DEFAULT ''"
+        )
+        await db.execute(
+            "ALTER TABLE tg_nft_inventory ADD COLUMN IF NOT EXISTS number           INTEGER DEFAULT 0"
+        )
+        await db.execute(
+            "ALTER TABLE tg_nft_inventory ADD COLUMN IF NOT EXISTS business_conn_id TEXT    DEFAULT ''"
+        )
+
+        # ── Хранение business_connection_id для исторической синхронизации ─────
+        # Когда бот подключается к @SpaceDonutGifts через Telegram Business,
+        # Telegram присылает business_connection апдейт с уникальным conn_id.
+        # Мы сохраняем его здесь, чтобы при каждом перезапуске вызывать
+        # getBusinessAccountGifts и подхватывать подарки, пришедшие до
+        # активации хэндлера.
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS business_connections (
+                conn_id   TEXT PRIMARY KEY,
+                saved_at  INTEGER NOT NULL,
+                is_active INTEGER NOT NULL DEFAULT 1
+            )
+        """)
+        # Migration: add is_active column to existing installations that lack it.
+        # PostgreSQL's IF NOT EXISTS prevents any error (and transaction abort)
+        # when the column already exists from a previous run.
+        await db.execute(
+            "ALTER TABLE business_connections ADD COLUMN IF NOT EXISTS is_active INTEGER NOT NULL DEFAULT 1"
+        )
+
+        # ── Лог синхронизации обычных подарков из истории ─────────────────────
+        # Обычные подарки не имеют уникального ключа в tg_nft_inventory,
+        # поэтому используем отдельную таблицу для дедупликации по owned_gift_id.
+        # Только подарки с непустым owned_gift_id (Bot API ≥ 9.0) попадают сюда.
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS tg_regular_gift_sync_log (
+                owned_gift_id TEXT PRIMARY KEY,
+                user_id       BIGINT  NOT NULL,
+                synced_at     INTEGER NOT NULL
+            )
+        """)
+
         await db.commit()

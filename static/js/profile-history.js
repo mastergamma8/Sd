@@ -19,6 +19,10 @@ const HISTORY_ICONS = {
     // ── Gifts (admin / system) ───────────────────────────────────────────────
     gift_added:           { icon: '🎁', color: 'green',  sign: '+' },
 
+    // ── Business / Telegram gifts received directly ──────────────────────────
+    tg_gift_received:     { icon: '🎁', color: 'green',  sign: null },
+    tg_nft_received:      { icon: '🎁', color: 'green',  sign: null },
+
     // ── TG Shop purchase ─────────────────────────────────────────────────────
     tg_shop_buy:          { icon: '🛒', color: 'red',    sign: '-' },
 
@@ -131,6 +135,8 @@ const HISTORY_LABELS = {
         topup_stars:          'Пополнение баланса',
         admin_add_stars:      'Начисление звёзд администратором',
         gift_added:           'Получен подарок',
+        tg_gift_received:     'Получен TG-подарок',
+        tg_nft_received:      'Получен NFT-подарок',
         tg_shop_buy:          'Покупка лимитированного подарка',
         roulette_win_donuts:  'Выигрыш в рулетке',
         roulette_win_stars:   'Выигрыш в рулетке',
@@ -192,6 +198,8 @@ const HISTORY_LABELS = {
         topup_stars:          'Balance top-up',
         admin_add_stars:      'Stars granted by admin',
         gift_added:           'Gift received',
+        tg_gift_received:     'TG gift received',
+        tg_nft_received:      'NFT gift received',
         tg_shop_buy:          'Limited gift purchase',
         roulette_win_donuts:  'Roulette win',
         roulette_win_stars:   'Roulette win',
@@ -346,6 +354,7 @@ function getHistoryGiftPhoto(entry) {
         'gift_added', 'claim_gift', 'withdraw_gift', 'withdraw_tg_gift',
         'exchange_tg_gift', 'roulette_win_gift', 'roulette_win_tg_gift',
         'case_win_gift', 'case_win_tg_gift', 'exchange_gift_donuts', 'exchange_gift_stars',
+        'tg_gift_received', 'tg_nft_received',
     ]);
     if (!giftTypes.has(entry.action_type) || !entry.description) return null;
 

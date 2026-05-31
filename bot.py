@@ -7,7 +7,7 @@ import logging
 from aiogram import Bot, Dispatcher
 
 import config
-from handlers import start, admin
+from handlers import start, admin, business_gifts
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -20,6 +20,7 @@ def setup_handlers():
     """Регистрирует хэндлеры на диспетчере. Вызывается один раз при старте."""
     start.register(dp, bot)
     admin.register(dp, bot)
+    business_gifts.register(dp, bot)
 
 
 if __name__ == "__main__":

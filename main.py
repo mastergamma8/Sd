@@ -186,15 +186,34 @@ async def lifespan(app: FastAPI):
         asyncio.create_task(price_update_worker())
         asyncio.create_task(leaderboard_season_reset_worker(main_bot))
 
+        # Синхронизация исторических подарков: подхватывает все подарки,
+        # отправленные на @SpaceDonutGifts до активации business_message хэндлера.
+        from handlers.business_gifts import sync_historical_gifts
+        asyncio.create_task(sync_historical_gifts(main_bot))
+
         # Регистрация webhook-адресов в Telegram
         webhook_base = config.WEBAPP_URL.rstrip("/")
 
         if webhook_base.startswith("https://"):
             try:
                 secret = WEBHOOK_SECRET or None
+                # allowed_updates перечислен явно, чтобы Telegram присылал
+                # business_message (подарки через Telegram Business) и
+                # business_connection (статус подключения бизнес-аккаунта).
+                _allowed_updates = [
+                    "message",
+                    "edited_message",
+                    "callback_query",
+                    "pre_checkout_query",
+                    "successful_payment",
+                    "business_connection",
+                    "business_message",
+                    "deleted_business_messages",
+                ]
                 await main_bot.set_webhook(
                     url=f"{webhook_base}/webhook/main",
                     secret_token=secret,
+                    allowed_updates=_allowed_updates,
                     drop_pending_updates=True,
                 )
                 await support_bot.set_webhook(

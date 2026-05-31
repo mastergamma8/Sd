@@ -16,7 +16,9 @@ E_BOX   = '<tg-emoji emoji-id="5884479287171485878">📦</tg-emoji>'
 E_CHART = '<tg-emoji emoji-id="5231200819986047254">📊</tg-emoji>'
 E_CROSS = '<tg-emoji emoji-id="5210952531676504517">❌</tg-emoji>'
 E_TIME  = '<tg-emoji emoji-id="5386367538735104399">⏳</tg-emoji>'
+E_TON   = '<tg-emoji emoji-id="5424912684078348533">💎</tg-emoji>'
 
 # --- ID эмодзи для иконок на кнопках ---
 ID_EYES = "5210956306952758910"
 ID_STAR = "5897920748101571572"
+ID_TON  = "5424912684078348533"

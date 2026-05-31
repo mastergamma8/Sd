@@ -329,3 +329,20 @@ async def check_subscription(current_user: dict = Depends(get_current_user)):
     tg_id      = current_user["id"]
     subscribed = await check_channel_subscription(tg_id)
     return {"subscribed": subscribed}
+
+
+# ── Telegram NFT инвентарь ─────────────────────────────────────────────────────
+
+@router.get("/tg-nft-inventory")
+async def get_tg_nft_inventory(current_user: dict = Depends(get_current_user)):
+    """
+    Возвращает список уникальных (NFT) Telegram-подарков пользователя.
+
+    Подарки добавляются автоматически, когда пользователь отправляет
+    уникальный Telegram-подарок на аккаунт @SpaceDonutGifts через
+    Telegram Business.
+    """
+    from db.db_tg_nft import get_user_tg_nft_inventory
+    tg_id = current_user["id"]
+    inventory = await get_user_tg_nft_inventory(tg_id)
+    return {"status": "ok", "tg_nft_inventory": inventory}

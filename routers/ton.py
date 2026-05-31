@@ -11,17 +11,76 @@ POST /api/ton/withdraw         — вывести TON с баланса
 GET  /api/ton/withdraw/history — история выводов пользователя
 """
 
+import logging
 import secrets
 import time
 import httpx
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+from aiogram.enums import ButtonStyle
 
 import config
 import database
 from db import db_ton
 from handlers.security import get_current_user
+
+logger = logging.getLogger(__name__)
+
+# Премиум-эмодзи TON (emoji-id 5424912684078348533)
+_E_TON  = '<tg-emoji emoji-id="5424912684078348533">💎</tg-emoji>'
+_ID_TON = "5424912684078348533"
+
+
+def _open_app_markup() -> InlineKeyboardMarkup:
+    """Кнопка «Открыть приложение» с иконкой TON."""
+    return InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(
+            text="Открыть приложение",
+            web_app=WebAppInfo(url=config.WEBAPP_URL),
+            style=ButtonStyle.SUCCESS,
+            icon_custom_emoji_id=_ID_TON,
+        )
+    ]])
+
+
+async def _notify_deposit(user_id: int, amount: float, new_balance: float) -> None:
+    """Отправляет пользователю уведомление об успешном пополнении TON-баланса."""
+    try:
+        from bot import bot
+        text = (
+            f"{_E_TON} <b>Баланс пополнен!</b>\n\n"
+            f"На ваш счёт зачислено <b>{amount:.4f} TON</b>.\n"
+            f"Текущий TON-баланс: <b>{new_balance:.4f} TON</b>"
+        )
+        await bot.send_message(
+            user_id, text,
+            parse_mode="HTML",
+            reply_markup=_open_app_markup(),
+        )
+    except Exception as e:
+        logger.warning("Не удалось отправить уведомление о депозите пользователю %s: %s", user_id, e)
+
+
+async def _notify_withdraw(user_id: int, net_amount: float, new_balance: float, to_address: str) -> None:
+    """Отправляет пользователю уведомление об успешном выводе TON."""
+    try:
+        from bot import bot
+        short_addr = to_address[:8] + "..." + to_address[-6:]
+        text = (
+            f"{_E_TON} <b>Вывод TON выполнен!</b>\n\n"
+            f"Отправлено <b>{net_amount:.4f} TON</b> на кошелёк "
+            f"<code>{short_addr}</code>.\n"
+            f"Текущий TON-баланс: <b>{new_balance:.4f} TON</b>"
+        )
+        await bot.send_message(
+            user_id, text,
+            parse_mode="HTML",
+            reply_markup=_open_app_markup(),
+        )
+    except Exception as e:
+        logger.warning("Не удалось отправить уведомление о выводе пользователю %s: %s", user_id, e)
 
 router = APIRouter(prefix="/api/ton", tags=["ton"])
 
@@ -222,10 +281,15 @@ async def verify_deposit(
         )
 
         updated = await database.get_user_data(user_id)
+        new_ton_balance = updated.get("ton_balance", 0)
+
+        # Уведомляем пользователя в Telegram
+        await _notify_deposit(user_id, amount, new_ton_balance)
+
         return {
             "status":          "confirmed",
             "amount_ton":      amount,
-            "new_ton_balance": updated.get("ton_balance", 0),
+            "new_ton_balance": new_ton_balance,
             "new_balance":     updated.get("balance", 0),
             "new_stars":       updated.get("stars", 0),
         }
@@ -373,12 +437,17 @@ async def withdraw_ton(
     )
 
     updated = await database.get_user_data(user_id)
+    new_ton_balance = updated.get("ton_balance", 0)
+
+    # Уведомляем пользователя в Telegram
+    await _notify_withdraw(user_id, net_amount, new_ton_balance, to_address)
+
     return {
         "status":          "sent",
         "amount_ton":      net_amount,
         "fee_ton":         fee,
         "to_address":      to_address,
-        "new_ton_balance": updated.get("ton_balance", 0),
+        "new_ton_balance": new_ton_balance,
         "new_balance":     updated.get("balance", 0),
     }
 

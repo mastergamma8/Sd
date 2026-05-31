@@ -586,8 +586,138 @@ BASE_GIFTS = {
     113: {"name": "Chill Flame", "photo": "https://cdn.changes.tg/gifts/models/Chill Flame/png/Original.png", "value": 50},
     114: {"name": "Vice Cream", "photo": "https://cdn.changes.tg/gifts/models/Vice Cream/png/Original.png", "value": 50}
 }
-    
-# ==========================================
+
+# Маппинг: Telegram Gift.id → числовой ID из BASE_GIFTS.
+# Используется в handlers/business_gifts.py: когда пользователь отправляет
+# обычный Telegram-подарок на @SpaceDonutGifts, бот находит соответствующий
+# BASE_GIFT по Gift.id и начисляет его в инвентарь (user_gifts).
+TG_STICKER_TO_BASE_GIFT_ID: dict[str, int] = {
+    "5830340739074097859": 1,  # Victory Medal
+    "5782988952268964995": 2,  # Desk Calendar
+    "5783075783622787539": 3,  # Homemade Cake
+    "6001473264306619020": 4,  # Jingle Bells
+    "5170594532177215681": 5,  # Lol Pop
+    "5167939598143193218": 6,  # Sakura Flower
+    "6006064678835323371": 7,  # Happy Brownie
+    "6005564615793050414": 8,  # Instant Ramen
+    "5773725897517433693": 9,  # Spring Basket
+    "5870972044522291836": 10,  # Input Key
+    "5983471780763796287": 11,  # Santa Hat
+    "5936085638515261992": 12,  # Signet Ring
+    "5933671725160989227": 13,  # Precious Peach
+    "5913442287462908725": 14,  # Spiced Wine
+    "5915502858152706668": 15,  # Jelly Bunny
+    "5882125812596999035": 16,  # Eternal Rose
+    "5882252952218894938": 17,  # Berry Box
+    "5857140566201991735": 18,  # Vintage Cigar
+    "5846226946928673709": 19,  # Magic Potion
+    "5845776576658015084": 20,  # Kissed Frog
+    "5825801628657124140": 21,  # Hex Pot
+    "5825480571261813595": 22,  # Evil Eye
+    "5841689550203650524": 23,  # Sharp Tongue
+    "5841391256135008713": 24,  # Trapped Heart
+    "5839038009193792264": 25,  # Skull Flower
+    "5837059369300132790": 26,  # Scared Cat
+    "5821261908354794038": 27,  # Spy Agaric
+    "5933531623327795414": 28,  # Genie Lamp
+    "6028426950047957932": 29,  # Lunar Snake
+    "6003643167683903930": 30,  # Party Sparkler
+    "5933590374185435592": 31,  # Jester Hat
+    "5821384757304362229": 32,  # Witch Hat
+    "5915733223018594841": 33,  # Hanging Star
+    "5915550639663874519": 34,  # Love Candle
+    "6001538689543439169": 35,  # Cookie Heart
+    "5980789805615678057": 36,  # Snow Mittens
+    "5836780359634649414": 37,  # Voodoo Doll
+    "5841632504448025405": 38,  # Mad Pumpkin
+    "5825895989088617224": 39,  # Hypno Lollipop
+    "5782984811920491178": 40,  # B-Day Candle
+    "5935936766358847989": 41,  # Bunny Muffin
+    "5933629604416717361": 42,  # Astral Shard
+    "5837063436634161765": 43,  # Flying Broom
+    "5841336413697606412": 44,  # Crystal Ball
+    "5821205665758053411": 45,  # Eternal Candle
+    "5983484377902875708": 46,  # Ginger Cookie
+    "5879737836550226478": 47,  # Mini Oscar
+    "5936017773737018241": 48,  # Star Notepad
+    "5868659926187901653": 49,  # Loot Bag
+    "5868348541058942091": 50,  # Love Potion
+    "5868220813026526561": 51,  # Toy Bear
+    "5868503709637411929": 52,  # Diamond Ring
+    "5981026247860290310": 53,  # Sleigh Bell
+    "5897593557492957738": 54,  # Top Hat
+    "5856973938650776169": 55,  # Record Player
+    "5983259145522906006": 56,  # Winter Wreath
+    "5981132629905245483": 57,  # Snow Globe
+    "5846192273657692751": 58,  # Electric Skull
+    "6023752243218481939": 59,  # Tama Gadget
+    "6003373314888696650": 60,  # Candy Cane
+    "5933793770951673155": 61,  # Neko Helmet
+    "6005659564635063386": 62,  # Jack-in-the-Box
+    "5773668482394620318": 63,  # Easter Egg
+    "5870661333703197240": 64,  # Bonded Ring
+    "6023917088358269866": 65,  # Pet Snake
+    "6023679164349940429": 66,  # Snake Box
+    "6003767644426076664": 67,  # Xmas Stocking
+    "6028283532500009446": 68,  # Big Year
+    "6003735372041814769": 69,  # Holiday Drink
+    "5859442703032386168": 70,  # Gem Signet
+    "5897581235231785485": 71,  # Light Sword
+    "5870784783948186838": 72,  # Restless Jar
+    "5870720080265871962": 73,  # Nail Bracelet
+    "5895328365971244193": 74,  # Heroic Helmet
+    "5895544372761461960": 75,  # Bow Tie
+    "5871002671934079382": 76,  # Lush Bouquet
+    "5933543975653737112": 77,  # Whip Cupcake
+    "5870862540036113469": 78,  # Joyful Bundle
+    "5868561433997870501": 79,  # Cupid Charm
+    "5868595669182186720": 80,  # Valentine Box
+    "6014591077976114307": 81,  # Snoop Dogg
+    "6012607142387778152": 82,  # Swag Bag
+    "6012435906336654262": 83,  # Snoop Cigar
+    "6014675319464657779": 84,  # Low Rider
+    "6014697240977737490": 85,  # Westside Sign
+    "6042113507581755979": 86,  # Stellar Rocket
+    "6005880141270483700": 87,  # Jolly Chimp
+    "5998981470310368313": 88,  # Moon Pendant
+    "5933937398953018107": 89,  # Ionic Dryer
+    "5895518353849582541": 90,  # Mighty Arm
+    "5960747083030856414": 91,  # Clover Pin
+    "5870947077877400011": 92,  # Sky Stilettos
+    "5895603153683874485": 93,  # Fresh Socks
+    "5900177027566142759": 94,  # Ice Cream
+    "6003456431095808759": 95,  # Faith Amulet
+    "5935877878062253519": 96,  # Mousse Cake
+    "5902339509239940491": 97,  # Bling Binky
+    "5963238670868677492": 98,  # Money Pot
+    "5933737850477478635": 99,  # Pretty Posy
+    "5936013938331222567": 100,  # Plush Pepe
+    "5915521180483191380": 101,  # Durov's Cap
+    "5913517067138499193": 102,  # Perfume Bottle
+    "5936043693864651359": 103,  # Swiss Watch
+    "5843762284240831056": 104,  # Ion Gem
+    "5868455043362980631": 105,  # Heart Locket
+    "6005797617768858105": 106,  # Artisan Brick
+    "5839094187366024301": 107,  # Khabib's Papakha
+    "5882260270843168924": 108,  # UFC Strike
+    "5999116401002939514": 109,  # Rare Bird
+    "5886756255493523118": 110,  # Mood Pack
+    "5832644211639321671": 111,  # Pool Float
+    "5886387158889005864": 112,  # Timeless Book
+    "5999277561060787166": 113,  # Chill Flame
+    "5898012527257715797": 114,  # Vice Cream
+}
+
+# Обратный маппинг: BASE_GIFT.name (нижний регистр) → числовой ID.
+# Используется для сопоставления уникальных Telegram-подарков (UniqueGift.base_name)
+# с BASE_GIFTS при зачислении в обычный инвентарь пользователя.
+BASE_GIFT_NAME_TO_ID: dict[str, int] = {
+    v["name"].lower(): k
+    for k, v in BASE_GIFTS.items()
+    if "name" in v
+}
+
+
 MAIN_GIFTS = {
     1000: {"name": "Swiss Watch", "photo": "https://cdn.changes.tg/gifts/models/Swiss Watch/png/Original.png", "required_value": 50},
     1001: {"name": "Artisan Brick", "photo": "https://cdn.changes.tg/gifts/models/Artisan Brick/png/Original.png", "required_value": 100},

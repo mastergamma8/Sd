@@ -423,3 +423,104 @@ def register(dp: Dispatcher, bot: Bot):
             lines.append(f"\n<i>Следующая страница: /users {page + 1}</i>")
 
         await message.answer("\n".join(lines), parse_mode="HTML")
+
+    # ── /addton ────────────────────────────────────────────────────────────────
+
+    @dp.message(Command("addton"))
+    async def cmd_add_ton(message: Message):
+        if message.from_user.id != config.ADMIN_ID:
+            await message.answer(f"{E_STOP} У вас нет прав.", parse_mode="HTML")
+            return
+
+        from .admin_constants import E_TON, ID_TON
+
+        args = message.text.split()
+        if len(args) != 3:
+            await message.answer(
+                f"{E_TON} <b>Начисление TON пользователю</b>\n\n"
+                "Использование:\n"
+                "<code>/addton &lt;user_id&gt; &lt;сумма&gt;</code>\n\n"
+                "Пример: <code>/addton 123456789 5.5</code>",
+                parse_mode="HTML",
+            )
+            return
+
+        try:
+            target_id = int(args[1])
+        except ValueError:
+            await message.answer(
+                f"{E_CROSS} Неверный формат user_id. Укажите числовой Telegram ID.",
+                parse_mode="HTML",
+            )
+            return
+
+        try:
+            amount = float(args[2])
+        except ValueError:
+            await message.answer(
+                f"{E_CROSS} Неверный формат суммы. Укажите число, например: <code>5.5</code>",
+                parse_mode="HTML",
+            )
+            return
+
+        if amount <= 0:
+            await message.answer(f"{E_CROSS} Сумма должна быть больше нуля.", parse_mode="HTML")
+            return
+
+        # Проверяем, что пользователь существует
+        user_data = await database.get_user_data(target_id)
+        if not user_data:
+            await message.answer(
+                f"{E_CROSS} Пользователь <code>{target_id}</code> не найден в базе.",
+                parse_mode="HTML",
+            )
+            return
+
+        old_balance = user_data.get("ton_balance", 0)
+
+        # Начисляем TON-баланс
+        await database.add_ton_balance(target_id, amount)
+
+        # Логируем действие
+        await database.log_action(
+            target_id,
+            "ton_admin_add",
+            f"Администратор начислил {amount:.4f} TON (admin_id: {message.from_user.id})",
+            amount,
+        )
+
+        new_data    = await database.get_user_data(target_id)
+        new_balance = new_data.get("ton_balance", 0)
+
+        await message.answer(
+            f"{E_TON} <b>TON успешно начислены!</b>\n\n"
+            f"Пользователь: <code>{target_id}</code>\n"
+            f"Начислено: <b>+{amount:.4f} TON</b>\n"
+            f"Баланс до: <b>{old_balance:.4f} TON</b>\n"
+            f"Баланс после: <b>{new_balance:.4f} TON</b>",
+            parse_mode="HTML",
+        )
+
+        # Уведомляем самого пользователя
+        try:
+            from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+            from aiogram.enums import ButtonStyle
+            markup = InlineKeyboardMarkup(inline_keyboard=[[
+                InlineKeyboardButton(
+                    text="Открыть приложение",
+                    web_app=WebAppInfo(url=config.WEBAPP_URL),
+                    style=ButtonStyle.SUCCESS,
+                    icon_custom_emoji_id=ID_TON,
+                )
+            ]])
+            e_ton = '<tg-emoji emoji-id="5424912684078348533">💎</tg-emoji>'
+            await bot.send_message(
+                target_id,
+                f"{e_ton} <b>Вам начислен TON!</b>\n\n"
+                f"Администратор пополнил ваш TON-баланс на <b>{amount:.4f} TON</b>.\n"
+                f"Текущий TON-баланс: <b>{new_balance:.4f} TON</b>",
+                parse_mode="HTML",
+                reply_markup=markup,
+            )
+        except Exception:
+            pass  # Уведомление пользователя опционально
