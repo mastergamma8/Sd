@@ -717,6 +717,13 @@ BASE_GIFT_NAME_TO_ID: dict[str, int] = {
     if "name" in v
 }
 
+# Обратный маппинг: числовой ID из BASE_GIFTS → Telegram Gift.id (строка).
+# Используется при автоматической отправке подарка с аккаунта @spacedonutgifts
+# пользователю в момент вывода (routers/gifts.py → withdraw_gift).
+BASE_GIFT_ID_TO_TG_ID: dict[int, str] = {
+    v: k for k, v in TG_STICKER_TO_BASE_GIFT_ID.items()
+}
+
 
 MAIN_GIFTS = {
     1000: {"name": "Swiss Watch", "photo": "https://cdn.changes.tg/gifts/models/Swiss Watch/png/Original.png", "required_value": 50},

@@ -7,7 +7,7 @@ import config
 import database
 from handlers.models import ActionData
 from handlers.security import get_current_user
-from handlers.tg_gifts import get_gift_def, is_real_tg_gift, send_real_tg_gift, get_tg_exchange_value
+from handlers.tg_gifts import get_gift_def, is_real_tg_gift, send_real_tg_gift, get_tg_exchange_value, send_base_gift_from_business
 
 router = APIRouter(prefix="/api", tags=["gifts"])
 
@@ -206,7 +206,7 @@ async def withdraw_gift(data: ActionData, current_user: dict = Depends(get_curre
             "stars": updated_user.get("stars", 0),
         }
 
-    # Старый вывод для обычных подарков — с комиссией и кулдауном
+    # BASE/MAIN подарок — с комиссией, кулдауном и автоматической отправкой с @spacedonutgifts
     last_withdraw = await database.get_last_gift_withdraw(tg_id)
     elapsed       = now - last_withdraw
     if elapsed < GIFT_COOLDOWN_SECONDS:
@@ -232,35 +232,103 @@ async def withdraw_gift(data: ActionData, current_user: dict = Depends(get_curre
         await database.add_stars_to_user(tg_id, config.WITHDRAW_FEE_STARS)
         raise HTTPException(status_code=400, detail="Подарок не найден")
 
+    # ── Автоматическая отправка с аккаунта @spacedonutgifts ──────────────────
+    sent_ok, send_error = await send_base_gift_from_business(
+        user_id=tg_id,
+        base_gift_id=data.gift_id,
+        text="gift from Space Donut 🍩",
+    )
+
+    if not sent_ok:
+        # Откатываем: возвращаем подарок и звёзды пользователю
+        await database.add_gift_to_user(tg_id, data.gift_id, 1)
+        await database.add_stars_to_user(tg_id, config.WITHDRAW_FEE_STARS)
+
+        if send_error == "not_enough_stars":
+            # На аккаунте @spacedonutgifts недостаточно звёзд для отправки подарка
+            raise HTTPException(status_code=402, detail="business_not_enough_stars")
+
+        if send_error == "gift_not_available":
+            raise HTTPException(status_code=409, detail="business_gift_not_available")
+
+        if send_error == "business_connection_invalid":
+            raise HTTPException(status_code=409, detail="business_connection_invalid")
+
+        if send_error == "no_business_connection":
+            raise HTTPException(status_code=409, detail="business_connection_missing")
+
+        # Прочие ошибки (нет маппинга, нет business_connection и т. д.)
+        # — уведомляем администратора для ручной обработки
+        try:
+            user_profile = await database.get_user_profile(tg_id)
+            username_str = f"@{user_profile['username']}" if user_profile.get("username") else "Отсутствует/Скрыт"
+            first_name   = user_profile.get("first_name", "Без имени")
+            admin_text = (
+                f"⚠️ <b>Ошибка автовывода подарка!</b>\n\n"
+                f"👤 Пользователь: <a href='tg://user?id={tg_id}'>{first_name}</a>\n"
+                f"🔗 Юзернейм: {username_str}\n"
+                f"🆔 ID: <code>{tg_id}</code>\n\n"
+                f"🎁 <b>Подарок:</b> {gift_name} (ID: {data.gift_id})\n"
+                f"❌ <b>Причина:</b> {send_error}\n\n"
+                f"Звёзды и подарок возвращены пользователю. Требуется ручная проверка."
+            )
+            url_msg   = f"https://api.telegram.org/bot{config.BOT_TOKEN}/sendMessage"
+            payload_a = {"chat_id": config.ADMIN_ID, "text": admin_text, "parse_mode": "HTML"}
+            async with httpx.AsyncClient() as client:
+                await client.post(url_msg, json=payload_a)
+        except Exception as e:
+            print(f"Ошибка при отправке уведомления об ошибке вывода: {e}")
+
+        raise HTTPException(status_code=502, detail=send_error if send_error != "unknown" else "gift_send_failed")
+
+    # ── Отправка прошла успешно: фиксируем результат ─────────────────────────
     await database.update_last_gift_withdraw(tg_id, now)
 
-    # Комиссия за вывод — звёзды списаны у пользователя, зачисляем в банк.
+    # Комиссия за вывод — звёзды уже списаны у пользователя, зачисляем в банк.
     await database.bank_add_stars(config.WITHDRAW_FEE_STARS)
 
-    await database.log_action(tg_id, "withdraw_gift", f"Вывод подарка: {gift_name} [gift_id:{data.gift_id}]", 0)
+    await database.log_action(
+        tg_id, "withdraw_gift",
+        f"Вывод подарка (отправлен с @spacedonutgifts): {gift_name} [gift_id:{data.gift_id}]",
+        0,
+    )
 
-    # Уведомление админа
+    await database.add_history_entry(
+        tg_id,
+        "withdraw_base_gift",
+        f"Вывод BASE подарка: {gift_name} [gift_id:{data.gift_id}]",
+        0,
+    )
+
+    # Уведомление администратора о совершённом выводе
     try:
         user_profile = await database.get_user_profile(tg_id)
         username_str = f"@{user_profile['username']}" if user_profile.get("username") else "Отсутствует/Скрыт"
         first_name   = user_profile.get("first_name", "Без имени")
         admin_text = (
-            f"🚨 <b>Новая заявка на вывод подарка!</b>\n\n"
+            f"✅ <b>Подарок автоматически отправлен!</b>\n\n"
             f"👤 Пользователь: <a href='tg://user?id={tg_id}'>{first_name}</a>\n"
             f"🔗 Юзернейм: {username_str}\n"
             f"🆔 ID: <code>{tg_id}</code>\n\n"
-            f"🎁 <b>Подарок:</b> {gift_name} (ID: {data.gift_id})"
+            f"🎁 <b>Подарок:</b> {gift_name} (ID: {data.gift_id})\n"
+            f"⭐ Комиссия: {config.WITHDRAW_FEE_STARS} звёзд списана с пользователя"
         )
-        url     = f"https://api.telegram.org/bot{config.BOT_TOKEN}/sendMessage"
-        payload = {"chat_id": config.ADMIN_ID, "text": admin_text, "parse_mode": "HTML"}
+        url_msg   = f"https://api.telegram.org/bot{config.BOT_TOKEN}/sendMessage"
+        payload_a = {"chat_id": config.ADMIN_ID, "text": admin_text, "parse_mode": "HTML"}
         async with httpx.AsyncClient() as client:
-            await client.post(url, json=payload)
+            await client.post(url_msg, json=payload_a)
     except Exception as e:
         print(f"Ошибка при отправке уведомления админу: {e}")
 
     updated_gifts = await database.get_user_gifts(tg_id)
+    updated_user  = await database.get_user_data(tg_id)
 
-    return {"status": "ok", "user_gifts": updated_gifts}
+    return {
+        "status":     "ok",
+        "user_gifts": updated_gifts,
+        "balance":    updated_user.get("balance", 0),
+        "stars":      updated_user.get("stars", 0),
+    }
 
 
 @router.post("/exchange")
