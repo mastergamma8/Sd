@@ -57,9 +57,11 @@ async def get_all_user_ids() -> list[int]:
 # ==========================================
 
 async def add_points_to_user(user_id: int, points: float):
+    # Пончики хранятся как целые числа (1 пончик = 0.1 TON)
+    int_points = int(round(points))
     async with aiosqlite.connect(DB_NAME) as db:
         await db.execute(
-            "UPDATE users SET balance = balance + ? WHERE tg_id = ?", (points, user_id)
+            "UPDATE users SET balance = balance + ? WHERE tg_id = ?", (int_points, user_id)
         )
         await db.commit()
 

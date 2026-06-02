@@ -38,10 +38,12 @@ except ValueError:
     raise ValueError("ADMIN_ID должен быть целым числом (Telegram user_id)!")
 
 # ── Курс конвертации валют для банка ─────────────────────────────────────────
-# 1 пончик = 1 TON.  Поэтому базовый курс пончик→звёзды равен TON→Stars.
-# games_pvp.py при запуске использует живой курс CoinGecko; это значение
-# применяется только как статический фолбэк (обновляйте вместе с TON_TO_STARS_FALLBACK).
-DONUTS_TO_STARS_RATE: int = 200  # = TON_TO_STARS_FALLBACK
+# 1 пончик = 0.1 TON.  Пончики — отдельная валюта, НЕ привязанная 1:1 к TON.
+# Курс пончик→звёзды = DONUT_TO_TON_RATE × TON_TO_STARS.
+# games_pvp.py при запуске использует живой курс; это значение —
+# статический фолбэк (= 0.1 × TON_TO_STARS_FALLBACK).
+DONUT_TO_TON_RATE: float = 0.1          # 1 пончик = 0.1 TON
+DONUTS_TO_STARS_RATE: int = 20          # = DONUT_TO_TON_RATE × TON_TO_STARS_FALLBACK
 
 # ── Бонус при обмене подарков на звёзды ──────────────────────────────────────
 # Сколько процентов сверх рыночной цены (Portal Market) получает пользователь.
@@ -49,7 +51,7 @@ DONUTS_TO_STARS_RATE: int = 200  # = TON_TO_STARS_FALLBACK
 # Значение здесь используется только как внутренний базовый множитель
 # для MAIN_GIFTS (у которых нет портальной цены).
 GIFT_EXCHANGE_STARS_RATE: float = 1.0   # базовый множитель для MAIN_GIFTS
-EXCHANGE_BONUS_PERCENT: float   = 10.0  # +10% к рыночной цене по умолчанию
+EXCHANGE_BONUS_PERCENT: float   = 0.0   # 0% — выплата строго по цене Portal Market
 
 # Фоллбэк курса TON→Stars (используется если CoinGecko недоступен).
 # Обновляйте вручную при существенном изменении курса TON.
@@ -64,13 +66,14 @@ _STAR_USD_PRICE: float = 0.013             # официальный курс Tel
 
 
 async def get_live_donuts_to_stars_rate() -> float:
-    """Возвращает актуальный курс 1 TON (= 1 пончик) → Stars.
+    """Возвращает актуальный курс 1 пончик → Stars.
 
     Алгоритм:
       • Запрашивает цену TONUSDT у Binance Public API.
       • Делит на стоимость одной звезды ($0.013) → количество Stars за 1 TON.
+      • Умножает на DONUT_TO_TON_RATE (0.1), так как 1 пончик = 0.1 TON.
       • Результат кэшируется на 5 минут.
-      • При любой ошибке возвращает TON_TO_STARS_FALLBACK (200).
+      • При любой ошибке возвращает DONUTS_TO_STARS_RATE (20).
     """
     import httpx  # импортируем здесь, чтобы не ломать синхронный старт config.py
 
@@ -90,14 +93,16 @@ async def get_live_donuts_to_stars_rate() -> float:
             )
             if resp.status_code == 200:
                 ton_usd = float(resp.json()["price"])
-                rate = ton_usd / _STAR_USD_PRICE
+                ton_to_stars = ton_usd / _STAR_USD_PRICE
+                # 1 пончик = 0.1 TON → умножаем на DONUT_TO_TON_RATE
+                rate = ton_to_stars * DONUT_TO_TON_RATE
                 _ton_stars_live_cache["rate"] = rate
                 _ton_stars_live_cache["ts"] = now
                 return rate
     except Exception as e:
         print(f"[Leaderboard rate] Binance error: {e}")
 
-    return TON_TO_STARS_FALLBACK
+    return DONUTS_TO_STARS_RATE
 
 # Комиссия за вывод подарка в звездах
 WITHDRAW_FEE_STARS = 25
@@ -717,22 +722,15 @@ BASE_GIFT_NAME_TO_ID: dict[str, int] = {
     if "name" in v
 }
 
-# Обратный маппинг: числовой ID из BASE_GIFTS → Telegram Gift.id (строка).
-# Используется при автоматической отправке подарка с аккаунта @spacedonutgifts
-# пользователю в момент вывода (routers/gifts.py → withdraw_gift).
-BASE_GIFT_ID_TO_TG_ID: dict[int, str] = {
-    v: k for k, v in TG_STICKER_TO_BASE_GIFT_ID.items()
-}
-
 
 MAIN_GIFTS = {
-    1000: {"name": "Swiss Watch", "photo": "https://cdn.changes.tg/gifts/models/Swiss Watch/png/Original.png", "required_value": 50},
-    1001: {"name": "Artisan Brick", "photo": "https://cdn.changes.tg/gifts/models/Artisan Brick/png/Original.png", "required_value": 100},
-    1002: {"name": "Perfume Bottle", "photo": "https://cdn.changes.tg/gifts/models/Perfume Bottle/png/Original.png", "required_value": 100},
-    1003: {"name": "Ion Gem", "photo": "https://cdn.changes.tg/gifts/models/Ion Gem/png/Original.png", "required_value": 100},
-    1004: {"name": "Durov's Cap", "photo": "https://cdn.changes.tg/gifts/models/Durov's Cap/png/Original.png", "required_value": 700},
-    1005: {"name": "Toy Bear", "photo": "https://cdn.changes.tg/gifts/models/Toy Bear/png/Original.png", "required_value": 50},
-    1006: {"name": "Vintage Cigar", "photo": "https://cdn.changes.tg/gifts/models/Vintage Cigar/png/Original.png", "required_value": 30}
+    1000: {"name": "Swiss Watch", "photo": "https://cdn.changes.tg/gifts/models/Swiss Watch/png/Original.png", "required_value": 500},
+    1001: {"name": "Artisan Brick", "photo": "https://cdn.changes.tg/gifts/models/Artisan Brick/png/Original.png", "required_value": 1000},
+    1002: {"name": "Perfume Bottle", "photo": "https://cdn.changes.tg/gifts/models/Perfume Bottle/png/Original.png", "required_value": 1000},
+    1003: {"name": "Ion Gem", "photo": "https://cdn.changes.tg/gifts/models/Ion Gem/png/Original.png", "required_value": 1000},
+    1004: {"name": "Durov's Cap", "photo": "https://cdn.changes.tg/gifts/models/Durov's Cap/png/Original.png", "required_value": 7000},
+    1005: {"name": "Toy Bear", "photo": "https://cdn.changes.tg/gifts/models/Toy Bear/png/Original.png", "required_value": 500},
+    1006: {"name": "Vintage Cigar", "photo": "https://cdn.changes.tg/gifts/models/Vintage Cigar/png/Original.png", "required_value": 300}
 }
 
 
@@ -841,7 +839,7 @@ SHOP_SECTIONS: list[dict] = [
             {
                 "id": "donuts_0_1_free",
                 "type": "donuts",
-                "amount": 0.1,
+                "amount": 1,
                 "currency": "free",
                 "price": 0,
                 "image": "/gifts/dount.png",
@@ -858,7 +856,7 @@ SHOP_SECTIONS: list[dict] = [
                 # пользователь получает сразу 25 звёзд + 0.1 пончика за 3 реферала
                 "rewards": [
                     {"type": "stars",  "amount": 25},
-                    {"type": "donuts", "amount": 0.1}
+                    {"type": "donuts", "amount": 1}
                 ],
                 "currency": "referral",
                 "price": 3,
@@ -978,18 +976,18 @@ def update_all_gifts_prices():
 
     base_updated = main_updated = 0
 
-    # ── BASE_GIFTS: floor_price × 0.85, с дробями до 0.01 ───────────────
+    # ── BASE_GIFTS: (floor_price × 0.85) / DONUT_TO_TON_RATE → целых пончиков ──
     for gift_id, gift in BASE_GIFTS.items():
         fp = resolve_price(gift["name"])
         if fp and fp > 0:
-            BASE_GIFTS[gift_id]["value"] = max(0.01, round(fp * 0.85, 2))
+            BASE_GIFTS[gift_id]["value"] = max(1, round(fp * 0.85 / DONUT_TO_TON_RATE))
             base_updated += 1
 
-    # ── MAIN_GIFTS: floor_price × 1.2, без дробей ────────────────────────
+    # ── MAIN_GIFTS: (floor_price × 1.1) / DONUT_TO_TON_RATE → целых пончиков ──
     for gift_id, gift in MAIN_GIFTS.items():
         fp = resolve_price(gift["name"])
         if fp and fp > 0:
-            MAIN_GIFTS[gift_id]["required_value"] = max(1, int(fp * 1.1))
+            MAIN_GIFTS[gift_id]["required_value"] = max(1, round(fp * 1 / DONUT_TO_TON_RATE))
             main_updated += 1
 
     print(
@@ -1023,7 +1021,7 @@ def update_base_gifts_prices():
 #   {"type": "tg_gift",   "gift_id": 2001}
 
 LEADERBOARD_PRIZES: dict = {
-    1: {"type": "donuts", "amount": 10},   # 🥇 1-е место
-    2: {"type": "donuts", "amount": 5},   # 🥈 2-е место
-    3: {"type": "donuts", "amount": 2},   # 🥉 3-е место
+    1: {"type": "donuts", "amount": 100},   # 🥇 1-е место
+    2: {"type": "donuts", "amount": 50},   # 🥈 2-е место
+    3: {"type": "donuts", "amount": 20},   # 🥉 3-е место
 }

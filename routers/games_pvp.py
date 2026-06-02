@@ -109,7 +109,7 @@ TON_RATE_CACHE_TTL: float = 30.0  # обновляем каждые 30 секу�
 async def _get_live_ton_to_stars_rate() -> float:
     """Возвращает актуальный курс 1 TON → звёзды.
     Данные берутся из того же API, что и в разделе обмена.
-    При недоступности API возвращает config.DONUTS_TO_STARS_RATE."""
+    При недоступности API возвращает config.TON_TO_STARS_FALLBACK."""
     global _cached_live_ton_rate, _cached_rate_timestamp
     now = time.time()
     if _live_exchange_available and (
@@ -123,7 +123,7 @@ async def _get_live_ton_to_stars_rate() -> float:
                 _cached_rate_timestamp = now
         except Exception as e:
             print(f"[PvP] failed to fetch live TON rate: {e}")
-    return _cached_live_ton_rate if _cached_live_ton_rate > 0 else config.DONUTS_TO_STARS_RATE
+    return _cached_live_ton_rate if _cached_live_ton_rate > 0 else config.TON_TO_STARS_FALLBACK
 
 
 def _make_round_state_snapshot() -> dict:
@@ -276,7 +276,7 @@ def _player_total_stars(player: dict, donuts_rate: float = 0) -> float:
     """Суммарная стоимость ставок игрока в эквиваленте звёзд.
     donuts_rate: живой курс TON→звёзды (1 TON = курс в звёздах);
     если 0, берётся из config."""
-    rate = donuts_rate if donuts_rate > 0 else config.DONUTS_TO_STARS_RATE
+    rate = donuts_rate if donuts_rate > 0 else config.TON_TO_STARS_FALLBACK
     total = 0.0
     for bet in player["bets"]:
         if bet["type"] == "stars":
@@ -405,7 +405,7 @@ async def _payout_winner(winner_id: int):
         gifts_value_stars = sum(b.get("value_stars", 1) for b in all_gift_bets)
         total_value_stars = (
             int(payout_stars)
-            + int(payout_ton * config.DONUTS_TO_STARS_RATE)
+            + int(payout_ton * config.TON_TO_STARS_FALLBACK)
             + int(gifts_value_stars * (1 - COMMISSION_STARS))
         )
         # Проверяем анонимность победителя — перезаписываем имя/аватар
@@ -453,6 +453,9 @@ async def _payout_winner(winner_id: int):
             payout_stars=payout_stars,
             payout_donuts=payout_ton,
             payout_gift_value=payout_gift_value,
+            # total_donuts / payout_donuts здесь — это TON, а не пончики:
+            # передаём курс TON→Stars явно, чтобы банк считал верно.
+            rate=config.TON_TO_STARS_FALLBACK,
         )
 
         # ── Записать завершённую игру в глобальную историю PvP ───────────────
@@ -461,7 +464,7 @@ async def _payout_winner(winner_id: int):
         winner_gifts_val = sum(b.get("value_stars", 1) for b in players[winner_id]["bets"] if b["type"] == "gift")
         winner_bet_value = (
             winner_stars_bet
-            + winner_ton_bet * config.DONUTS_TO_STARS_RATE
+            + winner_ton_bet * config.TON_TO_STARS_FALLBACK
             + winner_gifts_val
         )
         multiplier = round(total_value_stars / winner_bet_value, 2) if winner_bet_value > 0 else 1.0

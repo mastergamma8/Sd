@@ -19,16 +19,17 @@ CASE_HOUSE_EDGE    = 0.15
 # ─── Вспомогательные функции ──────────────────────────────────────────────────
 
 def _get_item_value_stars(item: dict) -> int:
-    rate = config.DONUTS_TO_STARS_RATE
+    donut_rate = config.DONUTS_TO_STARS_RATE    # 1 пончик → Stars
+    ton_rate   = config.TON_TO_STARS_FALLBACK   # 1 TON → Stars (для подарков, цены в TON)
 
     if item["type"] == "stars":
         return item.get("amount", 0)
 
     if item["type"] == "donuts":
-        return item.get("amount", 0) * rate
+        return item.get("amount", 0) * donut_rate
 
     if item["type"] == "gift":
-        return get_gift_value(item.get("gift_id")) * rate
+        return get_gift_value(item.get("gift_id")) * ton_rate
 
     return 0
 

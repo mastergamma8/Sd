@@ -64,14 +64,31 @@ header {
 
 ::-webkit-scrollbar { display: none; }
 
+/* ===== НАВИГАЦИОННЫЕ КНОПКИ С ОВАЛЬНЫМ ПРОЗРАЧНЫМ ПУЗЫРЬКОМ ===== */
 .nav-item {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    color: rgba(255, 255, 255, 0.4);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    color: rgba(255, 255, 255, 0.45);
+    border-radius: 9999px; /* Овальная основа для плавного перехода */
+    border: 1px solid transparent;
 }
 .nav-item.active {
-    color: #60a5fa;
-    transform: scale(1.1);
-    text-shadow: 0 0 10px rgba(96, 165, 250, 0.5);
+    color: #3b82f6 !important; /* Яркий синий цвет иконки и текста */
+    background: rgba(59, 130, 246, 0.12) !important; /* Легкий, прозрачный синий пузырек */
+    border: 1px solid rgba(59, 130, 246, 0.25) !important; /* Нежная синяя граница овала */
+    border-radius: 9999px !important; /* Идеально округлый овальный пузырек */
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+    transform: scale(1.03);
+}
+
+/* Применение того же стиля к боковым кнопкам в активном состоянии */
+#nav-nft.active {
+    color: #3b82f6 !important;
+    background: rgba(59, 130, 246, 0.12) !important;
+    border-color: rgba(59, 130, 246, 0.25) !important;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+}
+#nav-nft.active svg, #nav-nft.active span {
+    color: #3b82f6 !important;
 }
 
 .earn-tab-btn { color: rgba(255,255,255,0.5); transition: all 0.3s ease; }

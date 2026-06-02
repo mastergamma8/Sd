@@ -23,7 +23,7 @@ def _get_item_value(item: dict) -> int:
     if item["type"] == "donuts":
         return item.get("amount", 0)
     if item["type"] == "gift":
-        return get_gift_value(item.get("gift_id")) * config.DONUTS_TO_STARS_RATE
+        return get_gift_value(item.get("gift_id")) * config.TON_TO_STARS_FALLBACK
     return 0
 
 

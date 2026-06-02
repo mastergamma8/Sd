@@ -38,7 +38,7 @@ async def init_settings_table():
             ("feature_flag_roulette",       "1"),
             ("feature_flag_cases",          "1"),
             ("feature_flag_rocket",         "1"),
-            ("exchange_bonus_percent",   "10"),
+            ("exchange_bonus_percent",   "0"),
             ("feature_flag_limited_gifts",  "1"),
             ("feature_flag_pvp",             "1"),
         ]
@@ -191,7 +191,7 @@ async def is_beta_tester(user_id: int) -> bool:
     
 async def get_exchange_bonus_percent() -> float:
     """Возвращает бонус-процент при обмене подарков на звёзды (по умолчанию 10%)."""
-    val = await _get("exchange_bonus_percent", "10")
+    val = await _get("exchange_bonus_percent", "0")
     try:
         return float(val)
     except (ValueError, TypeError):

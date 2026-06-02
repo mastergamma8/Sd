@@ -1,45 +1,54 @@
 <!-- НАВИГАЦИЯ -->
-<div class="fixed left-0 w-full flex justify-center z-40 pointer-events-none px-4" style="bottom:calc(1.5rem + var(--tg-safe-area-inset-bottom, 0px));">
-    <nav class="glass pointer-events-auto rounded-[2rem] w-full max-w-md flex justify-around items-center p-2 border border-white/10 shadow-[0_20px_40px_rgba(0,0,0,0.5)] bg-gray-900/40">
-
-        <button onclick="switchTab('main')" id="nav-main" class="nav-item active flex flex-col items-center justify-center w-14 h-14 rounded-2xl active:bg-white/5">
-            <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-            <span class="text-[9px] font-medium tracking-wide" data-i18n="nav_main">Главная</span>
-        </button>
-
-        <button onclick="switchTab('leaderboard')" id="nav-leaderboard" class="nav-item flex flex-col items-center justify-center w-14 h-14 rounded-2xl active:bg-white/5">
-            <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
-            <span class="text-[9px] font-medium tracking-wide" data-i18n="nav_top">Топ</span>
-        </button>
-
-        <button onclick="switchTab('games')" id="nav-games" class="nav-item flex flex-col items-center justify-center w-14 h-14 rounded-2xl active:bg-white/5">
-            <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-            <span class="text-[9px] font-medium tracking-wide" data-i18n="nav_games">Игры</span>
-        </button>
-
-        <!-- NFT Галерея — центральная кнопка, крупнее остальных -->
-        <button onclick="openNFTSection()" id="nav-nft"
-                class="flex flex-col items-center justify-center w-16 h-16 rounded-full active:scale-95 transition-all relative"
-                style="background: linear-gradient(135deg, rgba(91,33,182,0.7), rgba(124,58,237,0.7), rgba(168,85,247,0.7)); box-shadow: 0 0 14px rgba(168,85,247,0.3), 0 0 28px rgba(168,85,247,0.12); border: 1px solid rgba(168,85,247,0.3); backdrop-filter: blur(8px);">
-            <svg class="w-7 h-7 text-white mb-0.5 drop-shadow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<div class="fixed left-0 w-full flex justify-center z-40 pointer-events-none px-3" style="bottom:calc(1.2rem + var(--tg-safe-area-inset-bottom, 0px));">
+    <div class="pointer-events-auto flex items-center justify-between gap-2.5 w-full max-w-md">
+        
+        <!-- Левая отдельная кнопка — NFT Галерея -->
+        <button onclick="openNFTSection()" id="nav-nft" 
+                class="flex flex-col items-center justify-center w-14 h-14 rounded-full bg-slate-900/25 border border-white/10 active:scale-95 transition-all shadow-[0_10px_25px_rgba(0,0,0,0.4)] backdrop-blur-xl">
+            <svg class="w-5 h-5 text-gray-400/80 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
             </svg>
-            <span class="text-[8px] font-bold text-white/90 tracking-wide">NFT</span>
+            <span class="text-[8px] font-bold text-gray-400/80 tracking-wide">NFT</span>
         </button>
 
-        <button onclick="switchTab('shop')" id="nav-shop" class="nav-item flex flex-col items-center justify-center w-14 h-14 rounded-2xl active:bg-white/5">
-            <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-            <span class="text-[9px] font-medium tracking-wide" data-i18n="nav_shop">Магазин</span>
+        <!-- Центральная общая капсула (Pill Container) -->
+        <nav class="flex-1 flex justify-around items-center h-14 px-1.5 rounded-[2rem] bg-slate-900/25 border border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.4)] backdrop-blur-xl">
+            
+            <button onclick="switchTab('main')" id="nav-main" class="nav-item active flex flex-col items-center justify-center flex-1 max-w-[64px] h-11">
+                <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                <span class="text-[8px] font-semibold tracking-wide" data-i18n="nav_main">Главная</span>
+            </button>
+
+            <button onclick="switchTab('leaderboard')" id="nav-leaderboard" class="nav-item flex flex-col items-center justify-center flex-1 max-w-[64px] h-11">
+                <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                <span class="text-[8px] font-semibold tracking-wide" data-i18n="nav_top">Топ</span>
+            </button>
+
+            <button onclick="switchTab('games')" id="nav-games" class="nav-item flex flex-col items-center justify-center flex-1 max-w-[64px] h-11">
+                <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <span class="text-[8px] font-semibold tracking-wide" data-i18n="nav_games">Игры</span>
+            </button>
+
+            <button onclick="switchTab('shop')" id="nav-shop" class="nav-item flex flex-col items-center justify-center flex-1 max-w-[64px] h-11">
+                <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                <span class="text-[8px] font-semibold tracking-wide" data-i18n="nav_shop">Магазин</span>
+            </button>
+
+            <button onclick="switchTab('earn')" id="nav-earn" class="nav-item flex flex-col items-center justify-center flex-1 max-w-[64px] h-11">
+                <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span class="text-[8px] font-semibold tracking-wide" data-i18n="nav_earn">Заработок</span>
+            </button>
+
+        </nav>
+
+        <!-- Правая отдельная кнопка — Профиль (аватарка) -->
+        <button onclick="switchTab('profile')" id="nav-profile" 
+                class="nav-item flex items-center justify-center w-14 h-14 rounded-full bg-slate-900/25 border border-white/10 active:scale-95 transition-all shadow-[0_10px_25px_rgba(0,0,0,0.4)] backdrop-blur-xl overflow-hidden">
+            <img id="nav-profile-avatar"
+                 src="/static/img/anon.svg"
+                 class="w-10 h-10 rounded-full object-cover"
+                 onerror="this.src='/static/img/anon.svg'">
         </button>
 
-        <button onclick="switchTab('earn')" id="nav-earn" class="nav-item flex flex-col items-center justify-center w-14 h-14 rounded-2xl active:bg-white/5">
-            <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            <span class="text-[9px] font-medium tracking-wide" data-i18n="nav_earn">Заработок</span>
-        </button>
-
-        <button onclick="switchTab('profile')" id="nav-profile" class="nav-item flex flex-col items-center justify-center w-14 h-14 rounded-2xl active:bg-white/5">
-            <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-            <span class="text-[9px] font-medium tracking-wide" data-i18n="nav_profile">Профиль</span>
-        </button>
-    </nav>
+    </div>
 </div>

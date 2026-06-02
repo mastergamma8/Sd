@@ -50,4 +50,19 @@ function onTabSwitch(tabId) {
     }
 }
 
+// ── Аватарка Telegram в кнопке профиля ────────────────────────────────────────
+
+function initNavAvatar() {
+    const img = document.getElementById('nav-profile-avatar');
+    if (!img) return;
+    const photoUrl = tgUser && tgUser.photo_url;
+    if (photoUrl) {
+        img.src = photoUrl;
+    }
+}
+
+// Устанавливаем аватарку как только DOM partials загружены
+document.addEventListener('partialsLoaded', initNavAvatar);
+
 window.switchTab = switchTab;
+window.initNavAvatar = initNavAvatar;

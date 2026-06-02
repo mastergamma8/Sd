@@ -1,29 +1,24 @@
 """
 handlers/business_gifts.py — Обработчик Telegram-подарков через Telegram Business.
 
-Поддерживаются два сценария:
+РЕЖИМ РАБОТЫ:
+  — Бот принимает business_connection ТОЛЬКО от аккаунта @spacedonutgifts.
+    Любые другие аккаунты отклоняются; их соединения не сохраняются в БД.
+  — Обрабатываются ТОЛЬКО обычные (regular) подарки, присутствующие
+    в TG_STICKER_TO_BASE_GIFT_ID → BASE_GIFTS.
+  — Уникальные (NFT / TG gift / unique) подарки игнорируются ПОЛНОСТЬЮ:
+    не добавляются в инвентарь, не логируются в историю, уведомление
+    пользователю НЕ отправляется.
 
-1. ОБЫЧНЫЙ TELEGRAM-ПОДАРОК (star gift)
-   Бот сверяет Gift.id с TG_STICKER_TO_BASE_GIFT_ID и начисляет
-   соответствующий BASE_GIFT в user_gifts.
-
-2. УНИКАЛЬНЫЙ (NFT) TELEGRAM-ПОДАРОК
-   Бот записывает подарок в tg_nft_inventory, используя owned_gift_id
-   как основной ключ дедупликации (это официальный уникальный идентификатор
-   подарка в контексте бизнес-аккаунта согласно Bot API).
+Поддерживается один сценарий:
+  ОБЫЧНЫЙ TELEGRAM-ПОДАРОК (star gift, тип "regular")
+    Бот сверяет Gift.id с TG_STICKER_TO_BASE_GIFT_ID и начисляет
+    соответствующий BASE_GIFT в user_gifts.
 
 Структура Bot API (актуально):
-  message.unique_gift       → UniqueGiftInfo
-    .owned_gift_id          → str, основной dedup-ключ для бизнес-аккаунтов
-    .gift                   → UniqueGift
-        .name               → уникальное имя ("HatOfWisdom")
-        .base_name          → читаемое имя ("Hat of Wisdom")
-        .number             → коллекционный номер (не serial_number!)
-        .model / .symbol    → содержат .sticker с emoji и file_id
-
   message.gift              → GiftInfo (обычный подарок)
     .id                     → str, идентификатор типа подарка (Gift.id из Bot API)
-    [НЕ использовать .sticker.file_unique_id — это идентификатор файла, не подарка]
+  message.unique_gift       → UniqueGiftInfo (уникальный — игнорируем)
 
 Требования к настройке:
   — @SpaceDonutGifts подключён как Telegram Business.
@@ -47,7 +42,6 @@ from aiogram.types import (
 import config
 import database
 from db.db_tg_nft import (
-    add_tg_nft_to_user,
     save_business_connection,
     deactivate_business_connection,
     get_business_connections,
@@ -57,6 +51,14 @@ from db.db_tg_nft import (
 from .admin_constants import E_GIFT, ID_EYES
 
 logger = logging.getLogger(__name__)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Разрешённый бизнес-аккаунт
+# Только этот аккаунт может подключить бота через Telegram Business.
+# ─────────────────────────────────────────────────────────────────────────────
+
+ALLOWED_BUSINESS_USERNAME: str = "spacedonutgifts"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -76,113 +78,57 @@ def _profile_markup() -> InlineKeyboardMarkup:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Вспомогательные функции: извлечение данных уникального подарка
+# Определение типа подарка
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _is_unique_gift(obj: Any) -> bool:
+def _is_unique_gift_message(message: Message) -> bool:
     """
-    Проверяет, является ли объект UniqueGift.
-    UniqueGift содержит поле 'number' (коллекционный номер) и/или 'base_name',
-    которых нет у обычного Gift. Ранее ошибочно проверялось 'serial_number'.
+    Возвращает True если сообщение содержит уникальный (NFT / TG gift) подарок.
+
+    Проверяет оба возможных пути, которые использует Bot API:
+      Путь 1 (Bot API 8.3+): message.unique_gift → UniqueGiftInfo
+      Путь 2 (старая структура): message.gift содержит UniqueGift с полями
+                                 .number / .base_name, которых нет у обычного Gift.
+
+    Уникальные подарки НЕ обрабатываются и должны быть отброшены без каких-либо
+    действий (инвентарь не меняется, уведомление не отправляется).
     """
-    return hasattr(obj, "number") or hasattr(obj, "base_name")
+    # Путь 1: явное поле unique_gift (основной путь в Bot API 8.3+)
+    if getattr(message, "unique_gift", None) is not None:
+        return True
 
-
-def _extract_sticker_info(gift_obj: Any) -> tuple[str, str]:
-    """Извлекает (emoji, file_id) стикера из UniqueGift.model или .symbol."""
-    emoji = ""
-    file_id = ""
-    for attr in ("model", "symbol", "sticker"):
-        part = getattr(gift_obj, attr, None)
-        if part is None:
-            continue
-        sticker = getattr(part, "sticker", part)
-        e = getattr(sticker, "emoji", None)
-        f = getattr(sticker, "file_id", None)
-        if e:
-            emoji = str(e)
-        if f:
-            file_id = str(f)
-        if emoji and file_id:
-            break
-    return emoji, file_id
-
-
-def _parse_unique_gift_obj(obj: Any, owned_gift_id: str = "") -> dict[str, Any]:
-    """
-    Нормализует UniqueGift-совместимый объект в словарь.
-
-    owned_gift_id передаётся сверху (из UniqueGiftInfo-обёртки),
-    так как на внутреннем объекте UniqueGift этого поля нет.
-    Он используется как основной ключ дедупликации tg_gift_id.
-    """
-    name      = str(getattr(obj, "name", "") or "")
-    base_name = str(getattr(obj, "base_name", "") or "")
-    number    = int(getattr(obj, "number", 0) or 0)   # Bot API: UniqueGift.number
-
-    sticker_emoji, sticker_file_id = _extract_sticker_info(obj)
-
-    # Приоритет ключа дедупликации: owned_gift_id > name > fallback
-    tg_gift_id = owned_gift_id or name or f"{base_name}#{number}"
-
-    return {
-        "tg_gift_id":      tg_gift_id,
-        "owned_gift_id":   owned_gift_id,
-        "gift_name":       name,
-        "base_name":       base_name,
-        "number":          number,
-        "sticker_emoji":   sticker_emoji,
-        "sticker_file_id": sticker_file_id,
-    }
-
-
-def _extract_unique_gift_data(message: Message) -> dict[str, Any] | None:
-    """
-    Извлекает данные уникального (NFT) подарка из бизнес-сообщения.
-
-    Путь 1 (приоритетный, Bot API 8.3+):
-        message.unique_gift  →  UniqueGiftInfo
-            .owned_gift_id   — официальный уникальный ID для бизнес-аккаунтов
-            .gift            — UniqueGift с .name, .base_name, .number
-
-    Путь 2 (резервный, старая структура):
-        message.gift         →  обёртка, может содержать UniqueGift в .gift
-            .owned_gift_id   — если присутствует на обёртке
-    """
-    # ── Путь 1: message.unique_gift (UniqueGiftInfo) ──────────────────────────
-    ug_info = getattr(message, "unique_gift", None)
-    if ug_info is not None:
-        owned = str(getattr(ug_info, "owned_gift_id", "") or "")
-        inner = getattr(ug_info, "gift", ug_info)   # UniqueGift внутри
-        return _parse_unique_gift_obj(inner, owned_gift_id=owned)
-
-    # ── Путь 2: message.gift с вложенным UniqueGift ────────────────────────────
+    # Путь 2: UniqueGift внутри message.gift
     gift_wrapper = getattr(message, "gift", None)
     if gift_wrapper is not None:
-        owned = str(getattr(gift_wrapper, "owned_gift_id", "") or "")
+        # UniqueGift прямо на обёртке (base_name / number — маркеры уникального)
+        if hasattr(gift_wrapper, "number") or hasattr(gift_wrapper, "base_name"):
+            return True
+        # UniqueGift вложен внутрь gift_wrapper.gift
         inner = getattr(gift_wrapper, "gift", None)
-        if inner is not None and _is_unique_gift(inner):
-            return _parse_unique_gift_obj(inner, owned_gift_id=owned)
-        if _is_unique_gift(gift_wrapper):
-            return _parse_unique_gift_obj(gift_wrapper, owned_gift_id=owned)
+        if inner is not None and (
+            hasattr(inner, "number") or hasattr(inner, "base_name")
+        ):
+            return True
 
-    return None
+    return False
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Вспомогательные функции: извлечение ID обычного подарка
-# ─────────────────────────────────────────────────────────────────────────────
-
-def _get_gift_type_id(message: Message) -> str | None:
+def _get_regular_gift_type_id(message: Message) -> str | None:
     """
-    Возвращает Gift.id обычного Telegram-подарка из бизнес-сообщения.
+    Возвращает Gift.id обычного (regular) Telegram-подарка из бизнес-сообщения.
 
-    Gift.id — официальный идентификатор типа подарка в Bot API (не file_unique_id,
-    который является идентификатором файла и непригоден для маппинга).
-    Резервный путь на sticker.file_unique_id намеренно убран.
+    Gift.id — официальный идентификатор типа подарка в Bot API; это не
+    file_unique_id (идентификатор файла), непригодный для маппинга.
 
-    Возвращает None, если подарка нет или он не является обычным Gift.
+    Возвращает None если:
+      — в сообщении нет подарка вообще,
+      — подарок является уникальным (NFT) — определяется через _is_unique_gift_message,
+        но здесь тоже добавлена двойная защита.
     """
+    # Уникальные подарки здесь не обрабатываем
+    if _is_unique_gift_message(message):
+        return None
+
     gift = getattr(message, "gift", None)
     if gift is None:
         return None
@@ -195,6 +141,9 @@ def _get_gift_type_id(message: Message) -> str | None:
     # Путь 2: message.gift.gift.id  (если Gift обёрнут в GiftInfo)
     inner = getattr(gift, "gift", None)
     if inner is not None:
+        # Ещё один шанс поймать уникальный подарок по внутреннему объекту
+        if hasattr(inner, "number") or hasattr(inner, "base_name"):
+            return None
         gid = getattr(inner, "id", None)
         if gid:
             return str(gid)
@@ -203,74 +152,117 @@ def _get_gift_type_id(message: Message) -> str | None:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Регистрация хэндлера
+# Регистрация хэндлеров
 # ─────────────────────────────────────────────────────────────────────────────
 
 def register(dp: Dispatcher, bot: Bot) -> None:
-    """Регистрирует хэндлер бизнес-сообщений. Вызывается один раз из bot.py."""
+    """Регистрирует хэндлеры бизнес-сообщений. Вызывается один раз из bot.py."""
 
     @dp.business_connection()
     async def handle_business_connection(bc: BusinessConnection) -> None:
         """
-        Срабатывает когда @SpaceDonutGifts подключает (или отключает) бот.
-        Сохраняем conn_id, чтобы впоследствии вызывать getBusinessAccountGifts
-        и синхронизировать подарки, пришедшие до активации хэндлера.
-        После сохранения сразу запускаем историческую синхронизацию.
-        При отключении (is_enabled=False) помечаем соединение неактивным,
-        чтобы оно не использовалось при будущих синхронизациях.
+        Срабатывает когда бизнес-аккаунт подключает (или отключает) бота.
+
+        ЗАЩИТА: Принимаются подключения ТОЛЬКО от @spacedonutgifts.
+        Любой другой аккаунт получает предупреждение в лог и немедленный возврат
+        без сохранения conn_id в БД — таким образом его сообщения никогда
+        не пройдут проверку в handle_business_message.
         """
         conn_id = str(bc.id or "")
         if not conn_id:
             return
+
+        # ── Проверка владельца бизнес-подключения ─────────────────────────────
+        owner = getattr(bc, "user", None)
+        owner_username = (getattr(owner, "username", None) or "").lower().lstrip("@")
+
+        if owner_username != ALLOWED_BUSINESS_USERNAME:
+            logger.warning(
+                "[business_gifts] ⛔ Отклонено business_connection от "
+                "неавторизованного аккаунта @%s (conn_id=%s). "
+                "Разрешён только @%s.",
+                owner_username or "unknown", conn_id, ALLOWED_BUSINESS_USERNAME,
+            )
+            # Не сохраняем — соединение не получит обработку сообщений
+            return
+
+        # ── Авторизованный аккаунт @spacedonutgifts ───────────────────────────
         if bc.is_enabled:
             await save_business_connection(conn_id)
-            logger.info("[business_gifts] business_connection сохранён: %s (is_enabled=%s)", conn_id, bc.is_enabled)
+            logger.info(
+                "[business_gifts] ✅ business_connection сохранён: %s "
+                "(@%s, is_enabled=%s)",
+                conn_id, owner_username, bc.is_enabled,
+            )
             asyncio.create_task(sync_historical_gifts(bot))
         else:
             await deactivate_business_connection(conn_id)
-            logger.info("[business_gifts] business_connection отключён и деактивирован: %s", conn_id)
+            logger.info(
+                "[business_gifts] business_connection отключён и деактивирован: "
+                "%s (@%s)",
+                conn_id, owner_username,
+            )
 
     @dp.business_message()
     async def handle_business_message(message: Message) -> None:
         """
-        Обрабатывает все business_message.
+        Обрабатывает входящие business_message.
 
         Порядок проверок:
-          1. Уникальный (NFT) подарок → tg_nft_inventory
-          2. Обычный подарок из BASE_GIFTS → user_gifts
-          3. Всё остальное — игнорируется.
+          1. Авторизация соединения — если conn_id не в сохранённых
+             активных соединениях, сообщение отбрасывается без обработки.
+          2. Уникальный (NFT / TG gift) подарок — молча игнорируется
+             (без записей в инвентарь, без уведомлений).
+          3. Обычный BASE_GIFT → начисляется в user_gifts + уведомление.
+          4. Всё остальное — молчаливый пропуск.
         """
         if message.from_user is None:
             return
 
-        sender_id:       int = message.from_user.id
+        sender_id:        int = message.from_user.id
         business_conn_id: str = str(message.business_connection_id or "")
 
-        # ── Регистрируем пользователя (upsert — безопасен при повторе) ─────────
-        try:
-            await database.upsert_user(
-                tg_id=sender_id,
-                username=message.from_user.username or "",
-                first_name=message.from_user.first_name or "Игрок",
-                photo_url="",
-            )
-        except Exception as exc:
-            logger.error("[business_gifts] upsert_user error: %s", exc)
+        # ── Шаг 1: проверка авторизации соединения ────────────────────────────
+        # Если conn_id не сохранён у нас — значит аккаунт не прошёл проверку
+        # в handle_business_connection (не @spacedonutgifts) и мы его игнорируем.
+        if business_conn_id:
+            active_connections = await get_business_connections()
+            if business_conn_id not in active_connections:
+                logger.warning(
+                    "[business_gifts] ⛔ Сообщение из неавторизованного соединения "
+                    "%s (user_id=%s) — пропуск.",
+                    business_conn_id, sender_id,
+                )
+                return
 
-        # ── Шаг 1: уникальный (NFT) подарок ───────────────────────────────────
-        unique_data = _extract_unique_gift_data(message)
-        if unique_data is not None:
-            await _handle_unique_gift(bot, sender_id, unique_data, business_conn_id)
+        # ── Шаг 2: уникальный (NFT / TG gift) подарок — игнорируем полностью ──
+        if _is_unique_gift_message(message):
+            logger.debug(
+                "[business_gifts] Уникальный (TG/NFT) подарок от user_id=%s — "
+                "пропуск (не обрабатываются).",
+                sender_id,
+            )
             return
 
-        # ── Шаг 2: обычный BASE_GIFT ───────────────────────────────────────────
-        tg_gift_type_id = _get_gift_type_id(message)
+        # ── Шаг 3: обычный BASE_GIFT ───────────────────────────────────────────
+        tg_gift_type_id = _get_regular_gift_type_id(message)
         if tg_gift_type_id is not None:
+            # Регистрируем пользователя только при реальном зачислении подарка
+            try:
+                await database.upsert_user(
+                    tg_id=sender_id,
+                    username=message.from_user.username or "",
+                    first_name=message.from_user.first_name or "Игрок",
+                    photo_url="",
+                )
+            except Exception as exc:
+                logger.error("[business_gifts] upsert_user error: %s", exc)
+
             await _handle_regular_gift(bot, sender_id, tg_gift_type_id, business_conn_id)
             return
 
         logger.debug(
-            "[business_gifts] business_message от user_id=%s без подарка — пропуск.",
+            "[business_gifts] business_message от user_id=%s без BASE_GIFT — пропуск.",
             sender_id,
         )
 
@@ -293,7 +285,8 @@ async def _handle_regular_gift(
     if base_gift_id is None:
         logger.info(
             "[business_gifts] Gift.id=%r не найден в TG_STICKER_TO_BASE_GIFT_ID "
-            "(business_conn=%s).", tg_gift_type_id, business_conn_id,
+            "(business_conn=%s).",
+            tg_gift_type_id, business_conn_id,
         )
         return
 
@@ -324,7 +317,9 @@ async def _handle_regular_gift(
             0,
         )
     except Exception as exc:
-        logger.warning("[business_gifts] add_history_entry error user=%s: %s", sender_id, exc)
+        logger.warning(
+            "[business_gifts] add_history_entry error user=%s: %s", sender_id, exc
+        )
 
     # ── Уведомление пользователя ──────────────────────────────────────────────
     try:
@@ -339,121 +334,9 @@ async def _handle_regular_gift(
             reply_markup=_profile_markup(),
         )
     except Exception as exc:
-        logger.warning("[business_gifts] Уведомление не доставлено user=%s: %s", sender_id, exc)
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Обработка уникального (NFT) подарка
-# ─────────────────────────────────────────────────────────────────────────────
-
-async def _handle_unique_gift(
-    bot: Bot,
-    sender_id: int,
-    gift_data: dict[str, Any],
-    business_conn_id: str = "",
-) -> None:
-    """
-    Обрабатывает уникальный (NFT) Telegram-подарок.
-
-    Логика:
-      1. Записывает подарок в tg_nft_inventory для дедупликации
-         (UNIQUE(tg_gift_id) ON CONFLICT DO NOTHING → rowcount=0 при дубле).
-      2. Ищет соответствующий BASE_GIFT по UniqueGift.base_name.
-      3. Если нашёл — начисляет его в обычный инвентарь user_gifts,
-         чтобы подарок отображался рядом с остальными с иконкой из BASE_GIFTS.
-    """
-    tg_gift_id    = gift_data["tg_gift_id"]
-    owned_gift_id = gift_data["owned_gift_id"]
-    gift_name     = gift_data["gift_name"]
-    base_name     = gift_data["base_name"]
-    number        = gift_data["number"]
-    sticker_emoji = gift_data["sticker_emoji"]
-    sticker_fid   = gift_data["sticker_file_id"]
-
-    # ── Шаг 1: дедупликация через tg_nft_inventory ───────────────────────────
-    added = await add_tg_nft_to_user(
-        user_id=sender_id,
-        tg_gift_id=tg_gift_id,
-        owned_gift_id=owned_gift_id,
-        gift_name=gift_name,
-        base_name=base_name,
-        number=number,
-        sticker_emoji=sticker_emoji,
-        sticker_file_id=sticker_fid,
-        business_conn_id=business_conn_id,
-    )
-
-    if not added:
-        logger.info(
-            "[business_gifts] NFT %r уже в инвентаре (дубль), пропуск.", tg_gift_id
-        )
-        return
-
-    logger.info(
-        "[business_gifts] NFT: user_id=%s owned_id=%r name=%r base=%r #%s conn=%s",
-        sender_id, owned_gift_id, gift_name, base_name, number, business_conn_id,
-    )
-
-    # ── Шаг 2: сопоставление с BASE_GIFT ─────────────────────────────────────
-    base_gift_id = config.BASE_GIFT_NAME_TO_ID.get((base_name or "").lower())
-
-    if base_gift_id is None:
         logger.warning(
-            "[business_gifts] Уникальный подарок %r (base_name=%r) не найден в BASE_GIFTS.",
-            tg_gift_id, base_name,
+            "[business_gifts] Уведомление не доставлено user=%s: %s", sender_id, exc
         )
-        return
-
-    gift_def  = config.BASE_GIFTS.get(base_gift_id, {})
-    gift_disp = gift_def.get("name", base_name or gift_name)
-    gift_val  = gift_def.get("value", 0)
-
-    # ── Шаг 3: зачисление в обычный инвентарь user_gifts ─────────────────────
-    try:
-        await database.add_gift_to_user(sender_id, base_gift_id, 1)
-    except Exception as exc:
-        logger.error(
-            "[business_gifts] add_gift_to_user error user=%s gift=%s: %s",
-            sender_id, base_gift_id, exc,
-        )
-        return
-
-    logger.info(
-        "[business_gifts] ✅ NFT %r → BASE_GIFT#%s (%s) → user_gifts user_id=%s",
-        tg_gift_id, base_gift_id, gift_disp, sender_id,
-    )
-
-    display_name = gift_disp
-    emoji        = sticker_emoji or "🎁"
-
-    # ── История операции ──────────────────────────────────────────────────────
-    history_desc = (
-        f"Получен NFT-подарок: {display_name} #{number} [gift_id:{base_gift_id}]"
-    )
-    try:
-        await database.add_history_entry(
-            sender_id,
-            "tg_nft_received",
-            history_desc,
-            0,
-        )
-    except Exception as exc:
-        logger.warning("[business_gifts] add_history_entry error user=%s: %s", sender_id, exc)
-
-    # ── Уведомление пользователя ──────────────────────────────────────────────
-    try:
-        await bot.send_message(
-            chat_id=sender_id,
-            text=(
-                f"{E_GIFT} <b>Получен уникальный подарок!</b>\n\n"
-                f"{emoji} <b>{display_name}</b> (#{number}) добавлен в твой инвентарь.\n"
-                f"Открой приложение, чтобы посмотреть свою коллекцию!"
-            ),
-            parse_mode="HTML",
-            reply_markup=_profile_markup(),
-        )
-    except Exception as exc:
-        logger.warning("[business_gifts] Уведомление не доставлено user=%s: %s", sender_id, exc)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -463,20 +346,23 @@ async def _handle_unique_gift(
 async def sync_historical_gifts(bot: Bot) -> dict:
     """
     Запрашивает все подарки из истории @SpaceDonutGifts через
-    getBusinessAccountGifts и начисляет их пользователям, которые
-    уже есть в базе. Идемпотентна: повторный запуск не создаёт дублей.
+    getBusinessAccountGifts и начисляет ТОЛЬКО обычные BASE_GIFT подарки.
 
-    NFT-подарки: дедупликация через UNIQUE(tg_gift_id) в tg_nft_inventory.
-    Обычные подарки: дедупликация через tg_regular_gift_sync_log (по owned_gift_id).
+    Уникальные (NFT / TG gift, тип "unique") подарки полностью пропускаются —
+    они не записываются в инвентарь и не попадают в историю.
 
-    Возвращает словарь со статистикой: nft_added, regular_added, skipped.
+    Идемпотентна: повторный запуск не создаёт дублей.
+    Дедупликация обычных подарков — через tg_regular_gift_sync_log по owned_gift_id.
+
+    Возвращает словарь со статистикой: regular_added, skipped.
     """
     connections = await get_business_connections()
     if not connections:
-        logger.info("[sync] Нет сохранённых business_connection_id — синхронизация пропущена.")
-        return {"nft_added": 0, "regular_added": 0, "skipped": 0}
+        logger.info(
+            "[sync] Нет сохранённых business_connection_id — синхронизация пропущена."
+        )
+        return {"regular_added": 0, "skipped": 0}
 
-    total_nft     = 0
     total_regular = 0
     total_skip    = 0
 
@@ -487,22 +373,27 @@ async def sync_historical_gifts(bot: Bot) -> dict:
         while True:
             # ── Запрос страницы подарков ──────────────────────────────────────
             try:
-                kwargs: dict = {"business_connection_id": conn_id, "limit": 100}
+                kwargs: dict[str, Any] = {
+                    "business_connection_id": conn_id,
+                    "limit": 100,
+                }
                 if offset:
                     kwargs["offset"] = offset
                 gifts_page = await bot.get_business_account_gifts(**kwargs)
             except AttributeError:
                 logger.warning(
-                    "[sync] bot.get_business_account_gifts недоступен в этой версии aiogram. "
-                    "Обновите aiogram до 3.15+ для поддержки Bot API 9.0."
+                    "[sync] bot.get_business_account_gifts недоступен в этой версии "
+                    "aiogram. Обновите aiogram до 3.15+ для поддержки Bot API 9.0."
                 )
                 break
             except Exception as exc:
                 error_text = str(exc)
-                logger.error("[sync] getBusinessAccountGifts conn=%s: %s", conn_id, exc)
+                logger.error(
+                    "[sync] getBusinessAccountGifts conn=%s: %s", conn_id, exc
+                )
                 if "BUSINESS_CONNECTION_INVALID" in error_text:
                     logger.info(
-                        "[sync] Соединение conn=%s недействительно — деактивируем в БД.",
+                        "[sync] Соединение conn=%s недействительно — деактивируем.",
                         conn_id,
                     )
                     await deactivate_business_connection(conn_id)
@@ -511,20 +402,33 @@ async def sync_historical_gifts(bot: Bot) -> dict:
             gifts       = list(getattr(gifts_page, "gifts", []) or [])
             next_offset = getattr(gifts_page, "next_offset", None)
 
-            logger.info("[sync] conn=%s page=%d gifts=%d", conn_id, page, len(gifts))
+            logger.info(
+                "[sync] conn=%s page=%d gifts=%d", conn_id, page, len(gifts)
+            )
 
             for owned_gift in gifts:
-                # Пропускаем анонимные подарки — не знаем, кому начислить
+                gift_type = str(getattr(owned_gift, "type", "") or "")
+
+                # ── Уникальные (NFT / TG gift) — полностью пропускаем ─────────
+                if gift_type == "unique":
+                    total_skip += 1
+                    continue
+
+                # ── Только обычные (regular) подарки ──────────────────────────
+                if gift_type != "regular":
+                    total_skip += 1
+                    continue
+
+                # Пропускаем анонимные — не знаем, кому начислить
                 sender = getattr(owned_gift, "sender_user", None)
                 if sender is None:
                     total_skip += 1
                     continue
-                sender_id: int | None = getattr(sender, "id", None)
-                if not sender_id:
+                sender_id_val: int | None = getattr(sender, "id", None)
+                if not sender_id_val:
                     total_skip += 1
                     continue
 
-                gift_type  = str(getattr(owned_gift, "type", "") or "")
                 owned_id   = str(getattr(owned_gift, "owned_gift_id", "") or "")
                 inner_gift = getattr(owned_gift, "gift", None)
 
@@ -532,103 +436,58 @@ async def sync_historical_gifts(bot: Bot) -> dict:
                     total_skip += 1
                     continue
 
-                # ── Upsert пользователя (может не быть в БД) ─────────────────
+                gift_id_str = str(getattr(inner_gift, "id", "") or "")
+                if not gift_id_str:
+                    total_skip += 1
+                    continue
+
+                base_gift_id = config.TG_STICKER_TO_BASE_GIFT_ID.get(gift_id_str)
+                if base_gift_id is None:
+                    total_skip += 1
+                    continue
+
+                # ── Дедупликация по owned_gift_id (Bot API >= 9.0) ────────────
+                if owned_id and await is_regular_gift_synced(owned_id):
+                    total_skip += 1
+                    continue
+
+                # ── Upsert пользователя ────────────────────────────────────────
                 try:
                     await database.upsert_user(
-                        tg_id=sender_id,
+                        tg_id=sender_id_val,
                         username=str(getattr(sender, "username", "") or ""),
                         first_name=str(getattr(sender, "first_name", "") or "Игрок"),
                         photo_url="",
                     )
                 except Exception as exc:
-                    logger.warning("[sync] upsert_user user=%s: %s", sender_id, exc)
-
-                # ── NFT (уникальный) подарок ──────────────────────────────────
-                if gift_type == "unique":
-                    data = _parse_unique_gift_obj(inner_gift, owned_gift_id=owned_id)
-
-                    # Дедупликация через tg_nft_inventory
-                    added = await add_tg_nft_to_user(
-                        user_id=sender_id,
-                        tg_gift_id=data["tg_gift_id"],
-                        owned_gift_id=data["owned_gift_id"],
-                        gift_name=data["gift_name"],
-                        base_name=data["base_name"],
-                        number=data["number"],
-                        sticker_emoji=data["sticker_emoji"],
-                        sticker_file_id=data["sticker_file_id"],
-                        business_conn_id=conn_id,
+                    logger.warning(
+                        "[sync] upsert_user user=%s: %s", sender_id_val, exc
                     )
-                    if not added:
-                        total_skip += 1  # уже в инвентаре
-                        continue
 
-                    # Начисляем как BASE_GIFT в обычный инвентарь
-                    base_gift_id = config.BASE_GIFT_NAME_TO_ID.get(
-                        (data["base_name"] or "").lower()
-                    )
-                    if base_gift_id:
-                        try:
-                            await database.add_gift_to_user(sender_id, base_gift_id, 1)
-                            total_nft += 1
-                            logger.info(
-                                "[sync] ✅ NFT %r → BASE_GIFT#%s → user_id=%s",
-                                data["tg_gift_id"], base_gift_id, sender_id,
-                            )
-                            await database.add_history_entry(
-                                sender_id,
-                                "tg_nft_received",
-                                f"Получен NFT-подарок: {data['base_name']} #{data['number']} [gift_id:{base_gift_id}]",
-                                0,
-                            )
-                        except Exception as exc:
-                            logger.error("[sync] add_gift_to_user NFT user=%s: %s", sender_id, exc)
-                            total_skip += 1
-                    else:
-                        logger.warning(
-                            "[sync] NFT %r base_name=%r не найден в BASE_GIFTS",
-                            data["tg_gift_id"], data["base_name"],
-                        )
-                        total_skip += 1
-
-                # ── Обычный подарок (BASE_GIFT) ───────────────────────────────
-                elif gift_type == "regular":
-                    gift_id_str = str(getattr(inner_gift, "id", "") or "")
-                    if not gift_id_str:
-                        total_skip += 1
-                        continue
-
-                    base_gift_id = config.TG_STICKER_TO_BASE_GIFT_ID.get(gift_id_str)
-                    if base_gift_id is None:
-                        total_skip += 1
-                        continue
-
-                    # Дедупликация: только подарки с owned_gift_id (Bot API ≥ 9.0)
+                # ── Начисление подарка ─────────────────────────────────────────
+                try:
+                    await database.add_gift_to_user(sender_id_val, base_gift_id, 1)
                     if owned_id:
-                        if await is_regular_gift_synced(owned_id):
-                            total_skip += 1
-                            continue
-
-                    try:
-                        await database.add_gift_to_user(sender_id, base_gift_id, 1)
-                        if owned_id:
-                            await mark_regular_gift_synced(owned_id, sender_id)
-                        total_regular += 1
-                        logger.info(
-                            "[sync] ✅ Regular gift_id=%r → user_id=%s BASE_GIFT#%s",
-                            gift_id_str, sender_id, base_gift_id,
-                        )
-                        gift_name = config.BASE_GIFTS.get(base_gift_id, {}).get("name", f"Подарок #{base_gift_id}")
-                        await database.add_history_entry(
-                            sender_id,
-                            "tg_gift_received",
-                            f"Получен TG-подарок: {gift_name} [gift_id:{base_gift_id}]",
-                            0,
-                        )
-                    except Exception as exc:
-                        logger.error("[sync] add_gift_to_user user=%s gift=%s: %s", sender_id, base_gift_id, exc)
-                        total_skip += 1
-                else:
+                        await mark_regular_gift_synced(owned_id, sender_id_val)
+                    total_regular += 1
+                    logger.info(
+                        "[sync] ✅ Regular gift_id=%r → user_id=%s BASE_GIFT#%s",
+                        gift_id_str, sender_id_val, base_gift_id,
+                    )
+                    gift_name = config.BASE_GIFTS.get(base_gift_id, {}).get(
+                        "name", f"Подарок #{base_gift_id}"
+                    )
+                    await database.add_history_entry(
+                        sender_id_val,
+                        "tg_gift_received",
+                        f"Получен TG-подарок: {gift_name} [gift_id:{base_gift_id}]",
+                        0,
+                    )
+                except Exception as exc:
+                    logger.error(
+                        "[sync] add_gift_to_user user=%s gift=%s: %s",
+                        sender_id_val, base_gift_id, exc,
+                    )
                     total_skip += 1
 
             if not next_offset or not gifts:
@@ -637,7 +496,7 @@ async def sync_historical_gifts(bot: Bot) -> dict:
             page  += 1
 
     logger.info(
-        "[sync] Завершено: NFT=%d обычных=%d пропущено=%d",
-        total_nft, total_regular, total_skip,
+        "[sync] Завершено: обычных=%d пропущено=%d",
+        total_regular, total_skip,
     )
-    return {"nft_added": total_nft, "regular_added": total_regular, "skipped": total_skip}
+    return {"regular_added": total_regular, "skipped": total_skip}
