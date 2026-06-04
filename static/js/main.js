@@ -33,7 +33,7 @@ function renderMainPage() {
 }
 
 // =====================================================
-// СОРТИРОВКА
+// СОРТИРОВКА (Больше не используется для базовых подарков в модальном окне, но сохранена для совместимости)
 // =====================================================
 function openSortModal() {
     vibrate('light');
@@ -62,29 +62,10 @@ function selectSort(method) {
 }
 
 function renderBaseGiftsList() {
-    const searchQ = (document.getElementById('mg-search')?.value || '').toLowerCase();
+    // Данная функция отключена от модального окна, так как мы убрали отображение базовых подарков
     const container = document.getElementById('mg-sources');
     if (!container) return;
-    let arr = Object.entries(baseGifts).map(([id, g]) => ({ id, ...g }));
-    if (searchQ) arr = arr.filter(g => g.name.toLowerCase().includes(searchQ));
-    arr.sort((a, b) => {
-        if (currentSortMethod === 'name_asc')  return a.name.localeCompare(b.name);
-        if (currentSortMethod === 'name_desc') return b.name.localeCompare(a.name);
-        if (currentSortMethod === 'value_asc') return a.value - b.value;
-        return b.value - a.value;
-    });
-    if (arr.length === 0) {
-        container.innerHTML = `<div class="text-center text-blue-200/50 text-xs py-4">${i18n[currentLang].not_found}</div>`;
-        return;
-    }
-    container.innerHTML = arr.map(gift => `
-        <div class="flex justify-between items-center bg-black/20 p-2 rounded-xl border border-white/5">
-            <div class="flex items-center gap-3">
-                <img src="${escapeHtml(getImgSrc(gift.photo))}" class="w-8 h-8 object-contain" onerror="this.src='https://via.placeholder.com/32'">
-                <span class="text-white font-medium">${escapeHtml(gift.name)}</span>
-            </div>
-            <span class="text-blue-300 font-bold bg-blue-500/10 px-2 py-1 rounded-lg border border-blue-500/20 flex items-center gap-1">+${gift.value} <img src="/gifts/dount.png" class="w-3 h-3 object-contain"></span>
-        </div>`).join('');
+    container.innerHTML = '';
 }
 
 function showMainGiftDetails(id) {
@@ -94,18 +75,24 @@ function showMainGiftDetails(id) {
     document.getElementById('mg-title').innerText = gift.name;
     const req = gift.required_value;
     const unlocked = myBalance >= req;
+    
+    // Установка текстового прогресса
     document.getElementById('mg-progress-text').innerHTML = `${formatBalance(myBalance)} / ${req} <img src="/gifts/dount.png" class="w-4 h-4 object-contain">`;
+    
+    // Настройка прогресс-бара
     const pBar = document.getElementById('mg-progress-bar');
     pBar.style.width = `${Math.min(100, myBalance/req*100)}%`;
     pBar.style.background = unlocked ? 'linear-gradient(90deg,#34d399,#10b981)' : 'linear-gradient(90deg,#3b82f6,#8b5cf6)';
-    document.getElementById('mg-search').value = '';
-    currentSortMethod = 'value_desc';
-    const labelEl = document.getElementById('current-sort-label');
-    if (labelEl) { labelEl.setAttribute('data-i18n','sort_val_desc'); labelEl.innerText = i18n[currentLang].sort_val_desc; }
-    renderBaseGiftsList();
+    
+    // Кнопка забрать подарок
     const btnClaim = document.getElementById('btn-claim');
-    if (unlocked) { btnClaim.classList.remove('hidden'); btnClaim.onclick = () => claimGift(id); }
-    else           { btnClaim.classList.add('hidden'); }
+    if (unlocked) { 
+        btnClaim.classList.remove('hidden'); 
+        btnClaim.onclick = () => claimGift(id); 
+    } else { 
+        btnClaim.classList.add('hidden'); 
+    }
+    
     openModal('main-gift-modal');
 }
 
@@ -117,7 +104,6 @@ async function claimGift(giftId) {
         const res = await fetch('/api/claim', { method:'POST', headers:getApiHeaders(), body:JSON.stringify({ gift_id:giftId }) });
         const data = await res.json();
         if (res.status === 429) {
-            // Обработка структурированной ошибки для мультиязычности
             if (data.detail && data.detail.error === 'cooldown') {
                 const msg = i18n[currentLang].cooldown_claim_wait
                     .replace('{h}', data.detail.hours)

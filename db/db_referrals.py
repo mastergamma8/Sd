@@ -3,7 +3,7 @@
 
 from db import db_async as aiosqlite
 from db.db_core import DB_NAME
-from db.db_users import add_points_to_user, add_stars_to_user
+from db.db_users import add_ref_ton_earned, add_ref_stars_earned
 from db.db_history import add_history_entry
 
 
@@ -37,41 +37,40 @@ async def get_referrals(user_id: int):
             rows = await cursor.fetchall()
             return [dict(row) for row in rows]
 
-async def distribute_referral_bonus(user_id: int, gift_value: float):
-    """Начисляет реферальный бонус пригласившему пользователю.
+async def distribute_referral_bonus(user_id: int, deposit_amount: float):
+    """Начисляет реферальный бонус в TON в накопительный баланс пригласившему.
 
-    Бонус = 10% от стоимости подарка (с дробями, до 4 знаков).
+    Бонус = 10% от суммы пополнения TON рефералом (до 6 знаков).
     Если бонус равен нулю или реферера нет — ничего не происходит.
     """
     referrer_id = await get_referrer(user_id)
     if not referrer_id:
         return
-    bonus = round(gift_value * 0.10, 2)
+    bonus = round(deposit_amount * 0.10, 6)
     if bonus <= 0:
         return
-    await add_points_to_user(referrer_id, bonus)
+    await add_ref_ton_earned(referrer_id, bonus)
     await add_history_entry(
         referrer_id,
-        "referral_bonus",
-        f"Реферальный бонус за покупку подарка рефералом (ID {user_id})",
+        "referral_bonus_ton",
+        f"Реферальный бонус TON за пополнение рефералом (ID {user_id})",
         bonus
     )
 
 
 async def distribute_referral_bonus_stars(user_id: int, stars_amount: int):
-    """Начисляет реферальный бонус в звёздах пригласившему пользователю.
+    """Начисляет реферальный бонус в звёздах в накопительный баланс пригласившему.
 
     Бонус = 10% от суммы пополнения звёздами рефералом.
-    Минимум 1 звезда (дроби не используются — floor).
-    Если реферера нет — ничего не происходит.
+    Минимум 1 звезда (floor). Если реферера нет — ничего не происходит.
     """
     referrer_id = await get_referrer(user_id)
     if not referrer_id:
         return
-    bonus = int(stars_amount * 0.10)  # floor, без округления вверх
+    bonus = int(stars_amount * 0.10)
     if bonus < 1:
-        return  # Пополнение слишком мало — бонус не начисляется
-    await add_stars_to_user(referrer_id, bonus)
+        return
+    await add_ref_stars_earned(referrer_id, bonus)
     await add_history_entry(
         referrer_id,
         "referral_bonus_stars",

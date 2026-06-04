@@ -16,7 +16,7 @@ const i18n = {
             lb_reset: 'Сброс через', time_d: 'д', time_h: 'ч', time_m: 'м',
             tab_refs: 'Рефералы', tab_tasks: 'Задания',
             invite_friends: 'Приглашайте друзей',
-            ref_desc: 'Вы будете получать <strong class=\"text-blue-400 glow-text\">10%</strong> пончиков с каждого подарка друга, и <strong class=\"text-yellow-400 glow-text\">10%</strong> звёзд с каждого его пополнения! <br><span class=\"text-xs opacity-70\">(Например: друг пополнил 10 <img src=\"/gifts/stars.png\" class=\"w-3 h-3 inline-block align-middle object-contain\"> — вы получите 1 <img src=\"/gifts/stars.png\" class=\"w-3 h-3 inline-block align-middle object-contain\">. Или добавил подарок за 10 <img src=\"/gifts/dount.png\" class=\"w-3 h-3 inline-block align-middle object-contain\"> — вы получите 1 <img src=\"/gifts/dount.png\" class=\"w-3 h-3 inline-block align-middle object-contain\">)</span>',            btn_invite: 'Пригласить друзей', your_refs: 'Ваши приглашенные',
+            ref_desc: 'Вы будете получать <strong class=\"text-blue-400 glow-text\">10%</strong> TON с каждого пополнения TON друга, и <strong class=\"text-yellow-400 glow-text\">10%</strong> звёзд с каждого его пополнения! <br><span class=\"text-xs opacity-70\">(Например: друг пополнил 10 <img src=\"/gifts/stars.png\" class=\"w-3 h-3 inline-block align-middle object-contain\"> — вы получите 1 <img src=\"/gifts/stars.png\" class=\"w-3 h-3 inline-block align-middle object-contain\">. Или пополнил 1 TON — вы получите 0.1 <img src=\"/gifts/ton.png\" class=\"w-3 h-3 inline-block align-middle object-contain\">)</span>',            btn_invite: 'Пригласить друзей', your_refs: 'Ваши приглашенные',
             tasks_desc: 'Выполняйте задания, чтобы получать больше пончиков <img src="/gifts/dount.png" class="w-4 h-4 inline object-contain">',
             add_gift: '+ Добавить подарок', my_gifts: 'Мои подарки', for_withdraw: 'на вывод',
             wheel_fortune: 'Рулетка', spin_free: 'Крутить бесплатно',
@@ -66,9 +66,16 @@ const i18n = {
             hist_gift_added: 'Добавлен подарок', hist_roulette_paid: 'Платная рулетка',
             hist_roulette_win: 'Выигрыш в рулетке', hist_roulette_free: 'Бесплатная рулетка',
             hist_claim_gift: 'Куплен подарок', hist_withdraw: 'Вывод подарка',
-            hist_task: 'Задание выполнено', hist_referral: 'Реферальный бонус', hist_referral_stars: 'Реферальный бонус ⭐',
-            ref_bonus_donuts_label: '10% пончиков', ref_bonus_donuts_sub: 'с подарка друга',
+            hist_task: 'Задание выполнено', hist_referral: 'Реферальный бонус TON', hist_referral_stars: 'Реферальный бонус ⭐',
+            ref_bonus_ton_label: '10% TON', ref_bonus_ton_sub: 'с пополнения TON друга',
             ref_bonus_stars_label: '10% звёзд', ref_bonus_stars_sub: 'с пополнения друга',
+            ref_earnings_title: 'Заработано рефералами',
+            ref_earned_ton: 'TON заработано',
+            ref_earned_stars: 'Звёзды заработано',
+            ref_min_ton: 'Минимум для получения: 1 TON',
+            ref_min_stars: 'Минимум для получения: 100 звёзд',
+            btn_claim_ref: 'Забрать',
+            ref_claim_hint: 'TON от 1 • Звёзды от 100',
 
             // КЕЙСЫ
             games_title: 'Игры',
@@ -345,13 +352,25 @@ const i18n = {
             // ИСТОРИЯ TON
             hist_ton_deposit: 'Пополнение TON',
             hist_ton_withdraw: 'Вывод TON',
+
+            // ДОПОЛНИТЕЛЬНЫЕ СТРОКИ ДЛЯ СПОСОБОВ ПОЛУЧЕНИЯ ПОНЧИКОВ
+            how_to_get_donuts_title: 'Как получить пончики?',
+            how_to_get_donuts_subtitle: 'Собирай пончики, чтобы разблокировать этот подарок! Доступные способы получения:',
+            donut_way_tasks_title: 'Выполняй задания',
+            donut_way_tasks_desc: 'Простые задания и социальные активности принесут тебе горы пончиков',
+            donut_way_cases_title: 'Открывай кейсы',
+            donut_way_cases_desc: 'Получай пончики в награду из кейсов в разделе «Игры»',
+            donut_way_wheel_title: 'Вращай рулетку',
+            donut_way_wheel_desc: 'Испытай удачу каждый день и забирай пончики',
+            donut_way_shop_title: 'Загляни в магазин',
+            donut_way_shop_desc: 'Выгодно приобретай паки пончиков во вкладке «Магазин»'
         },
         en: {
             maintenance_title: '🔧 Under Maintenance',
             maintenance_desc: 'We are performing scheduled maintenance.<br>Everything will be back up shortly!',
             maintenance_follow: 'Follow for updates',
             nav_main: 'Main', nav_top: 'Top', nav_earn: 'Earn', nav_profile: 'Profile', nav_games: 'Games',
-            roulette_daily: 'Daily Roulette', roulette_desc: 'Spin and win prizes!',
+            roulette_daily: 'Daily Roulette', roulette_daily: 'Daily Roulette', roulette_desc: 'Spin and win prizes!',
             roulette_demo: 'Demo',
             avail_gifts: 'Available gifts',
             collect_desc: 'Collect donuts <img src="/gifts/dount.png" class="w-4 h-4 object-contain"> to unlock gifts',
@@ -359,7 +378,7 @@ const i18n = {
             lb_reset: 'Reset in', time_d: 'd', time_h: 'h', time_m: 'm',
             tab_refs: 'Referrals', tab_tasks: 'Tasks',
             invite_friends: 'Invite friends',
-            ref_desc: 'You will receive <strong class=\"text-blue-400 glow-text\">10%</strong> donuts from each friend&#39;s gift, and <strong class=\"text-yellow-400 glow-text\">10%</strong> stars from each top-up they make! <br><span class=\"text-xs opacity-70\">(Example: friend tops up 10 <img src=\"/gifts/stars.png\" class=\"w-3 h-3 inline-block align-middle object-contain\"> — you get 1 <img src=\"/gifts/stars.png\" class=\"w-3 h-3 inline-block align-middle object-contain\">. Or adds a gift for 10 <img src=\"/gifts/dount.png\" class=\"w-3 h-3 inline-block align-middle object-contain\"> — you get 1 <img src=\"/gifts/dount.png\" class=\"w-3 h-3 inline-block align-middle object-contain\">)</span>',            btn_invite: 'Invite friends', your_refs: 'Your referrals',
+            ref_desc: 'You will receive <strong class=\"text-blue-400 glow-text\">10%</strong> TON from each friend&#39;s TON deposit, and <strong class=\"text-yellow-400 glow-text\">10%</strong> stars from each top-up they make! <br><span class=\"text-xs opacity-70\">(Example: friend tops up 10 <img src=\"/gifts/stars.png\" class=\"w-3 h-3 inline-block align-middle object-contain\"> — you get 1 <img src=\"/gifts/stars.png\" class=\"w-3 h-3 inline-block align-middle object-contain\">. Or deposits 1 TON — you get 0.1 <img src=\"/gifts/ton.png\" class=\"w-3 h-3 inline-block align-middle object-contain\">)</span>',            btn_invite: 'Invite friends', your_refs: 'Your referrals',
             tasks_desc: 'Complete tasks to get more donuts <img src="/gifts/dount.png" class="w-4 h-4 inline object-contain">',
             add_gift: '+ Add gift', my_gifts: 'My gifts', for_withdraw: 'for withdraw',
             wheel_fortune: 'Roulette', spin_free: 'Spin for free',
@@ -409,9 +428,16 @@ const i18n = {
             hist_gift_added: 'Gift added', hist_roulette_paid: 'Paid roulette',
             hist_roulette_win: 'Roulette win', hist_roulette_free: 'Free roulette',
             hist_claim_gift: 'Gift purchased', hist_withdraw: 'Gift withdrawn',
-            hist_task: 'Task completed', hist_referral: 'Referral bonus', hist_referral_stars: 'Referral bonus ⭐',
-            ref_bonus_donuts_label: '10% donuts', ref_bonus_donuts_sub: "from friend&#39;s gift",
+            hist_task: 'Task completed', hist_referral: 'Referral bonus TON', hist_referral_stars: 'Referral bonus ⭐',
+            ref_bonus_ton_label: '10% TON', ref_bonus_ton_sub: "from friend&#39;s TON deposit",
             ref_bonus_stars_label: '10% stars', ref_bonus_stars_sub: "from friend&#39;s top-up",
+            ref_earnings_title: 'Earned from referrals',
+            ref_earned_ton: 'TON earned',
+            ref_earned_stars: 'Stars earned',
+            ref_min_ton: 'Minimum to claim: 1 TON',
+            ref_min_stars: 'Minimum to claim: 100 stars',
+            btn_claim_ref: 'Claim',
+            ref_claim_hint: 'TON from 1 • Stars from 100',
 
             // CASES
             games_title: 'Games',
@@ -519,7 +545,7 @@ const i18n = {
             hist_tg_win_roulette: 'Telegram gift won in roulette',
             hist_tg_win_case: 'Telegram gift won from case',
 
-            // NOTIFICATIONS (notify-modal titles)
+            // NOTIFICATIONS (notyf-modal titles)
             notify_error: 'Error',
             notify_success: 'Success',
             notify_warning: 'Warning',
@@ -688,6 +714,18 @@ const i18n = {
             // TON HISTORY
             hist_ton_deposit: 'TON Deposit',
             hist_ton_withdraw: 'TON Withdrawal',
+
+            // ENGLISH ADDITIONAL STRINGS FOR DONUT WAYS
+            how_to_get_donuts_title: 'How to get donuts?',
+            how_to_get_donuts_subtitle: 'Collect donuts to unlock this gift! Available ways to get them:',
+            donut_way_tasks_title: 'Complete Tasks',
+            donut_way_tasks_desc: 'Simple tasks and social activities will earn you heaps of donuts',
+            donut_way_cases_title: 'Open Cases',
+            donut_way_cases_desc: 'Receive donuts as rewards from cases in "Games" tab',
+            donut_way_wheel_title: 'Spin Roulette',
+            donut_way_wheel_desc: 'Try your luck every day and win sweet donuts',
+            donut_way_shop_title: 'Visit Shop',
+            donut_way_shop_desc: 'Buy lucrative donut packs in the "Shop" tab'
         }
 };
 

@@ -40,10 +40,17 @@ async def get_user_data(user_id: int):
     async with aiosqlite.connect(DB_NAME) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
-            "SELECT balance, stars, last_free_spin, last_free_case, COALESCE(ton_balance, 0) as ton_balance FROM users WHERE tg_id = ?", (user_id,)
+            """SELECT balance, stars, last_free_spin, last_free_case,
+                      COALESCE(ton_balance, 0) as ton_balance,
+                      COALESCE(ref_ton_earned, 0) as ref_ton_earned,
+                      COALESCE(ref_stars_earned, 0) as ref_stars_earned
+               FROM users WHERE tg_id = ?""", (user_id,)
         ) as cursor:
             row = await cursor.fetchone()
-            return dict(row) if row else {"balance": 0, "stars": 0, "last_free_spin": 0, "last_free_case": 0, "ton_balance": 0}
+            return dict(row) if row else {
+                "balance": 0, "stars": 0, "last_free_spin": 0, "last_free_case": 0,
+                "ton_balance": 0, "ref_ton_earned": 0, "ref_stars_earned": 0,
+            }
 
 async def get_all_user_ids() -> list[int]:
     async with aiosqlite.connect(DB_NAME) as db:
@@ -481,3 +488,83 @@ async def update_user_settings(tg_id: int, is_anonymous: bool, hide_username: bo
             (int(is_anonymous), int(hide_username), tg_id)
         )
         await db.commit()
+
+
+# ── Реферальные накопления ─────────────────────────────────────────────────────
+
+async def add_ref_ton_earned(user_id: int, amount: float) -> None:
+    """Начисляет TON в реферальный накопительный баланс (не на основной счёт)."""
+    async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute(
+            "UPDATE users SET ref_ton_earned = COALESCE(ref_ton_earned, 0) + ? WHERE tg_id = ?",
+            (round(amount, 6), user_id)
+        )
+        await db.commit()
+
+
+async def add_ref_stars_earned(user_id: int, amount: int) -> None:
+    """Начисляет звёзды в реферальный накопительный баланс (не на основной счёт)."""
+    async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute(
+            "UPDATE users SET ref_stars_earned = COALESCE(ref_stars_earned, 0) + ? WHERE tg_id = ?",
+            (amount, user_id)
+        )
+        await db.commit()
+
+
+async def claim_ref_ton(user_id: int) -> float:
+    """
+    Переводит весь накопленный реферальный TON на основной ton_balance.
+    Минимум для клейма — 1 TON.
+    Возвращает сумму, которая была переведена, или 0 если недостаточно.
+    """
+    async with aiosqlite.connect(DB_NAME) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT COALESCE(ref_ton_earned, 0) as ref_ton_earned FROM users WHERE tg_id = ?",
+            (user_id,)
+        ) as cur:
+            row = await cur.fetchone()
+        if not row:
+            return 0
+        amount = float(row["ref_ton_earned"])
+        if amount < 1:
+            return 0
+        await db.execute(
+            """UPDATE users
+               SET ton_balance    = COALESCE(ton_balance, 0) + ref_ton_earned,
+                   ref_ton_earned = 0
+               WHERE tg_id = ? AND COALESCE(ref_ton_earned, 0) >= 1""",
+            (user_id,)
+        )
+        await db.commit()
+        return round(amount, 6)
+
+
+async def claim_ref_stars(user_id: int) -> int:
+    """
+    Переводит все накопленные реферальные звёзды на основной баланс stars.
+    Минимум для клейма — 100 звёзд.
+    Возвращает сумму, которая была переведена, или 0 если недостаточно.
+    """
+    async with aiosqlite.connect(DB_NAME) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT COALESCE(ref_stars_earned, 0) as ref_stars_earned FROM users WHERE tg_id = ?",
+            (user_id,)
+        ) as cur:
+            row = await cur.fetchone()
+        if not row:
+            return 0
+        amount = int(row["ref_stars_earned"])
+        if amount < 100:
+            return 0
+        await db.execute(
+            """UPDATE users
+               SET stars              = stars + ref_stars_earned,
+                   ref_stars_earned   = 0
+               WHERE tg_id = ? AND COALESCE(ref_stars_earned, 0) >= 100""",
+            (user_id,)
+        )
+        await db.commit()
+        return amount

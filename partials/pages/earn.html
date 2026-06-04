@@ -6,7 +6,8 @@
         <button onclick="switchEarnSubtab('tasks')"     id="subtab-tasks"     class="earn-tab-btn flex-1 py-2 rounded-xl text-sm font-bold" data-i18n="tab_tasks">Задания</button>
     </div>
     <div id="earn-referrals">
-        <div class="glass rounded-3xl p-6 text-center mb-6">
+        <!-- Блок информации о реферальной программе -->
+        <div class="glass rounded-3xl p-6 text-center mb-4">
             <div class="w-24 h-24 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-3 border border-blue-400/30 glow-box">
                 <img src="/gifts/donuts.png" class="w-16 h-16 object-contain"/>
             </div>
@@ -14,9 +15,9 @@
             <p class="text-sm text-blue-200/70 mb-4 leading-relaxed" id="ref-desc"></p>
             <div class="flex gap-2 mb-4">
                 <div class="flex-1 bg-blue-500/10 border border-blue-400/20 rounded-2xl p-3 flex flex-col items-center gap-1">
-                    <img src="/gifts/dount.png" class="w-6 h-6 object-contain"/>
-                    <span class="text-xs font-bold text-blue-300" data-i18n="ref_bonus_donuts_label">10% пончиков</span>
-                    <span class="text-xs text-blue-200/50" data-i18n="ref_bonus_donuts_sub">с подарка друга</span>
+                    <img src="/gifts/ton.png" class="w-6 h-6 object-contain"/>
+                    <span class="text-xs font-bold text-blue-300" data-i18n="ref_bonus_ton_label">10% TON</span>
+                    <span class="text-xs text-blue-200/50" data-i18n="ref_bonus_ton_sub">с подарка друга</span>
                 </div>
                 <div class="flex-1 bg-yellow-500/10 border border-yellow-400/20 rounded-2xl p-3 flex flex-col items-center gap-1">
                     <img src="/gifts/stars.png" class="w-6 h-6 object-contain"/>
@@ -31,6 +32,46 @@
                 </button>
             </div>
         </div>
+
+        <!-- Блок накопленных реферальных заработков -->
+        <div class="glass rounded-3xl p-5 mb-6 border border-white/10">
+            <h4 class="text-sm font-bold text-white/70 uppercase tracking-wider mb-4" data-i18n="ref_earnings_title">Заработано рефералами</h4>
+
+            <!-- TON заработок -->
+            <div class="flex items-center justify-between mb-3 bg-blue-500/10 rounded-2xl p-3 border border-blue-400/20">
+                <div class="flex items-center gap-3">
+                    <img src="/gifts/ton.png" class="w-9 h-9 object-contain"/>
+                    <div>
+                        <div class="text-xs text-blue-200/60 font-medium" data-i18n="ref_earned_ton">TON заработано</div>
+                        <div class="text-lg font-bold text-white" id="ref-ton-earned">0</div>
+                        <div class="text-xs text-blue-300/50" data-i18n="ref_min_ton">Минимум для получения: 1 TON</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Звёзды заработок -->
+            <div class="flex items-center justify-between mb-4 bg-yellow-500/10 rounded-2xl p-3 border border-yellow-400/20">
+                <div class="flex items-center gap-3">
+                    <img src="/gifts/stars.png" class="w-9 h-9 object-contain"/>
+                    <div>
+                        <div class="text-xs text-yellow-200/60 font-medium" data-i18n="ref_earned_stars">Звёзды заработано</div>
+                        <div class="text-lg font-bold text-white" id="ref-stars-earned">0</div>
+                        <div class="text-xs text-yellow-300/50" data-i18n="ref_min_stars">Минимум для получения: 100 ⭐</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Кнопка клейма -->
+            <button
+                id="btn-claim-referral"
+                onclick="claimReferralEarnings()"
+                class="w-full btn-primary py-3.5 rounded-xl font-bold text-white active:scale-95 transition-transform disabled:opacity-40 disabled:pointer-events-none"
+                data-i18n="btn_claim_ref"
+                disabled
+            >Забрать</button>
+            <p class="text-xs text-white/30 text-center mt-2" data-i18n="ref_claim_hint">TON от 1 • Звёзды от 100</p>
+        </div>
+
         <h4 class="text-md font-bold text-white mb-3" data-i18n="your_refs">Ваши приглашенные</h4>
         <div id="referrals-list" class="flex flex-col gap-3"></div>
     </div>

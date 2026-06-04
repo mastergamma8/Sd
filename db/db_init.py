@@ -403,6 +403,10 @@ async def init_rocket_games_table():
         await db.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS ton_wallet TEXT DEFAULT NULL")
         await db.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS ton_balance FLOAT8 DEFAULT 0")
 
+        # ── Реферальные накопления (ожидают ручного клейма) ───────────────────
+        await db.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS ref_ton_earned FLOAT8 DEFAULT 0")
+        await db.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS ref_stars_earned INTEGER DEFAULT 0")
+
         # ── TON: депозиты ─────────────────────────────────────────────────────
         await db.execute("""
             CREATE TABLE IF NOT EXISTS ton_deposits (

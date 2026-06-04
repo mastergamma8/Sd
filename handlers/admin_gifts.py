@@ -120,11 +120,21 @@ def register(dp: Dispatcher, bot: Bot):
                 if referrer_id:
                     bonus = round(points_to_add * 0.10, 2)
                     if bonus > 0:
-                        await database.distribute_referral_bonus(user_id, points_to_add)
+                        # Администраторские подарки оцениваются в пончиках,
+                        # поэтому реферальный бонус тоже начисляется в пончиках
+                        # напрямую (не через distribute_referral_bonus, которая
+                        # ожидает TON-значение и кладёт результат в ref_ton_earned).
+                        await database.add_points_to_user(referrer_id, bonus)
+                        await database.add_history_entry(
+                            referrer_id,
+                            "referral_bonus",
+                            f"Реферальный бонус за подарок рефералу (ID {user_id}): {gift_name}",
+                            bonus,
+                        )
                         try:
                             await bot.send_message(
                                 referrer_id,
-                                f"{E_PARTY} Ваш реферал добавил подарок!\n"
+                                f"{E_PARTY} Ваш реферал получил подарок!\n"
                                 f"Вам начислено <b>{bonus} {E_DONUT}</b>"
                                 f" (10% бонус за {gift_name}).",
                                 parse_mode="HTML",

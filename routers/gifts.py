@@ -51,9 +51,6 @@ async def claim_gift(data: ActionData, current_user: dict = Depends(get_current_
     # Пончики списаны у пользователя — зачисляем в банк как доход.
     await database.bank_add_donuts(int(cost))
 
-    gift_value = config.MAIN_GIFTS[data.gift_id].get("value", cost)
-    await database.distribute_referral_bonus(tg_id, gift_value)
-
     user_data    = await database.get_user_data(tg_id)
     updated_gifts = await database.get_user_gifts(tg_id)
 

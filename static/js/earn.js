@@ -42,11 +42,29 @@ function shareRefLink() {
     tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(i18n[currentLang].share_text)}`);
 }
 
+// Обновляет блок накопленных реферальных заработков и состояние кнопки
+function updateRefEarningsUI(refTon, refStars) {
+    const tonEl   = document.getElementById('ref-ton-earned');
+    const starsEl = document.getElementById('ref-stars-earned');
+    const btn     = document.getElementById('btn-claim-referral');
+
+    if (tonEl)   tonEl.textContent   = parseFloat(refTon   || 0).toFixed(4);
+    if (starsEl) starsEl.textContent = parseInt(refStars || 0);
+
+    const canClaim = parseFloat(refTon || 0) >= 1 || parseInt(refStars || 0) >= 100;
+    if (btn) {
+        btn.disabled = !canClaim;
+    }
+}
+
 async function loadEarnData() {
     try {
         const res = await fetch(`/api/earn_data`, { headers: getApiHeaders() });
         const data = await res.json();
         
+        // Обновляем блок реферальных накоплений
+        updateRefEarningsUI(data.ref_ton_earned, data.ref_stars_earned);
+
         const refList = document.getElementById('referrals-list');
         if (data.referrals.length === 0) {
             refList.innerHTML = `<div class="text-center text-sm text-gray-500 py-4 glass rounded-2xl border border-white/5 border-dashed">${i18n[currentLang].no_refs}</div>`;
@@ -64,7 +82,6 @@ async function loadEarnData() {
             taskList.innerHTML = `<div class="text-center text-sm text-gray-500 py-4 glass rounded-2xl border border-white/5 border-dashed">${i18n[currentLang].no_tasks}</div>`;
         } else {
             data.tasks.forEach(task => {
-                // Выбираем заголовок задания по текущему языку интерфейса
                 const taskTitle = (currentLang === 'en' && task.title_en) ? task.title_en : task.title;
 
                 if (task.completed) {
@@ -75,7 +92,6 @@ async function loadEarnData() {
                         ? `<button onclick="checkTask(${task.id})" id="btn-task-${task.id}" class="bg-blue-500 text-white px-4 py-2 rounded-xl text-sm font-bold active:scale-95 transition-transform shadow-[0_0_10px_rgba(59,130,246,0.5)]">${i18n[currentLang].check}</button>`
                         : `<button onclick="openTaskUrl(${task.id},'${task.url}')" class="glass px-4 py-2 rounded-xl text-sm font-bold text-white active:scale-95 transition-transform border border-blue-400/30">${i18n[currentLang].go}</button>`;
                     
-                    // --- ИЗМЕНЕНИЯ: Формируем дизайн для разных типов валют ---
                     let rewardHtml = '';
                     if (task.reward_type === 'stars') {
                         rewardHtml = `<div class="text-xs text-yellow-400 flex items-center gap-1 font-bold">+${task.reward}<img src="/gifts/stars.png" class="w-3 h-3 inline object-contain"></div>`;
@@ -96,7 +112,6 @@ function openTaskUrl(taskId, url) {
     vibrate('light');
     openTasksState[taskId] = true;
     
-    // ПРОВЕРКА: Если URL пустой (как в заданиях на рефералов), открываем окно шеринга!
     if (!url || url.trim() === '' || url === 'undefined' || url === 'null') {
         shareRefLink();
     } else {
@@ -121,11 +136,8 @@ async function checkTask(taskId) {
             vibrate('heavy');
             showNotify(i18n[currentLang].task_done, 'success');
             
-            // --- ИЗМЕНЕНИЯ: Обновляем оба баланса сразу ---
             myBalance = data.balance;
-            if (data.stars !== undefined) {
-                myStars = data.stars; 
-            }
+            if (data.stars !== undefined) myStars = data.stars; 
             
             if (typeof updateUI === 'function') updateUI();
             loadEarnData();
@@ -139,12 +151,63 @@ async function checkTask(taskId) {
     }
 }
 
+async function claimReferralEarnings() {
+    vibrate('medium');
+    const btn = document.getElementById('btn-claim-referral');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳...'; }
+
+    try {
+        const res = await fetch('/api/claim_referral', {
+            method: 'POST',
+            headers: getApiHeaders(),
+        });
+        const data = await res.json();
+
+        if (data.status === 'ok') {
+            vibrate('heavy');
+
+            // Обновляем локальные балансы
+            if (data.ton_balance !== undefined && typeof myTonBalance !== 'undefined') {
+                myTonBalance = data.ton_balance;
+            }
+            if (data.stars !== undefined && typeof myStars !== 'undefined') {
+                myStars = data.stars;
+            }
+
+            // Сбрасываем накопленные заработки в UI
+            updateRefEarningsUI(data.ref_ton_earned || 0, data.ref_stars_earned || 0);
+
+            if (typeof updateUI === 'function') updateUI();
+
+            // Уведомление
+            let msg = '';
+            if (data.claimed_ton > 0 && data.claimed_stars > 0) {
+                msg = `+${parseFloat(data.claimed_ton).toFixed(4)} TON и +${data.claimed_stars} ⭐ получено!`;
+            } else if (data.claimed_ton > 0) {
+                msg = `+${parseFloat(data.claimed_ton).toFixed(4)} TON получено!`;
+            } else {
+                msg = `+${data.claimed_stars} ⭐ получено!`;
+            }
+            showNotify(msg, 'success');
+        } else {
+            showNotify(data.detail || i18n[currentLang]?.err_check || 'Ошибка', 'error');
+            // Восстанавливаем кнопку если была ошибка
+            if (btn) { btn.disabled = false; btn.textContent = i18n[currentLang]?.btn_claim_ref || 'Забрать'; }
+        }
+    } catch(e) {
+        console.error('claimReferralEarnings:', e);
+        showNotify(i18n[currentLang]?.err_conn_srv || 'Ошибка соединения', 'error');
+        if (btn) { btn.disabled = false; btn.textContent = i18n[currentLang]?.btn_claim_ref || 'Забрать'; }
+    }
+}
+
 // =====================================================
 // ЭКСПОРТЫ В WINDOW ДЛЯ ДОСТУПА ИЗ HTML
 // =====================================================
-window.switchEarnSubtab = switchEarnSubtab;
-window.copyRefLink = copyRefLink;
-window.shareRefLink = shareRefLink;
-window.openTaskUrl = openTaskUrl;
-window.checkTask = checkTask;
-window.loadEarnData = loadEarnData;
+window.switchEarnSubtab      = switchEarnSubtab;
+window.copyRefLink           = copyRefLink;
+window.shareRefLink          = shareRefLink;
+window.openTaskUrl           = openTaskUrl;
+window.checkTask             = checkTask;
+window.loadEarnData          = loadEarnData;
+window.claimReferralEarnings = claimReferralEarnings;

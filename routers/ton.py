@@ -272,6 +272,9 @@ async def verify_deposit(
         # Начисляем на TON-баланс (отдельный от пончиков)
         await database.add_ton_balance(user_id, amount)
 
+        # Начисляем 10% рефереру в накопитель ref_ton_earned
+        await database.distribute_referral_bonus(user_id, amount)
+
         # Логируем в историю
         await database.log_action(
             user_id,

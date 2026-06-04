@@ -14,6 +14,7 @@ async def get_earn_data(current_user: dict = Depends(get_current_user)):
     tg_id           = current_user["id"]
     referrals       = await database.get_referrals(tg_id)
     completed_tasks = await database.get_completed_tasks(tg_id)
+    user_data       = await database.get_user_data(tg_id)
 
     tasks_list = []
     for t_id, t_data in config.TASKS.items():
@@ -27,7 +28,12 @@ async def get_earn_data(current_user: dict = Depends(get_current_user)):
             "completed":   t_id in completed_tasks,
         })
 
-    return {"referrals": referrals, "tasks": tasks_list}
+    return {
+        "referrals":        referrals,
+        "tasks":            tasks_list,
+        "ref_ton_earned":   user_data.get("ref_ton_earned", 0),
+        "ref_stars_earned": user_data.get("ref_stars_earned", 0),
+    }
 
 
 @router.post("/check_task")
@@ -115,3 +121,48 @@ async def check_task(data: TaskCheckData, current_user: dict = Depends(get_curre
             "balance": user_data.get("balance", 0),
             "stars":   user_data.get("stars", 0),
         }
+
+
+@router.post("/claim_referral")
+async def claim_referral(current_user: dict = Depends(get_current_user)):
+    """
+    Переводит накопленные реферальные TON и/или звёзды на основной баланс.
+
+    TON    — минимум 1 TON для клейма.
+    Звёзды — минимум 100 ⭐ для клейма.
+    После успешного клейма накопительные счета обнуляются.
+    """
+    tg_id = current_user["id"]
+
+    claimed_ton   = await database.claim_ref_ton(tg_id)
+    claimed_stars = await database.claim_ref_stars(tg_id)
+
+    if claimed_ton == 0 and claimed_stars == 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Недостаточно для получения: TON (минимум 1), Звёзды (минимум 100)"
+        )
+
+    if claimed_ton > 0:
+        await database.add_history_entry(
+            tg_id, "ref_claim_ton",
+            f"Получение реферального TON: {claimed_ton} TON",
+            claimed_ton
+        )
+    if claimed_stars > 0:
+        await database.add_history_entry(
+            tg_id, "ref_claim_stars",
+            f"Получение реферальных звёзд: {claimed_stars} ⭐",
+            claimed_stars
+        )
+
+    user_data = await database.get_user_data(tg_id)
+    return {
+        "status":           "ok",
+        "claimed_ton":      claimed_ton,
+        "claimed_stars":    claimed_stars,
+        "ton_balance":      user_data.get("ton_balance", 0),
+        "stars":            user_data.get("stars", 0),
+        "ref_ton_earned":   user_data.get("ref_ton_earned", 0),
+        "ref_stars_earned": user_data.get("ref_stars_earned", 0),
+    }

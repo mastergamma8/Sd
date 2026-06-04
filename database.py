@@ -52,6 +52,10 @@ from db.db_users import (  # noqa: F401
     update_user_settings,
     add_ton_balance,
     deduct_ton_balance,
+    add_ref_ton_earned,
+    add_ref_stars_earned,
+    claim_ref_ton,
+    claim_ref_stars,
 )
 
 from db.db_history import (  # noqa: F401
