@@ -357,28 +357,56 @@ _STAR_USD_PRICE = 0.013
 async def _fetch_ton_to_stars_rate() -> float:
     """
     Возвращает количество Stars за 1 TON.
-    Алгоритм: TON/USDT (Binance public API) / STAR_USD_PRICE.
-    Результат кэшируется на 5 минут. При ошибке возвращает фоллбэк.
+    Пробует источники по очереди: Bybit → OKX → Binance.
+    Результат кэшируется на 5 минут. При недоступности всех источников — фоллбэк.
     """
     now = time.time()
     if _ton_stars_cache["rate"] and now - _ton_stars_cache["ts"] < _TON_STARS_CACHE_TTL:
         return _ton_stars_cache["rate"]
 
     fallback = getattr(config, "TON_TO_STARS_FALLBACK", 200.0)
+
+    async def _try_bybit(client: httpx.AsyncClient) -> float | None:
+        r = await client.get("https://api.bybit.com/v5/market/tickers",
+                             params={"category": "spot", "symbol": "TONUSDT"})
+        if r.status_code == 200:
+            items = r.json().get("result", {}).get("list", [])
+            if items:
+                return float(items[0]["lastPrice"])
+        return None
+
+    async def _try_okx(client: httpx.AsyncClient) -> float | None:
+        r = await client.get("https://www.okx.com/api/v5/market/ticker",
+                             params={"instId": "TON-USDT"})
+        if r.status_code == 200:
+            data = r.json().get("data", [])
+            if data:
+                return float(data[0]["last"])
+        return None
+
+    async def _try_binance(client: httpx.AsyncClient) -> float | None:
+        r = await client.get("https://api.binance.com/api/v3/ticker/price",
+                             params={"symbol": "TONUSDT"})
+        if r.status_code == 200:
+            return float(r.json()["price"])
+        return None
+
     try:
         async with httpx.AsyncClient(timeout=6) as client:
-            resp = await client.get(
-                "https://api.binance.com/api/v3/ticker/price",
-                params={"symbol": "TONUSDT"},
-            )
-            if resp.status_code == 200:
-                ton_usd = float(resp.json()["price"])
-                rate = ton_usd / _STAR_USD_PRICE
-                _ton_stars_cache["rate"] = rate
-                _ton_stars_cache["ts"] = now
-                return rate
+            for source_name, fetcher in [("Bybit", _try_bybit),
+                                         ("OKX",   _try_okx),
+                                         ("Binance", _try_binance)]:
+                try:
+                    ton_usd = await fetcher(client)
+                    if ton_usd and ton_usd > 0:
+                        rate = ton_usd / _STAR_USD_PRICE
+                        _ton_stars_cache["rate"] = rate
+                        _ton_stars_cache["ts"] = now
+                        return rate
+                except Exception as e:
+                    print(f"[TON rate] {source_name} error: {e}")
     except Exception as e:
-        print(f"[TON rate] Binance error: {e}")
+        print(f"[TON rate] client error: {e}")
 
     return fallback
 
@@ -488,4 +516,4 @@ async def exchange_for_stars(data: ActionData, current_user: dict = Depends(get_
         "balance":      updated_user.get("balance", 0),
         "stars":        updated_user.get("stars", 0),
         "user_gifts":   updated_gifts,
-        }
+    }

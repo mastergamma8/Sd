@@ -45,13 +45,6 @@ except ValueError:
 DONUT_TO_TON_RATE: float = 0.1          # 1 пончик = 0.1 TON
 DONUTS_TO_STARS_RATE: int = 20          # = DONUT_TO_TON_RATE × TON_TO_STARS_FALLBACK
 
-# ── Бонус при обмене подарков на звёзды ──────────────────────────────────────
-# Сколько процентов сверх рыночной цены (Portal Market) получает пользователь.
-# Изменяется командой /setexchangebonus <процент> в боте (сохраняется в БД).
-# Значение здесь используется только как внутренний базовый множитель
-# для MAIN_GIFTS (у которых нет портальной цены).
-GIFT_EXCHANGE_STARS_RATE: float = 1.0   # базовый множитель для MAIN_GIFTS
-EXCHANGE_BONUS_PERCENT: float   = 0.0   # 0% — выплата строго по цене Portal Market
 
 # Фоллбэк курса TON→Stars (используется если CoinGecko недоступен).
 # Обновляйте вручную при существенном изменении курса TON.
@@ -69,11 +62,11 @@ async def get_live_donuts_to_stars_rate() -> float:
     """Возвращает актуальный курс 1 пончик → Stars.
 
     Алгоритм:
-      • Запрашивает цену TONUSDT у Binance Public API.
-      • Делит на стоимость одной звезды ($0.013) → количество Stars за 1 TON.
+      • Пробует источники цены TONUSDT по очереди: Bybit → OKX → Binance.
+      • Делит на стоимость одной звезды ($0.013) → Stars за 1 TON.
       • Умножает на DONUT_TO_TON_RATE (0.1), так как 1 пончик = 0.1 TON.
       • Результат кэшируется на 5 минут.
-      • При любой ошибке возвращает DONUTS_TO_STARS_RATE (20).
+      • При недоступности всех источников возвращает DONUTS_TO_STARS_RATE (20).
     """
     import httpx  # импортируем здесь, чтобы не ломать синхронный старт config.py
 
@@ -85,22 +78,37 @@ async def get_live_donuts_to_stars_rate() -> float:
     ):
         return _ton_stars_live_cache["rate"]
 
+    async def _bybit(c):
+        r = await c.get("https://api.bybit.com/v5/market/tickers",
+                        params={"category": "spot", "symbol": "TONUSDT"})
+        items = r.json().get("result", {}).get("list", []) if r.status_code == 200 else []
+        return float(items[0]["lastPrice"]) if items else None
+
+    async def _okx(c):
+        r = await c.get("https://www.okx.com/api/v5/market/ticker",
+                        params={"instId": "TON-USDT"})
+        data = r.json().get("data", []) if r.status_code == 200 else []
+        return float(data[0]["last"]) if data else None
+
+    async def _binance(c):
+        r = await c.get("https://api.binance.com/api/v3/ticker/price",
+                        params={"symbol": "TONUSDT"})
+        return float(r.json()["price"]) if r.status_code == 200 else None
+
     try:
         async with httpx.AsyncClient(timeout=6) as client:
-            resp = await client.get(
-                "https://api.binance.com/api/v3/ticker/price",
-                params={"symbol": "TONUSDT"},
-            )
-            if resp.status_code == 200:
-                ton_usd = float(resp.json()["price"])
-                ton_to_stars = ton_usd / _STAR_USD_PRICE
-                # 1 пончик = 0.1 TON → умножаем на DONUT_TO_TON_RATE
-                rate = ton_to_stars * DONUT_TO_TON_RATE
-                _ton_stars_live_cache["rate"] = rate
-                _ton_stars_live_cache["ts"] = now
-                return rate
+            for name, fetcher in [("Bybit", _bybit), ("OKX", _okx), ("Binance", _binance)]:
+                try:
+                    ton_usd = await fetcher(client)
+                    if ton_usd and ton_usd > 0:
+                        rate = (ton_usd / _STAR_USD_PRICE) * DONUT_TO_TON_RATE
+                        _ton_stars_live_cache["rate"] = rate
+                        _ton_stars_live_cache["ts"] = now
+                        return rate
+                except Exception as e:
+                    print(f"[Leaderboard rate] {name} error: {e}")
     except Exception as e:
-        print(f"[Leaderboard rate] Binance error: {e}")
+        print(f"[Leaderboard rate] client error: {e}")
 
     return DONUTS_TO_STARS_RATE
 
