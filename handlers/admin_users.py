@@ -1,6 +1,5 @@
 # handlers/admin_users.py
-# Commands: /genfakeusers, /delfakeusers, /addtester, /deltester, /testers,
-#           /setexchangerate
+# Commands: /genfakeusers, /delfakeusers, /addtester, /deltester, /testers
 import random
 import time
 
@@ -16,54 +15,6 @@ from .admin_constants import E_STOP, E_CHECK, E_CROSS, E_TIME
 
 
 def register(dp: Dispatcher, bot: Bot):
-
-    # ── /setexchangebonus ─────────────────────────────────────────────────────
-
-    @dp.message(Command("setexchangebonus"))
-    async def cmd_set_exchange_bonus(message: Message):
-        if message.from_user.id != config.ADMIN_ID:
-            await message.answer(f"{E_STOP} У вас нет прав.", parse_mode="HTML")
-            return
-
-        from db.db_settings import get_exchange_bonus_percent, set_exchange_bonus_percent
-
-        args = message.text.split()
-        if len(args) != 2:
-            current = await get_exchange_bonus_percent()
-            await message.answer(
-                "<b>Бонус при обмене подарков на звёзды</b>\n\n"
-                f"Текущий бонус: <b>+{current}%</b>\n\n"
-                "Использование: <code>/setexchangebonus &lt;процент&gt;</code>\n"
-                "Пример: <code>/setexchangebonus 15</code>\n\n"
-                "<i>При бонусе 10% пользователь получает на 10% звёзд больше рыночной цены портала.</i>",
-                parse_mode="HTML",
-            )
-            return
-
-        try:
-            new_bonus = float(args[1])
-            if new_bonus < 0:
-                await message.answer(f"{E_CROSS} Бонус не может быть отрицательным.", parse_mode="HTML")
-                return
-            if new_bonus > 1000:
-                await message.answer(f"{E_CROSS} Бонус не может быть больше 1000%.", parse_mode="HTML")
-                return
-
-            old_bonus = await get_exchange_bonus_percent()
-            await set_exchange_bonus_percent(new_bonus)
-
-            await message.answer(
-                f"{E_CHECK} <b>Бонус обмена обновлён!</b>\n\n"
-                f"Было: <b>+{old_bonus}%</b>\n"
-                f"Стало: <b>+{new_bonus}%</b>\n\n"
-                f"<i>Пользователи получат на {new_bonus}% больше звёзд от рыночной цены портала.</i>",
-                parse_mode="HTML",
-            )
-        except ValueError:
-            await message.answer(
-                f"{E_CROSS} Некорректное значение. Введите число, например: <code>10</code>",
-                parse_mode="HTML",
-            )
 
     # ── /genfakeusers ──────────────────────────────────────────────────────────
 

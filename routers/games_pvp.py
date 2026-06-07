@@ -21,7 +21,6 @@ try:
     from routers.gifts import (
         _fetch_portal_floor_price_async,
         _fetch_ton_to_stars_rate,
-        _apply_exchange_bonus,
     )
     _live_exchange_available = True
 except Exception:
@@ -264,8 +263,7 @@ async def _get_live_gift_value_stars(gift_id: int, gift_info: dict) -> int:
                 ton_price = stored / 1.20 if stored > 0 else 0
 
         if ton_price and ton_price > 0 and ton_to_stars:
-            base_stars = max(1, int(ton_price * ton_to_stars))
-            return await _apply_exchange_bonus(base_stars)
+            return max(1, int(ton_price * ton_to_stars))
     except Exception as e:
         print(f"[PvP] live gift value error for gift {gift_id}: {e}")
 
@@ -1006,23 +1004,19 @@ async def get_inventory(current_user: dict = Depends(get_current_user)):
                     ton_price = stored / 1.20 if stored > 0 else 0
 
             if ton_price and ton_price > 0 and ton_to_stars:
-                base_stars = max(1, int(ton_price * ton_to_stars))
-                try:
-                    exchange_stars = await _apply_exchange_bonus(base_stars)
-                except Exception:
-                    exchange_stars = base_stars
+                exchange_stars = max(1, int(ton_price * ton_to_stars))
             else:
-                # Last-resort static fallback
+                # Last-resort static fallback (no bonus)
                 if gift_id in config.BASE_GIFTS:
-                    exchange_stars = max(1, int(raw_value / 0.80 * 1.1))
+                    exchange_stars = max(1, int(raw_value / 0.80))
                 else:
-                    exchange_stars = max(1, int(raw_value / 1.20 * 1.1))
+                    exchange_stars = max(1, int(raw_value / 1.20))
         else:
             # Static fallback when live exchange is unavailable
             if gift_id in config.BASE_GIFTS:
-                exchange_stars = max(1, int(raw_value / 0.80 * 1.1))
+                exchange_stars = max(1, int(raw_value / 0.80))
             else:
-                exchange_stars = max(1, int(raw_value / 1.20 * 1.1))
+                exchange_stars = max(1, int(raw_value / 1.20))
 
         result.append({
             "gift_id":        gift_id,
