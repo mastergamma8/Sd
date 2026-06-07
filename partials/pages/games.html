@@ -185,9 +185,9 @@
                 </button>
                 <div>
                     <h3 class="text-lg font-black text-white flex items-center gap-2">
-    <span class="text-xl leading-none">⚔️</span>
-    Space PvP
-</h3>
+                        <span class="text-xl leading-none">⚔️</span>
+                        Space PvP
+                    </h3>
                     <div id="pvp-status-text" class="flex items-center mt-0.5">
                         <span class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-white font-black text-base tracking-wide shadow-lg"
                               style="background:linear-gradient(135deg,rgba(244,63,94,0.25),rgba(168,85,247,0.2));border:1px solid rgba(244,63,94,0.4);">
@@ -207,14 +207,14 @@
                               d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
                 </button>
-            <!-- Online counter -->
-            <span id="pvp-online-badge"
-                  class="flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full border transition-all duration-500"
-                  style="background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.08);color:rgba(255,255,255,0.25);">
-                <span id="pvp-online-dot" class="w-1.5 h-1.5 rounded-full bg-gray-500 transition-colors duration-500"></span>
-                <span id="pvp-online-count">0</span>
-            </span>
-            <span id="pvp-round-badge" class="text-xs font-bold text-white/40 bg-white/5 px-3 py-1 rounded-full border border-white/10">Round #0</span>
+                <!-- Online counter -->
+                <span id="pvp-online-badge"
+                      class="flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full border transition-all duration-500"
+                      style="background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.08);color:rgba(255,255,255,0.25);">
+                    <span id="pvp-online-dot" class="w-1.5 h-1.5 rounded-full bg-gray-500 transition-colors duration-500"></span>
+                    <span id="pvp-online-count">0</span>
+                </span>
+                <span id="pvp-round-badge" class="text-xs font-bold text-white/40 bg-white/5 px-3 py-1 rounded-full border border-white/10">Round #0</span>
             </div>
         </div>
 
@@ -245,34 +245,49 @@
             </div>
         </div>
 
-        <!-- Arena (Квадратная область с динамическим фоном) -->
-        <div id="pvp-arena-wrap" class="relative w-full rounded-3xl overflow-hidden border-2 border-white/20 shadow-[0_0_40px_rgba(244,63,94,0.15)] aspect-square max-h-[350px] mx-auto bg-[#020617]">
-            
-        <!-- ── Всё, что должно масштабироваться при зуме, — внутри этого контейнера ── -->
-            <div id="pvp-arena-inner" class="absolute inset-0" style="z-index:0;">
-            <!-- Динамический фон (Сектора) -->
-            <div id="pvp-dynamic-bg" class="absolute inset-0 transition-all duration-700 ease-out" style="background:radial-gradient(ellipse at center, rgba(244,63,94,0.08) 0%, #020617 70%)"></div>
+        <!-- Arena — всегда идеально круглая; размер = min(ширина экрана − отступы страницы, 360px) -->
+        <div id="pvp-arena-wrap" class="relative mx-auto"
+             style="width:min(calc(100vw - 40px),360px);height:min(calc(100vw - 40px),360px);">
 
-            <!-- Слой для аватарок (Размещаются по кругу) -->
-            <div id="pvp-arena-players" class="absolute inset-0 z-10 pointer-events-none"></div>
-
-            <!-- Слой для следа шарика -->
-            <div id="pvp-ball-trail" class="absolute inset-0 z-[15] pointer-events-none"></div>
-
-            <!-- Белый шарик -->
-            <div id="pvp-ball" class="absolute z-20 pointer-events-none" style="left:50%;top:50%;width:18px;height:18px;border-radius:50%;transform:translate(-50%,-50%);opacity:0;transition:opacity 0.3s;background:#fff;box-shadow:0 0 16px 4px rgba(255,255,255,0.85),0 0 32px 8px rgba(255,255,255,0.35);"></div>
-            </div><!-- /pvp-arena-inner -->
-
-            <!-- Countdown overlay — small badge, no blur, arena stays visible -->
-            <div id="pvp-countdown-overlay" class="hidden absolute bottom-4 right-4 z-20 flex items-center justify-center pointer-events-none">
-                <div class="flex flex-col items-center px-4 py-2 rounded-2xl border border-white/20 bg-black/70 shadow-xl">
-                    <div class="text-[9px] font-bold text-white/70 tracking-widest uppercase" data-i18n="pvp_countdown_label">До старта</div>
-                    <div id="pvp-countdown-val" class="text-4xl font-black text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.6)] leading-none">15</div>
-                </div>
+            <!-- Маркер-стрелка (12 часов) — поверх колеса -->
+            <div class="absolute left-1/2 -translate-x-1/2 z-30 drop-shadow-[0_4px_10px_rgba(255,255,255,0.4)]"
+                 style="top:6px;">
+                <svg width="24" height="20" viewBox="0 0 24 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 20L1 2L23 2L12 20Z" fill="white" stroke="#1e293b" stroke-width="2" stroke-linejoin="round"/>
+                </svg>
             </div>
 
-            <!-- Winner overlay -->
-            <div id="pvp-winner-overlay" class="hidden absolute inset-0 z-30 flex items-center justify-center" style="background:rgba(0,0,0,0.7);backdrop-filter:blur(8px)"></div>
+            <!-- Вращающийся барабан рулетки — заполняет весь квадратный контейнер -->
+            <div id="pvp-roulette-wheel"
+                 class="absolute inset-0 rounded-full overflow-hidden border-[4px] border-slate-700/50 shadow-[0_0_40px_rgba(244,63,94,0.15),0_0_20px_rgba(0,0,0,0.6)]"
+                 style="z-index:5;">
+
+                <!-- Динамический фон (сектора через conic-gradient) -->
+                <div id="pvp-dynamic-bg" class="absolute inset-0 transition-all duration-300 ease-out"
+                     style="background:radial-gradient(circle,rgba(244,63,94,0.1) 0%,#020617 100%)"></div>
+
+                <!-- Аватарки игроков (вращаются вместе с барабаном) -->
+                <div id="pvp-arena-players" class="absolute inset-0 z-10 pointer-events-none"></div>
+            </div>
+
+            <!-- Центральный индикатор состояния (поверх барабана, не вращается) -->
+            <div class="absolute z-20 w-[110px] h-[110px] bg-[#090d16] rounded-full border-[3px] border-slate-800
+                        shadow-[0_0_25px_rgba(0,0,0,0.8)] flex flex-col items-center justify-center"
+                 style="left:50%;top:50%;transform:translate(-50%,-50%);">
+                <svg class="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 110 110">
+                    <circle cx="55" cy="55" r="51" fill="transparent" stroke="rgba(255,255,255,0.05)" stroke-width="3"/>
+                    <circle id="pvp-center-progress-bar" cx="55" cy="55" r="51" fill="transparent"
+                            stroke="#e11d48" stroke-width="3" stroke-dasharray="320" stroke-dashoffset="320"
+                            stroke-linecap="round" class="transition-all duration-300"/>
+                </svg>
+                <div id="pvp-center-timer" class="text-xl font-black text-white tracking-wider">00:00</div>
+                <div id="pvp-center-label" class="text-[8px] text-white/40 font-bold uppercase tracking-widest mt-0.5">ожидание</div>
+            </div>
+
+            <!-- Winner overlay — тоже круглый -->
+            <div id="pvp-winner-overlay"
+                 class="hidden absolute inset-0 z-40 flex items-center justify-center rounded-full overflow-hidden"
+                 style="background:rgba(2,6,23,0.92);backdrop-filter:blur(10px)"></div>
         </div>
 
         <!-- Bet panel -->
@@ -288,8 +303,8 @@
                     <span data-i18n="pvp_tab_ton">TON</span>
                 </button>
                 <button id="pvp-tab-gift" onclick="pvpSwitchBetTab('gift')" class="flex-1 py-2.5 text-xs font-black text-white/40 tracking-wide transition-colors flex items-center justify-center gap-1.5">
-    <img src="/gifts/pepe.png" class="w-4 h-4 object-contain" alt="Pepe" onerror="this.style.display='none'">
-    <span data-i18n="pvp_tab_gift">Подарок</span>
+                    <img src="/gifts/pepe.png" class="w-4 h-4 object-contain" alt="Pepe" onerror="this.style.display='none'">
+                    <span data-i18n="pvp_tab_gift">Подарок</span>
                 </button>
             </div>
 
@@ -355,4 +370,4 @@
             </div>
         </div>
     </div>
-    </div>
+</div>

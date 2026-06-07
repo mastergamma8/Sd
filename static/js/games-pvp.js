@@ -1,5 +1,5 @@
 // =============================================================
-// games-pvp.js — SPACE DONUT PVP (Обновленная Радиальная Арена)
+// games-pvp.js — SPACE DONUT PVP (Колесо Фортуны / Рулетка)
 // =============================================================
 'use strict';
 
@@ -16,18 +16,12 @@ let pvpState = {
 };
 
 let pvpPollTimer          = null;
-let pvpPollingActive      = false;  // страж от race-condition при закрытии
-let pvpBallAnimFrame      = null;
+let pvpPollingActive      = false;
 let pvpBetTab             = 'stars';   // 'stars' | 'ton' | 'gift'
 let pvpInventory          = [];
-let pvpBallPos            = { x: 50, y: 50 };
-let pvpBallTrail          = [];
 let pvpLastState          = '';
 let pvpCountdownInterval  = null;
 let pvpWinnerRevealed     = false;
-let pvpRollingStart       = 0;
-let pvpTrajectorySegments = [];
-const PVP_ROLLING_DURATION = 6500;
 
 // ─── Online counter ───────────────────────────────────────────
 let pvpHeartbeatTimer = null;
@@ -35,12 +29,15 @@ const PVP_HEARTBEAT_INTERVAL = 30000; // 30 сек
 
 const pvpAvatarCache = {};
 
+// Текущий результирующий угол барабана (чтобы вращать плавно из предыдущих положений)
+let pvpCurrentRotation = 0; 
+
+// ─── Haptic state ──────────────────────────────────────────────
+// rAF-цикл читает реальную CSS-матрицу колеса и триггерит вибрацию
+// при каждом пересечении виртуальной «насечки» (аналогично roulette.js)
+let pvpHapticTimer     = null;   // активный requestAnimationFrame ID
+
 // ─── Render-hash guards ───────────────────────────────────────
-// Each render function stores a "content hash" of its input data.
-// If the hash hasn't changed since the last render, the function
-// skips the innerHTML rebuild entirely — CSS animations on existing
-// DOM elements are therefore never reset by polling, which was the
-// root cause of the "everything pulses/restarts every 600ms" bug.
 let _pvpArenaHash     = '';
 let _pvpStatusHash    = '';
 let _pvpTopBarHash    = '';
@@ -66,9 +63,6 @@ function _pvpGiftIcon(size) {
 function _pvpTrophyIcon(size) {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;color:#f59e0b"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>`;
 }
-function _pvpCrownIcon(size) {
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="#f59e0b" style="display:inline-block;vertical-align:middle;"><path d="M2 20h20v2H2v-2zM4 18l4-10 4 5 4-8 4 13H4z"/></svg>`;
-}
 
 // ─── Open / Close ─────────────────────────────────────────────
 
@@ -80,6 +74,15 @@ function openPvpGame() {
         document.getElementById('games-pvp-view')?.classList.remove('hidden');
     }
     pvpWinnerRevealed = false;
+    pvpCurrentRotation = 0;
+    
+    // Сброс вращения колеса при открытии
+    const wheel = document.getElementById('pvp-roulette-wheel');
+    if (wheel) {
+        wheel.style.transition = 'none';
+        wheel.style.transform = 'rotate(0deg)';
+    }
+
     startPvpPolling();
     loadPvpInventory();
 }
@@ -107,7 +110,7 @@ async function sendPvpHeartbeat() {
 
 function startPvpHeartbeat() {
     stopPvpHeartbeat();
-    sendPvpHeartbeat();  // сразу при открытии
+    sendPvpHeartbeat();
     pvpHeartbeatTimer = setInterval(sendPvpHeartbeat, PVP_HEARTBEAT_INTERVAL);
 }
 
@@ -152,8 +155,8 @@ function startPvpPolling() {
 function stopPvpPolling() {
     pvpPollingActive = false;
     if (pvpPollTimer)         { clearTimeout(pvpPollTimer);          pvpPollTimer     = null; }
-    if (pvpBallAnimFrame)     { cancelAnimationFrame(pvpBallAnimFrame); pvpBallAnimFrame = null; }
     if (pvpCountdownInterval) { clearInterval(pvpCountdownInterval); pvpCountdownInterval = null; }
+    clearPvpHaptics();
     stopPvpHeartbeat();
 }
 
@@ -161,13 +164,12 @@ async function pollPvpState() {
     try {
         const res  = await fetch('/api/pvp/state', { headers: getApiHeaders() });
         const data = await res.json();
-        // Проверяем флаг ПОСЛЕ await: пользователь мог закрыть игру пока шёл запрос
         if (!pvpPollingActive) return;
         applyPvpState(data);
     } catch (_) {}
 
     if (!pvpPollingActive) return;
-    const interval = pvpState.state === 'rolling' ? 300 : 600;
+    const interval = pvpState.state === 'rolling' ? 500 : 800;
     pvpPollTimer = setTimeout(pollPvpState, interval);
 }
 
@@ -187,39 +189,29 @@ function applyPvpState(data) {
     const prevRoundId = pvpState.round_id;
     pvpState = data;
 
-    // Обновляем счётчик онлайна при каждом обновлении состояния
     if (typeof data.online_count === 'number') {
         renderPvpOnlineCounter(data.online_count);
     }
 
     if (data.round_id !== prevRoundId) {
         pvpWinnerRevealed = false;
-        pvpBallTrail      = [];
-        pvpTrajectorySegments = [];
-        // New round — force all render functions to rebuild their DOM
         _pvpArenaHash  = '';
         _pvpStatusHash = '';
         _pvpTopBarHash = '';
         _pvpPartsHash  = '';
+        
+        // Сбрасываем угол к 0 при новом раунде
+        pvpCurrentRotation = 0;
+        const wheel = document.getElementById('pvp-roulette-wheel');
+        if (wheel) {
+            wheel.style.transition = 'none';
+            wheel.style.transform = 'rotate(0deg)';
+        }
     }
 
-    if (data.state === 'rolling' && (prevState !== 'rolling' || !pvpBallAnimFrame)) {
-        const serverNow      = Date.now() / 1000;
-        const elapsedSeconds = data.rolling_start_ts > 0
-            ? Math.max(0, serverNow - data.rolling_start_ts)
-            : 0;
-        pvpRollingStart = performance.now() - elapsedSeconds * 1000;
-
-        const wId = data.winner ? data.winner.user_id : null;
-        const serverTarget = (data.ball_target_x != null && data.ball_target_y != null)
-            ? { x: data.ball_target_x, y: data.ball_target_y }
-            : null;
-        pvpInitBallFromSeed(data.ball_seed != null ? data.ball_seed : 1, wId, serverTarget);
-        startPvpBallAnimation();
-    }
-
-    if (data.state !== 'rolling' && prevState === 'rolling') {
-        stopPvpBallAnimation();
+    // Если фаза сменилась на rolling - запускаем колесо рулетки
+    if (data.state === 'rolling' && prevState !== 'rolling') {
+        spinRouletteWheel(data.winner);
     }
 
     if (data.state === 'countdown') {
@@ -235,7 +227,6 @@ function applyPvpState(data) {
 
     if (data.state === 'finished' && !pvpWinnerRevealed && data.winner) {
         pvpWinnerRevealed = true;
-        stopPvpBallAnimation();
         showPvpWinnerReveal(data.winner);
     }
 
@@ -262,10 +253,31 @@ let pvpLocalCountdown = 0;
 function startPvpCountdown(timeLeft) {
     pvpLocalCountdown = timeLeft;
     if (pvpCountdownInterval) clearInterval(pvpCountdownInterval);
+    
+    const maxTime = 15; // Длительность таймера по умолчанию
+    
     pvpCountdownInterval = setInterval(() => {
         pvpLocalCountdown = Math.max(0, pvpLocalCountdown - 0.1);
-        const el = document.getElementById('pvp-countdown-val');
-        if (el) el.textContent = Math.ceil(pvpLocalCountdown);
+        
+        // Обновляем круговой прогресс-бар в центре
+        const progCircle = document.getElementById('pvp-center-progress-bar');
+        if (progCircle) {
+            // Длина окружности 2 * PI * 51 = 320.44
+            const dashoffset = 320 - (320 * (pvpLocalCountdown / maxTime));
+            progCircle.style.strokeDashoffset = Math.max(0, Math.min(320, dashoffset));
+        }
+
+        // Обновляем текстовый таймер
+        const timerText = document.getElementById('pvp-center-timer');
+        if (timerText) {
+            const secs = Math.floor(pvpLocalCountdown);
+            const decs = Math.floor((pvpLocalCountdown % 1) * 100);
+            timerText.textContent = `00:${secs.toString().padStart(2, '0')}`;
+        }
+
+        const label = document.getElementById('pvp-center-label');
+        if (label) label.textContent = 'СТАРТ';
+
         if (pvpLocalCountdown <= 0) {
             clearInterval(pvpCountdownInterval);
             pvpCountdownInterval = null;
@@ -273,385 +285,215 @@ function startPvpCountdown(timeLeft) {
     }, 100);
 }
 
-// ─── Ball / Diamond animation ─────────────────────────────────
+// ─── Roulette Spin Mechanic (Крутилка Рулетки) ──────────────────
 
-function startPvpBallAnimation() {
-    stopPvpBallAnimation();
-    animatePvpBall();
+// ─── Детерминированный ГПСЧ (seeded PRNG) для синхронизации барабана ───
+// Одинаковый seed → одинаковый результат на всех устройствах.
+function _pvpSeed(roundId) {
+    // FNV-1a hash: строка round_id → 32-битное целое
+    let h = 0x811c9dc5 >>> 0;
+    const s = String(roundId || 0);
+    for (let i = 0; i < s.length; i++) {
+        h = Math.imul(h ^ s.charCodeAt(i), 0x01000193) >>> 0;
+    }
+    return h;
+}
+function _pvpRand(seed) {
+    // xorshift32 — быстрый, детерминированный, равномерный [0, 1)
+    let x = seed >>> 0;
+    x ^= x << 13; x >>>= 0;
+    x ^= x >>> 17;
+    x ^= x << 5;  x >>>= 0;
+    return x / 4294967296;
 }
 
-function stopPvpBallAnimation() {
-    if (pvpBallAnimFrame) {
-        cancelAnimationFrame(pvpBallAnimFrame);
-        pvpBallAnimFrame = null;
-    }
+function spinRouletteWheel(winner) {
+    const wheel = document.getElementById('pvp-roulette-wheel');
+    if (!wheel || !winner) return;
 
-    const arenaInner = document.getElementById('pvp-arena-inner');
-    if (arenaInner) {
-        arenaInner.style.transition = 'transform 0.6s cubic-bezier(0.22, 1, 0.36, 1)';
-        arenaInner.style.transform  = '';
-    }
-
-    // Explicitly hide the ball so it doesn't linger if the server state
-    // hasn't caught up yet. updatePvpStatus() will re-show it on 'rolling'.
-    const ball = document.getElementById('pvp-ball');
-    if (ball) ball.style.opacity = '0';
-
-    pvpBallTrail = [];
-    pvpBallTailPositions = [];
-    renderPvpBallTail();
-}
-
-// Seed-based RNG (Mulberry32). Replaced on each pvpInitBallFromSeed call.
-// Never falls back to Math.random() — all randomness must come from ball_seed.
-let _pvpRng = () => 0.5;
-
-// Pre-computed bounce thresholds — timeProgress values where ball hits a wall.
-// Used to trigger haptic feedback at the exact moment of each impact.
-let pvpBounceThresholds = [];
-
-// Rolling tail — last N positions of the ball, updated every animation frame.
-// Rendered as a short glowing trail directly behind the ball.
-let pvpBallTailPositions = [];
-
-function getPvpWinnerSectorTarget(winnerId) {
+    // Рассчитываем точные сектора игроков
     const players = pvpState.players || [];
     const totalChance = players.reduce((sum, p) => sum + p.win_chance, 0);
+    
     let currentPercent = 0;
+    let targetSectorStartDeg = 0;
+    let targetSectorEndDeg = 360;
 
+    // Ищем сектор победителя на окружности
     for (const p of players) {
-        const normalizedChance = totalChance > 0
-            ? (p.win_chance / totalChance) * 100
+        const normalizedChance = totalChance > 0 
+            ? (p.win_chance / totalChance) * 100 
             : (100 / players.length);
-
-        if (String(p.user_id) === String(winnerId)) {
-            const padding = Math.max(2, normalizedChance * 0.1);
-            const safeChance = Math.max(1, normalizedChance - padding * 2);
-            const randomPercent = currentPercent + padding + (_pvpRng() * safeChance);
-
-            const angleDeg = (randomPercent * 3.6) - 90;
-            const angleRad = angleDeg * (Math.PI / 180);
-
-            const r = 12 + _pvpRng() * 16;
-
-            const x = 50 + r * Math.cos(angleRad);
-            const y = 50 + r * Math.sin(angleRad);
-            return { x, y };
+            
+        if (String(p.user_id) === String(winner.user_id)) {
+            targetSectorStartDeg = currentPercent * 3.6;
+            targetSectorEndDeg = (currentPercent + normalizedChance) * 3.6;
+            break;
         }
         currentPercent += normalizedChance;
     }
-    return { x: 50, y: 50 };
+
+    // Детерминированные «случайные» числа на основе round_id —
+    // все клиенты получают одинаковый результат для одного раунда.
+    const seed = _pvpSeed(pvpState.round_id);
+    const r1 = _pvpRand(seed);
+    const r2 = _pvpRand(seed ^ 0xA5A5A5A5);
+
+    const margin = Math.min(3, (targetSectorEndDeg - targetSectorStartDeg) * 0.1);
+    const targetDegInSector = targetSectorStartDeg + margin + (r1 * (targetSectorEndDeg - targetSectorStartDeg - margin * 2));
+
+    // Стрелка находится сверху на отметке 12 часов (270 градусов по тригонометрическому кругу).
+    // Чтобы выигравший сектор оказался наверху под стрелкой, мы должны повернуть колесо на:
+    // Angle = 360 - targetDegInSector
+    // Добавим к этому несколько полных оборотов (от 5 до 8) для зрелищности вращения.
+    const extraSpins = 5 + Math.floor(r2 * 4); // 5-8 оборотов, одинаково на всех устройствах
+    const finalRotation = (extraSpins * 360) + (360 - targetDegInSector);
+    
+    pvpCurrentRotation = finalRotation;
+
+    // Запускаем плавное вращение при помощи CSS transition
+    wheel.style.transition = 'transform 6.5s cubic-bezier(0.12, 0.8, 0.15, 1)';
+    wheel.style.transform = `rotate(${finalRotation}deg)`;
+
+    // Инжектируем @keyframes для контр-ротации аватарок.
+    // CSS-анимация надёжнее CSS-transition для только что созданных элементов:
+    // она стартует с явного from (0°) без необходимости принудительного reflow.
+    let kvStyle = document.getElementById('pvp-balance-kf');
+    if (!kvStyle) {
+        kvStyle = document.createElement('style');
+        kvStyle.id = 'pvp-balance-kf';
+        document.head.appendChild(kvStyle);
+    }
+    kvStyle.textContent = `@keyframes pvpAvatarBalance { from { transform: rotate(0deg); } to { transform: rotate(${-finalRotation}deg); } }`;
+
+    // Синхронизируем вибрацию с реальным движением колеса через rAF
+    triggerSpinHaptics(wheel, finalRotation);
 }
 
-function pvpInitBallFromSeed(seed, winnerId, serverTarget = null) {
-    // ── Mulberry32 seeded RNG ────────────────────────────────────────────
-    let s = seed >>> 0;
-    _pvpRng = () => {
-        s += 0x6D2B79F5;
-        let t = Math.imul(s ^ (s >>> 15), 1 | s);
-        t ^= t + Math.imul(t ^ (t >>> 7), 61 | t);
-        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
+// ─── Синхронные хаптики колеса ─────────────────────────────────
 
-    // ── Determine winner target (same RNG consumption as before) ─────────
-    let targetP;
-    if (winnerId) {
-        if (serverTarget) {
-            _pvpRng(); _pvpRng(); // consume same calls as getPvpWinnerSectorTarget
-            targetP = serverTarget;
+// Сбрасываем rAF и обнуляем таймер (вызывается при остановке/новом раунде)
+function clearPvpHaptics() {
+    if (pvpHapticTimer) { cancelAnimationFrame(pvpHapticTimer); pvpHapticTimer = null; }
+}
+
+// ─── Синхронная вибрация колеса (rAF-based, как roulette.js) ────────────────
+//
+// На каждом кадре читаем CSS-матрицу колеса через getComputedStyle,
+// извлекаем текущий угол (mod 360) и накапливаем пройденный путь.
+// Вибрация срабатывает при пересечении виртуальных «насечек» (TICK_DEG) —
+// точно так же, как roulette.js стреляет haptic при смене слота ленты.
+// Интенсивность убывает вместе со скоростью: heavy → medium → light.
+function triggerSpinHaptics(wheelEl, finalRotation) {
+    clearPvpHaptics();
+
+    const DURATION = 6500;  // мс — совпадает с CSS transition
+    const TICK_DEG = 12;    // виртуальная насечка (30 насечек на оборот)
+
+    const startTime = performance.now();
+    let prevRawDeg   = -1;      // угол из матрицы на прошлом кадре
+    let cumDeg       = 0;       // суммарный пройденный угол
+    let lastTickCum  = 0;       // cumDeg в момент последней вибрации
+
+    // Читаем текущий угол колеса из CSS-матрицы трансформации.
+    // CSS transition обновляет матрицу на каждом кадре —
+    // никакой экстраполяции не нужно, данные всегда актуальны.
+    function getRawDeg(el) {
+        const tr = window.getComputedStyle(el).transform;
+        if (!tr || tr === 'none') return 0;
+        const m = tr.match(/^matrix\(([^)]+)\)/);
+        if (!m) return 0;
+        const vals = m[1].split(',');
+        const deg  = Math.atan2(+vals[1], +vals[0]) * 180 / Math.PI;
+        return (deg + 360) % 360;
+    }
+
+    function step(now) {
+        if (!pvpPollingActive) { pvpHapticTimer = null; return; }
+
+        const elapsed  = now - startTime;
+        const progress = Math.min(elapsed / DURATION, 1);
+        const rawDeg   = getRawDeg(wheelEl);
+
+        if (prevRawDeg < 0) {
+            // Первый кадр — инициализируем без вибрации
+            prevRawDeg = rawDeg;
         } else {
-            targetP = getPvpWinnerSectorTarget(winnerId);
+            // Дельта всегда ≥ 0: колесо крутится только вперёд (по часовой)
+            let delta = rawDeg - prevRawDeg;
+            if (delta < 0) delta += 360;   // пересечение 359° → 0°
+            cumDeg   += delta;
+            prevRawDeg = rawDeg;
+
+            // Проверяем, пересекли ли мы очередную насечку
+            if (cumDeg - lastTickCum >= TICK_DEG) {
+                lastTickCum = Math.floor(cumDeg / TICK_DEG) * TICK_DEG;
+                // Та же логика интенсивности, что и в roulette.js
+                if      (progress < 0.55) vibrate('heavy');
+                else if (progress < 0.82) vibrate('medium');
+                else                       vibrate('light');
+            }
         }
-    } else {
-        targetP = { x: 50, y: 50 };
-    }
 
-    // ── Real billiard physics ────────────────────────────────────────────
-    //   Ball starts at center, moves in a seeded random direction,
-    //   bounces off walls with proper reflection, loses energy each bounce.
-    const MIN_X = 4, MAX_X = 96, MIN_Y = 4, MAX_Y = 96;
-    const ENERGY_LOSS   = 0.92;   // speed multiplier per bounce
-    const MAX_JITTER    = 0.03;   // max angle perturbation (radians) per bounce
-    const numBounces    = 9 + Math.floor(_pvpRng() * 4); // 9–12 bounces
-
-    let x   = 50, y = 50;
-    const initAngle = _pvpRng() * Math.PI * 2;
-    let vx  = Math.cos(initAngle);   // unit direction vector
-    let vy  = Math.sin(initAngle);
-    let spd = 1.0;                   // normalized speed (1.0 = full speed)
-
-    const wpts      = [{ x, y }];
-    const segSpeeds = [];
-
-    for (let b = 0; b < numBounces; b++) {
-        // Cast a ray from (x, y) in direction (vx, vy) and find the nearest wall.
-        let tHit = Infinity, hitWall = '';
-
-        const check = (t, wall) => {
-            if (t > 1e-9 && t < tHit) { tHit = t; hitWall = wall; }
-        };
-        if (vx > 0)       check((MAX_X - x) / vx,  'right');
-        else if (vx < 0)  check((MIN_X - x) / vx,  'left');
-        if (vy > 0)       check((MAX_Y - y) / vy,  'bottom');
-        else if (vy < 0)  check((MIN_Y - y) / vy,  'top');
-
-        if (!hitWall) break;   // safety: shouldn't happen
-
-        // Move exactly to the wall
-        x = Math.max(MIN_X, Math.min(MAX_X, x + vx * tHit));
-        y = Math.max(MIN_Y, Math.min(MAX_Y, y + vy * tHit));
-
-        segSpeeds.push(spd);
-        wpts.push({ x, y });
-
-        // Reflect: vertical wall flips vx; horizontal wall flips vy
-        if (hitWall === 'left' || hitWall === 'right') vx = -vx;
-        else                                            vy = -vy;
-
-        // Energy loss each bounce
-        spd *= ENERGY_LOSS;
-
-        // Tiny seeded angle jitter (keeps motion lively but deterministic)
-        const jitter = (_pvpRng() - 0.5) * MAX_JITTER * 2;
-        const cosJ = Math.cos(jitter), sinJ = Math.sin(jitter);
-        const nvx = vx * cosJ - vy * sinJ;
-        const nvy = vx * sinJ + vy * cosJ;
-        vx = nvx; vy = nvy;
-    }
-
-    // Final segment: glide toward the winning target
-    segSpeeds.push(spd * ENERGY_LOSS);
-    wpts.push(targetP);
-
-    // ── Build trajectory segments with time-weighting ────────────────────
-    //   Time for segment i  =  distance_i / speed_i
-    //   Phase factor compresses early bounces (fast, active ricochets) and
-    //   slightly extends the final approach — without over-stretching the end.
-    let totalTime = 0;
-    pvpTrajectorySegments = [];
-
-    const totalSegments = wpts.length - 1;
-
-    for (let i = 0; i < totalSegments; i++) {
-        const p1  = wpts[i], p2 = wpts[i + 1];
-        const dx  = p2.x - p1.x, dy = p2.y - p1.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-
-        let segTime = dist / Math.max(segSpeeds[i], 0.01);
-
-        const t = i / Math.max(1, totalSegments - 1);
-
-        // Early bounces run compressed (58% of raw time) → lively, rapid.
-        // Mid-range normalises. Final segment gets a mild 18% extension only.
-        let phaseFactor;
-        if      (t < 0.35) phaseFactor = 0.58;
-        else if (t < 0.65) phaseFactor = 0.82;
-        else               phaseFactor = 1.0;
-
-        if (i === totalSegments - 1) phaseFactor *= 1.18;
-
-        segTime *= phaseFactor;
-
-        pvpTrajectorySegments.push({ p1, p2, dist, accTime: totalTime, segTime });
-        totalTime += segTime;
-    }
-
-    // Normalize startT / endT to [0, 1]
-    for (const seg of pvpTrajectorySegments) {
-        seg.startT = seg.accTime / totalTime;
-        seg.endT   = (seg.accTime + seg.segTime) / totalTime;
-    }
-
-    // ── Bounce thresholds for haptic feedback ────────────────────────────
-    //   Each threshold is the startT of a wall-bounce segment (skip segment 0
-    //   which starts at center, and skip the last "glide to target" segment).
-    //   Thresholds beyond 0.82 are excluded to prevent multiple rapid vibrations
-    //   in the final stretch just before the winner reveal haptic fires.
-    pvpBounceThresholds = pvpTrajectorySegments
-        .slice(1, pvpTrajectorySegments.length - 1)
-        .map(seg => ({ t: seg.startT, fired: false }))
-        .filter(bth => bth.t < 0.82);
-
-    // Reset tail
-    pvpBallTailPositions = [];
-
-    pvpBallPos = { x: 50, y: 50 };
-}
-
-function animatePvpBall() {
-    const elapsed = performance.now() - pvpRollingStart;
-
-    // Single smooth deceleration curve for the entire animation.
-    // easeOutCubic: fast at the start, gradually slows to a natural stop.
-    // The last segment is made longer in pvpInitBallFromSeed (*1.7),
-    // so there is no need — and no place — for per-segment easing overrides.
-    const rawProgress  = Math.min(elapsed / PVP_ROLLING_DURATION, 1);
-    const timeProgress = 1 - Math.pow(1 - rawProgress, 3); // easeOutCubic
-
-    if (!pvpTrajectorySegments.length) { pvpBallAnimFrame = null; return; }
-
-    // ── Interpolate along time-weighted segments ─────────────────────────
-    let currentPos = pvpTrajectorySegments[pvpTrajectorySegments.length - 1].p2;
-    for (const seg of pvpTrajectorySegments) {
-        if (timeProgress >= seg.startT && timeProgress <= seg.endT) {
-            const range  = seg.endT - seg.startT;
-            const segProg = range > 0 ? (timeProgress - seg.startT) / range : 1;
-            currentPos = {
-                x: seg.p1.x + (seg.p2.x - seg.p1.x) * segProg,
-                y: seg.p1.y + (seg.p2.y - seg.p1.y) * segProg
-            };
-            break;
-        }
-    }
-
-    pvpBallPos = currentPos;
-    const ball = document.getElementById('pvp-ball');
-    if (ball) {
-        ball.style.left    = pvpBallPos.x + '%';
-        ball.style.top     = pvpBallPos.y + '%';
-        ball.style.opacity = '1';
-    }
-
-    // ── Zoom arena toward target in the final stretch ────────────────────
-    const arenaInner = document.getElementById('pvp-arena-inner');
-    if (arenaInner) {
-        if (timeProgress > 0.65) {
-            let zoomProgress = Math.max(0, (timeProgress - 0.65) / 0.35);
-            zoomProgress = zoomProgress * zoomProgress * (3 - 2 * zoomProgress);
-            const scale = 1 + zoomProgress * 0.9;
-            arenaInner.style.transform       = `scale(${scale.toFixed(3)})`;
-            arenaInner.style.transformOrigin = `${pvpBallPos.x}% ${pvpBallPos.y}%`;
-            arenaInner.style.transition      = 'none';
+        if (progress < 1) {
+            pvpHapticTimer = requestAnimationFrame(step);
         } else {
-            arenaInner.style.transform  = '';
-            arenaInner.style.transition = '';
+            pvpHapticTimer = null;
         }
     }
 
-    // ── Haptic feedback on each wall bounce ──────────────────────────────
-    for (const bth of pvpBounceThresholds) {
-        if (!bth.fired && timeProgress >= bth.t) {
-            bth.fired = true;
-            _pvpHapticBounce();
-        }
-    }
-
-    // ── Rolling tail (short trail directly behind the ball) ──────────────
-    pvpBallTailPositions.push({ x: pvpBallPos.x, y: pvpBallPos.y });
-    if (pvpBallTailPositions.length > 9) pvpBallTailPositions.shift();
-    renderPvpBallTail();
-
-    if (timeProgress < 1) {
-        pvpBallAnimFrame = requestAnimationFrame(animatePvpBall);
-    } else {
-        pvpBallAnimFrame = null;
-        stopPvpBallAnimation();
-        if (pvpState.winner && !pvpWinnerRevealed) {
-            pvpWinnerRevealed = true;
-            showPvpWinnerReveal(pvpState.winner);
-        }
-    }
+    pvpHapticTimer = requestAnimationFrame(step);
 }
 
-// Haptic helper — light impact for wall bounces
-function _pvpHapticBounce() {
-    if (window.Telegram?.WebApp?.HapticFeedback) {
-        window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
-    } else if (window.tg?.HapticFeedback) {
-        window.tg.HapticFeedback.impactOccurred('light');
-    } else if (typeof vibrate === 'function') {
-        vibrate('light');
-    }
-}
-
-// Renders a short glowing tail directly behind the ball (last 9 frames).
-// The old map-wide breadcrumb trail is intentionally removed.
-function renderPvpBallTail() {
-    const container = document.getElementById('pvp-ball-trail');
-    if (!container) return;
-    container.innerHTML = '';
-    const n = pvpBallTailPositions.length;
-    pvpBallTailPositions.forEach((pt, i) => {
-        const frac  = (i + 1) / n;        // 0→1 from oldest to newest
-        const alpha = frac * 0.55;
-        const size  = 3 + frac * 7;       // 3px (oldest) → 10px (newest)
-        const dot   = document.createElement('div');
-        dot.style.cssText =
-            `position:absolute;` +
-            `left:${pt.x}%;top:${pt.y}%;` +
-            `width:${size.toFixed(1)}px;height:${size.toFixed(1)}px;` +
-            `border-radius:50%;` +
-            `background:rgba(255,255,255,${alpha.toFixed(3)});` +
-            `transform:translate(-50%,-50%);` +
-            `pointer-events:none;`;
-        container.appendChild(dot);
-    });
-}
-
-// Legacy stub so any external callers don't break.
-function renderPvpTrail() { renderPvpBallTail(); }
-
-// ─── Arena render — РАДИАЛЬНАЯ АРЕНА (Proportional avatars) ────
-
-function _pvpAvatarSize(normalizedChance, numPlayers) {
-    // Single player → large centered avatar
-    if (numPlayers <= 1) return 92;
-    // Scale linearly: 0% bet → minPx, 100% of all bets → maxPx
-    const minPx = 15, maxPx = 92;
-    const size = minPx + (normalizedChance / 100) * (maxPx - minPx);
-    return Math.max(minPx, Math.min(maxPx, Math.round(size)));
-}
+// ─── Arena render — РУЛЕТОЧНЫЙ БАРАБАН (Proportional Sectors) ───
 
 function renderPvpArena() {
     const container = document.getElementById('pvp-arena-players');
     const bg = document.getElementById('pvp-dynamic-bg');
     if (!container || !bg) return;
 
-    // Skip DOM rebuild if nothing relevant has changed — prevents CSS
-    // animations (orbit rings, waiting dots) from restarting every poll.
     const players = pvpState.players || [];
     const arenaHash = pvpState.state + '|' + pvpState.round_id + '|' +
         players.map(p => p.user_id + ':' + p.win_chance.toFixed(2) + ':' + p.color).join(',') +
         '|winner:' + (pvpState.winner?.user_id ?? 'none');
+    
     if (arenaHash === _pvpArenaHash) return;
     _pvpArenaHash = arenaHash;
 
     container.innerHTML = '';
 
+    // Если участников еще нет — выводим красивую анимацию ожидания
     if (players.length === 0) {
-        bg.style.background = 'radial-gradient(ellipse at center, rgba(244,63,94,0.07) 0%, #020617 70%)';
+        bg.style.background = 'radial-gradient(circle, rgba(244,63,94,0.12) 0%, #020617 100%)';
         container.innerHTML = `
             <div class="pvp-waiting-anim">
-                <!-- Orbit ring 1 -->
                 <div class="pvp-orbit-ring pvp-orbit-ring-1">
                     <div class="pvp-orbit-dot pvp-orbit-dot-rose"></div>
                     <div class="pvp-orbit-dot pvp-orbit-dot-rose pvp-orbit-dot-b"></div>
                 </div>
-                <!-- Orbit ring 2 -->
                 <div class="pvp-orbit-ring pvp-orbit-ring-2">
                     <div class="pvp-orbit-dot pvp-orbit-dot-violet"></div>
-                    <div class="pvp-orbit-dot pvp-orbit-dot-violet pvp-orbit-dot-b" style="top:auto;bottom:-4px;left:50%;transform:translateX(-50%);"></div>
+                    <div class="pvp-orbit-dot pvp-orbit-dot-violet pvp-orbit-dot-b"></div>
                 </div>
-                <!-- Orbit ring 3 -->
-                <div class="pvp-orbit-ring pvp-orbit-ring-3">
-                    <div class="pvp-orbit-dot pvp-orbit-dot-blue"></div>
-                </div>
-                <!-- Central icon -->
                 <div class="pvp-waiting-icon-wrap">
                     <img src="/gifts/pvp.png" style="width:72px;height:72px;object-fit:contain;"
                          onerror="this.outerHTML='<span style=\\'font-size:52px;line-height:1;\\'>⚔️</span>'">
                 </div>
-                <!-- Label -->
-                <div class="pvp-waiting-label" data-i18n="pvp_waiting">Ожидание ставок</div>
-                <!-- Bouncing dots -->
-                <div class="pvp-dots-loader">
-                    <span></span><span></span><span></span>
-                </div>
             </div>
         `;
+        
+        // Сбросим значения индикатора в центре
+        const progCircle = document.getElementById('pvp-center-progress-bar');
+        if (progCircle) progCircle.style.strokeDashoffset = '320';
+        const timerText = document.getElementById('pvp-center-timer');
+        if (timerText) timerText.textContent = '00:00';
+        const labelText = document.getElementById('pvp-center-label');
+        if (labelText) labelText.textContent = 'ожидание';
+        
         return;
     }
 
+    // Сектора колеса строятся на основе conic-gradient
     let gradientParts = [];
     let currentPercent = 0;
     let totalChance = players.reduce((sum, p) => sum + p.win_chance, 0);
@@ -663,56 +505,69 @@ function renderPvpArena() {
         let end = currentPercent + normalizedChance;
         gradientParts.push(`${p.color} ${start}% ${end}%`);
 
-        let x, y;
-        // Single player: center avatar
-        if (players.length === 1) {
-            x = 50;
-            y = 50;
-        } else {
-            let midPercent = start + (normalizedChance / 2);
-            let angleDeg = (midPercent * 3.6) - 90;
-            let angleRad = angleDeg * (Math.PI / 180);
-            let radius = 33;
-            x = 50 + radius * Math.cos(angleRad);
-            y = 50 + radius * Math.sin(angleRad);
-        }
+        // Позиционируем аватарку строго по центру дуги (сектора) игрока
+        let midPercent = start + (normalizedChance / 2);
+        let angleDeg = (midPercent * 3.6) - 90; // Сдвиг на -90 градусов, чтобы 0% начинался сверху
+        let angleRad = angleDeg * (Math.PI / 180);
+        
+        // Радиус размещения аватарок от центра барабана рулетки
+        let radius = 68; // в процентах (пространство внутри колеса)
+        let x = 50 + (radius / 2) * Math.cos(angleRad);
+        let y = 50 + (radius / 2) * Math.sin(angleRad);
 
         const isWinner = pvpState.state === 'finished' && pvpState.winner?.user_id === p.user_id;
 
-        // Proportional avatar size
-        const avatarPx = _pvpAvatarSize(normalizedChance, players.length);
+        // Размер аватарки пропорционально шансу победы (от 32px до 64px)
+        const avatarPx = Math.max(34, Math.min(64, 34 + (normalizedChance / 100) * 30));
 
+        // Контейнер аватарки на колесе рулетки
+        const avatarContainer = document.createElement('div');
+        avatarContainer.className = 'pvp-roulette-avatar-container absolute';
+        avatarContainer.style.left = `${x}%`;
+        avatarContainer.style.top = `${y}%`;
+        avatarContainer.style.width = `${avatarPx}px`;
+        avatarContainer.style.height = `${avatarPx}px`;
+        avatarContainer.style.transform = `translate(-50%, -50%)`;
+
+        // Внутренний контейнер с аватаром
         const avatarWrap = document.createElement('div');
-        avatarWrap.id = `pvp-player-avatar-${p.user_id}`;
-        avatarWrap.className = `absolute z-10 rounded-full flex flex-col items-center justify-center border-[3px] shadow-2xl transition-all duration-500 ${isWinner ? 'z-20 pvp-winner-pulse' : ''}`;
+        avatarWrap.className = `pvp-roulette-avatar-wrapper w-full h-full ${isWinner ? 'pvp-winner-pulse' : ''}`;
         avatarWrap.style.cssText = `
-            left: ${x}%; top: ${y}%;
-            transform: translate(-50%, -50%) ${isWinner ? 'scale(1.2)' : 'scale(1)'};
-            width: ${avatarPx}px; height: ${avatarPx}px;
             border-color: rgba(255,255,255,0.9);
             background: ${p.color};
-            transition: width 0.5s ease, height 0.5s ease, transform 0.3s ease;
         `;
 
         if (p.avatar) {
             avatarWrap.innerHTML = `<img src="${p.avatar}" class="w-full h-full object-cover rounded-full" onerror="this.style.display='none'">`;
         } else {
-            const fontSize = Math.max(10, Math.round(avatarPx * 0.45));
-            avatarWrap.innerHTML = `<div class="w-full h-full flex items-center justify-center font-black text-white rounded-full" style="font-size:${fontSize}px">${(p.name||'?')[0]}</div>`;
+            const fontSize = Math.max(12, Math.round(avatarPx * 0.45));
+            avatarWrap.innerHTML = `<div class="w-full h-full flex items-center justify-center font-black text-white rounded-full" style="font-size:${fontSize}px">${(p.name||'?')[0].toUpperCase()}</div>`;
         }
 
+        avatarContainer.appendChild(avatarWrap);
 
-        // Info label: win chance
-        const infoLabel = document.createElement('div');
-        infoLabel.className = "absolute -bottom-6 left-1/2 -translate-x-1/2 bg-black/70 px-2 py-0.5 rounded-lg text-[9px] font-black text-white whitespace-nowrap backdrop-blur-md border border-white/20 flex flex-col items-center leading-tight shadow-lg";
-        infoLabel.innerHTML = `<span>${p.win_chance.toFixed(1)}%</span>`;
-        avatarWrap.appendChild(infoLabel);
-
-        container.appendChild(avatarWrap);
+        container.appendChild(avatarContainer);
         currentPercent = end;
     });
 
+    // Применяем фоновый радиальный градиент секторов
     bg.style.background = `conic-gradient(${gradientParts.join(', ')})`;
+
+    // Балансировка аватарок: avatarContainer вращается вместе с барабаном
+    // (аватарка остаётся на своём секторе), а avatarWrap контр-ротируется
+    // с помощью CSS-анимации — так изображение всегда стоит вертикально ровно.
+    // CSS @keyframes надёжнее CSS transition для только что созданных элементов:
+    // анимация явно стартует с rotate(0deg) без reflow-трюков.
+    if (pvpState.state === 'rolling') {
+        container.querySelectorAll('.pvp-roulette-avatar-wrapper').forEach(w => {
+            w.style.animation = 'pvpAvatarBalance 6.5s cubic-bezier(0.12, 0.8, 0.15, 1) both';
+        });
+    } else if (pvpCurrentRotation !== 0) {
+        // finished — барабан уже встал, просто фиксируем финальный угол
+        container.querySelectorAll('.pvp-roulette-avatar-wrapper').forEach(w => {
+            w.style.transform = `rotate(${-pvpCurrentRotation}deg)`;
+        });
+    }
 }
 
 // ─── Top bar ──────────────────────────────────────────────────
@@ -727,7 +582,6 @@ function renderPvpTopBar() {
     const last = pvpState.last_game;
     const best = pvpState.best_game;
 
-    // Skip DOM rebuild when last/best game data hasn't changed
     const topBarHash = JSON.stringify({ l: last, b: best });
     if (topBarHash === _pvpTopBarHash) return;
     _pvpTopBarHash = topBarHash;
@@ -759,7 +613,7 @@ function renderPvpTopBar() {
             const valStr = _formatGameStars(best);
             bestEl.innerHTML = `
                 <div class="flex items-center gap-1.5">
-                    ${_pvpTrophyIcon(12)} <span class="text-amber-400/60 text-[9px] font-bold uppercase tracking-wide" data-i18n="pvp_best_game">${_pvpT('pvp_best_game','Best')}</span>
+                    <span class="text-amber-400/60 text-[9px] font-bold uppercase tracking-wide" data-i18n="pvp_best_game">${_pvpT('pvp_best_game','Best')}</span>
                 </div>
                 <div class="flex items-center gap-1.5 mt-0.5">
                     ${best.avatar ? `<img src="${best.avatar}" class="w-5 h-5 rounded-full object-cover" onerror="this.style.display='none'">` : ''}
@@ -777,20 +631,16 @@ function renderPvpTopBar() {
 
 function updatePvpStatus() {
     const statusEl  = document.getElementById('pvp-status-text');
-    const countEl   = document.getElementById('pvp-countdown-overlay');
     const potEl     = document.getElementById('pvp-pot-display');
-    const ball      = document.getElementById('pvp-ball');
 
     const starIco  = _pvpStarIcon(14);
     const donutIco = _pvpDonutIcon(14);
 
-    // Skip status + pot rebuild when nothing has changed.
-    // This is the primary fix for the "animate-pulse dot restarts every 600ms" bug:
-    // the dot element was being recreated on every poll even when state didn't change.
     const p = pvpState.pot;
     const statusHash = pvpState.state + '|' + (p?.stars||0) + '|' + (p?.ton||0) + '|' + (p?.gifts||0) + '|' +
         JSON.stringify(p?.gift_previews||[]) + '|winner:' + (pvpState.winner?.user_id ?? 'none');
     const skipStatusRebuild = (statusHash === _pvpStatusHash);
+    
     if (!skipStatusRebuild) {
         _pvpStatusHash = statusHash;
     }
@@ -798,7 +648,6 @@ function updatePvpStatus() {
     if (statusEl && !skipStatusRebuild) {
         const s = pvpState.state;
         if (s === 'waiting') {
-            // Compact "waiting" indicator — small to fit in the header
             statusEl.innerHTML = `
                 <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-white/80 font-bold text-[10px] tracking-wide"
                       style="background:linear-gradient(135deg,rgba(244,63,94,0.20),rgba(168,85,247,0.15));border:1px solid rgba(244,63,94,0.35);">
@@ -806,9 +655,19 @@ function updatePvpStatus() {
                     <span data-i18n="pvp_waiting">${_pvpT('pvp_waiting','Waiting for Players')}</span>
                 </span>`;
             statusEl.className = 'flex items-center mt-0.5';
+            
+            // Настройка центрального кольца для режима ожидания
+            const centerProgress = document.getElementById('pvp-center-progress-bar');
+            if (centerProgress) centerProgress.style.strokeDashoffset = '320';
+            const centerTimer = document.getElementById('pvp-center-timer');
+            if (centerTimer) centerTimer.textContent = 'WAIT';
+            const centerLabel = document.getElementById('pvp-center-label');
+            if (centerLabel) centerLabel.textContent = 'ИГРОКИ';
+            
         } else if (s === 'countdown') {
             statusEl.innerHTML = `<span class="text-green-300 font-bold text-xs tracking-wide" data-i18n="pvp_accepting_bets">${_pvpT('pvp_accepting_bets','Accepting Bets')}</span>`;
             statusEl.className = 'text-[10px] text-white/50 font-bold tracking-wide mt-1';
+            
         } else if (s === 'rolling') {
             statusEl.innerHTML = `
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="#a78bfa" style="display:inline-block;vertical-align:middle">
@@ -816,17 +675,27 @@ function updatePvpStatus() {
                 </svg>
                 <span class="text-purple-300 font-bold text-xs ml-1" data-i18n="pvp_rolling">${_pvpT('pvp_rolling','Choosing winner...')}</span>`;
             statusEl.className = 'text-[10px] text-white/50 font-bold tracking-wide mt-1 flex items-center';
+            
+            // Настройка центрального кольца в режиме вращения
+            const centerProgress = document.getElementById('pvp-center-progress-bar');
+            if (centerProgress) {
+                centerProgress.style.strokeDashoffset = '0';
+                centerProgress.style.stroke = '#a78bfa';
+            }
+            const centerTimer = document.getElementById('pvp-center-timer');
+            if (centerTimer) centerTimer.textContent = 'SPIN';
+            const centerLabel = document.getElementById('pvp-center-label');
+            if (centerLabel) centerLabel.textContent = 'РУЛЕТКА';
+            
         } else if (s === 'finished') {
-            statusEl.innerHTML = `${_pvpTrophyIcon(12)} <span class="text-amber-300 font-bold text-xs ml-1" data-i18n="pvp_winner_found">${_pvpT('pvp_winner_found','Winner found!')}</span>`;
+            statusEl.innerHTML = `<span class="text-amber-300 font-bold text-xs ml-1" data-i18n="pvp_winner_found">${_pvpT('pvp_winner_found','Winner found!')}</span>`;
             statusEl.className = 'text-[10px] text-white/50 font-bold tracking-wide mt-1 flex items-center';
-        }
-    }
-
-    if (countEl) {
-        if (pvpState.state === 'countdown') {
-            countEl.classList.remove('hidden');
-        } else {
-            countEl.classList.add('hidden');
+            
+            // Настройка центрального кольца по окончании раунда
+            const centerTimer = document.getElementById('pvp-center-timer');
+            if (centerTimer) centerTimer.textContent = 'WIN';
+            const centerLabel = document.getElementById('pvp-center-label');
+            if (centerLabel) centerLabel.textContent = 'КОНЕЦ';
         }
     }
 
@@ -863,10 +732,6 @@ function updatePvpStatus() {
             ? html
             : `<span class="text-white/30 text-xs" data-i18n="pvp_bank_empty">${_pvpT('pvp_bank_empty','Bank empty')}</span>`;
     }
-
-    if (ball) {
-        ball.style.opacity = pvpState.state === 'rolling' && !pvpWinnerRevealed ? '1' : '0';
-    }
 }
 
 // ─── Participants list ────────────────────────────────────────
@@ -878,7 +743,6 @@ function renderPvpParticipants() {
 
     const players = pvpState.players || [];
 
-    // Skip rebuild if player list + winner state unchanged
     const partsHash = pvpState.state + '|' + pvpState.round_id + '|' +
         players.map(p => p.user_id + ':' + p.win_chance.toFixed(2) + ':' + (p.stars_bet||0) + ':' + (p.ton_bet||0)).join(',') +
         '|winner:' + (pvpState.winner?.user_id ?? 'none');
@@ -897,7 +761,6 @@ function renderPvpParticipants() {
         if (p.stars_bet  > 0) betParts.push(`<span class="inline-flex items-center gap-1 text-yellow-300 font-bold text-xs">${p.stars_bet}${_pvpStarIcon(13)}</span>`);
         if (p.ton_bet > 0) betParts.push(`<span class="inline-flex items-center gap-1 text-blue-300 font-bold text-xs">${p.ton_bet}${_pvpDonutIcon(13)}</span>`);
 
-        // Render each gift with photo + value_stars
         if (p.gift_bets?.length > 0) {
             p.gift_bets.forEach(gb => {
                 const photo = gb.gift_photo || gb.photo || '';
@@ -932,10 +795,7 @@ function renderPvpParticipants() {
                     <div class="text-xs font-bold text-white truncate">${escHtml(p.name)}</div>
                     <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">${betParts.join('')}</div>
                 </div>
-                <div class="text-right flex-shrink-0">
-                    <div class="text-xs font-black" style="color:${p.color}">${p.win_chance.toFixed(1)}%</div>
-                    <div class="text-[9px] text-white/40" data-i18n="pvp_chance">${_pvpT('pvp_chance','chance')}</div>
-                </div>
+
             </div>
         `;
     }).join('');
@@ -1099,63 +959,70 @@ function setPvpTonBet(preset) {
 
 function showPvpWinnerReveal(winner) {
     const overlay = document.getElementById('pvp-winner-overlay');
-    const ball    = document.getElementById('pvp-ball');
     if (!overlay) return;
-
-    if (ball) ball.style.opacity = '0';
 
     const pot = pvpState.pot;
     const potStr = [];
     if (pot.stars  > 0) potStr.push(`${Math.floor(pot.stars  * 0.95)}${_pvpStarIcon(16)}`);
     if (pot.ton > 0) potStr.push(`${(pot.ton * 0.95).toFixed(2)}${_pvpDonutIcon(16)}`);
 
-    // Show actual gift images with their star value
     const previews = pot.gift_previews || [];
     if (previews.length > 0) {
-        previews.slice(0, 4).forEach(g => {
+        previews.slice(0, 3).forEach(g => {
             const starVal = g.value_stars || g.exchange_stars || 0;
             let gHtml = '';
             if (g.photo) {
-                gHtml += `<img src="${g.photo}" title="${escHtml(g.name)}" style="width:22px;height:22px;object-fit:contain;display:inline-block;vertical-align:middle;border-radius:4px;" onerror="this.outerHTML='🎁'">`;
+                gHtml += `<img src="${g.photo}" title="${escHtml(g.name)}" style="width:18px;height:18px;object-fit:contain;display:inline-block;vertical-align:middle;border-radius:3px;" onerror="this.outerHTML='🎁'">`;
             } else {
                 gHtml += '🎁';
             }
             if (starVal > 0) gHtml += `<span style="font-size:10px;color:#fde047;font-weight:900;margin-left:2px;">${starVal}${_pvpStarIcon(10)}</span>`;
             potStr.push(gHtml);
         });
-        if (pot.gifts > 4) potStr.push(`<span style="font-size:11px;color:#c4b5fd;font-weight:700;">+${pot.gifts - 4}</span>`);
+        if (pot.gifts > 3) potStr.push(`<span style="font-size:11px;color:#c4b5fd;font-weight:700;">+${pot.gifts - 3}</span>`);
     } else if (pot.gifts > 0) {
         potStr.push(`${pot.gifts}🎁`);
     }
 
     overlay.innerHTML = `
-        <div class="pvp-winner-card flex flex-col items-center gap-4 p-6 text-center animate-pvp-winner-pop">
+        <div class="pvp-winner-card text-center animate-pvp-winner-pop"
+             style="padding:12px 14px;gap:5px;display:flex;flex-direction:column;align-items:center;">
             <div style="position:absolute;inset:0;background:radial-gradient(ellipse at center,${winner.color}22 0%,transparent 70%);pointer-events:none;"></div>
-            <div class="text-4xl" style="position:relative;">${_pvpTrophyIcon(52)}</div>
-            <div class="pvp-winner-avatar" style="position:relative;width:96px;height:96px;border-color:${winner.color};box-shadow:0 0 40px ${winner.color}99">
+            <div style="position:relative;flex-shrink:0;line-height:1;">${_pvpTrophyIcon(30)}</div>
+            <div class="pvp-winner-avatar"
+                 style="position:relative;border-color:${winner.color};box-shadow:0 0 28px ${winner.color}99;flex-shrink:0;">
                 ${winner.avatar
                     ? `<img src="${winner.avatar}" class="w-full h-full object-cover rounded-full" onerror="this.style.display='none'">`
-                    : `<div class="w-full h-full flex items-center justify-center text-3xl font-black rounded-full" style="background:${winner.color}33">${(winner.name||'?')[0]}</div>`
+                    : `<div class="w-full h-full flex items-center justify-center text-2xl font-black rounded-full" style="background:${winner.color}33">${(winner.name||'?')[0]}</div>`
                 }
             </div>
-            <div class="text-2xl font-black text-white" style="position:relative;text-shadow:0 0 20px ${winner.color}99">${escHtml(winner.name)}</div>
-            <div class="text-sm font-semibold" style="position:relative;color:rgba(255,255,255,0.6)" data-i18n="pvp_winner_takes">${_pvpT('pvp_winner_takes','takes the entire bank!')}</div>
-            <div class="flex gap-2 flex-wrap justify-center" style="position:relative;max-width:90%;">
-                ${potStr.map(s => `<span style="padding:4px 14px;border-radius:999px;font-size:13px;font-weight:900;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.08);color:#fff;display:flex;align-items:center;gap:4px;">${s}</span>`).join('')}
+            <div class="font-black text-white"
+                 style="position:relative;font-size:15px;line-height:1.25;text-shadow:0 0 16px ${winner.color}99;flex-shrink:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+            >${escHtml(winner.name)}</div>
+            <div class="font-semibold"
+                 style="position:relative;font-size:10px;color:rgba(255,255,255,0.55);flex-shrink:0;"
+                 data-i18n="pvp_winner_takes">${_pvpT('pvp_winner_takes','takes the entire bank!')}</div>
+            <div class="flex flex-wrap justify-center"
+                 style="position:relative;gap:4px;max-width:96%;max-height:44px;overflow:hidden;">
+                ${potStr.map(s => `<span style="padding:3px 9px;border-radius:999px;font-size:11px;font-weight:900;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.08);color:#fff;display:flex;align-items:center;gap:3px;">${s}</span>`).join('')}
             </div>
-            <div class="pvp-confetti-emitter" id="pvp-confetti" style="position:absolute;inset:0;pointer-events:none;"></div>
         </div>
+        <div class="pvp-confetti-emitter" id="pvp-confetti" style="position:absolute;inset:0;pointer-events:none;"></div>
     `;
-    overlay.classList.remove('hidden');
-    spawnPvpConfetti();
+    
+    // Показываем победителя спустя небольшую задержку (чтобы колесо успело завершить вращение)
+    setTimeout(() => {
+        overlay.classList.remove('hidden');
+        spawnPvpConfetti();
 
-    if (window.Telegram?.WebApp?.HapticFeedback) {
-        window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
-    }
+        if (window.Telegram?.WebApp?.HapticFeedback) {
+            window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+        }
+    }, 6000);
 
     setTimeout(() => {
         overlay.classList.add('hidden');
-    }, 6500);
+    }, 12000);
 }
 
 function spawnPvpConfetti() {
@@ -1185,4 +1052,4 @@ function spawnPvpConfetti() {
 
 function escHtml(s) {
     return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-        }
+}
