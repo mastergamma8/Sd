@@ -1,4 +1,4 @@
-<!-- МОДАЛЬНОЕ ОКНО: ТРЕБУЕТСЯ ПОДПИСКА НА КАНАЛ -->
+<!-- МОДАЛЬНОЕ ОКНО: УСЛОВИЯ ДЛЯ БЕСПЛАТНОГО СПИНА / КЕЙСА -->
 <div id="channel-sub-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden flex items-end sm:items-center justify-center z-[110] p-0 sm:p-5 transition-opacity">
     <div class="glass-panel w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl p-6 border-t border-x sm:border-b border-white/10 shadow-2xl flex flex-col relative overflow-hidden">
         <!-- Декоративное свечение -->
@@ -6,39 +6,58 @@
         <!-- Свайп-полоска мобильная -->
         <div class="w-12 h-1.5 bg-white/20 rounded-full mx-auto mb-4 sm:hidden"></div>
 
-        <!-- Иконка канала -->
-        <div class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 bg-gradient-to-tr from-purple-500/20 to-blue-500/20 border border-white/10 relative z-10 shadow-[0_0_25px_rgba(168,85,247,0.25)]">
-            <svg class="w-10 h-10 text-purple-400 drop-shadow-[0_0_10px_rgba(168,85,247,0.6)]" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.833.941z"/>
-            </svg>
-        </div>
-
         <!-- Заголовок -->
-        <h3 class="text-xl font-black mb-2 text-white text-center relative z-10" data-i18n="sub_required_title">Требуется подписка</h3>
-        <p class="text-sm text-white/60 text-center mb-5 leading-relaxed relative z-10" data-i18n="sub_required_desc">Чтобы крутить рулетку или открывать кейсы, подпишитесь на наш Telegram-канал</p>
+        <h3 class="text-lg font-black text-white text-center mb-1 relative z-10" data-i18n="sub_required_title">Выполни условия</h3>
+        <p class="text-xs text-white/50 text-center mb-5 relative z-10" data-i18n="sub_required_desc">Для бесплатного спина и кейса</p>
 
-        <!-- Карточка канала -->
-        <div class="flex items-center gap-4 bg-black/40 p-4 rounded-2xl border border-purple-500/20 mb-5 relative z-10 shadow-inner">
-            <div class="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500/30 to-blue-500/20 border border-purple-400/30 flex items-center justify-center shrink-0">
-                <img src="/gifts/spacedount.png" class="w-8 h-8 object-contain drop-shadow-md" onerror="this.src='/gifts/dount.png'">
-            </div>
+        <!-- ═══════════════════════════════════════════ -->
+        <!-- ЗАДАЧА 1: Подписка на канал                -->
+        <!-- ═══════════════════════════════════════════ -->
+        <div class="flex items-center gap-3 bg-black/30 p-3.5 rounded-2xl border border-white/[0.08] mb-2 relative z-10">
+            <div id="csm-sub-indicator" class="w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all duration-300 bg-white/[0.08] border border-white/15"></div>
             <div class="flex-1 min-w-0">
-                <div class="font-bold text-white text-sm">Space Donut</div>
-                <div class="text-xs text-purple-300 font-medium">@Space_Donut</div>
+                <div class="font-bold text-white text-sm leading-tight">Space Donut</div>
+                <div class="text-xs text-purple-300">@Space_Donut</div>
             </div>
-            <div class="shrink-0">
-                <span class="text-[10px] font-bold text-purple-400 bg-purple-500/10 border border-purple-400/20 px-2 py-1 rounded-full uppercase tracking-wider" data-i18n="sub_channel_badge">Канал</span>
-            </div>
+            <span class="text-[10px] font-bold text-purple-400 bg-purple-500/10 border border-purple-400/20 px-2 py-1 rounded-full uppercase tracking-wider shrink-0" data-i18n="sub_channel_badge">Канал</span>
+        </div>
+        <!-- Кнопки задачи 1 -->
+        <div id="csm-sub-btns" class="mb-4 relative z-10 flex flex-col gap-2">
+            <button onclick="openChannelAndCheck()" class="w-full bg-gradient-to-r from-purple-600 to-blue-600 py-3 rounded-xl font-bold text-white active:scale-95 transition-all shadow-[0_0_16px_rgba(168,85,247,0.35)] border border-white/10 flex items-center justify-center gap-2 text-sm">
+                <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.833.941z"/></svg>
+                <span data-i18n="sub_btn_subscribe">Подписаться на @Space_Donut</span>
+            </button>
+            <button id="btn-check-sub" onclick="checkSubStatus()" class="w-full glass py-3 rounded-xl font-bold text-white/70 border border-white/10 active:scale-95 transition-all text-sm" data-i18n="sub_btn_check">Я уже подписан — проверить</button>
         </div>
 
-        <!-- Кнопка: подписаться -->
-        <button onclick="openChannelAndCheck()" class="w-full bg-gradient-to-r from-purple-600 to-blue-600 py-4 rounded-xl font-bold text-white active:scale-95 transition-all shadow-[0_0_20px_rgba(168,85,247,0.4)] border border-white/10 mb-3 relative z-10 flex items-center justify-center gap-2">
-            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.833.941z"/></svg>
-            <span data-i18n="sub_btn_subscribe">Подписаться на @Space_Donut</span>
-        </button>
+        <!-- Разделитель -->
+        <div class="flex items-center gap-3 mb-4 relative z-10">
+            <div class="flex-1 h-px bg-white/[0.08]"></div>
+            <span class="text-[10px] text-white/30 uppercase tracking-widest font-semibold">и</span>
+            <div class="flex-1 h-px bg-white/[0.08]"></div>
+        </div>
 
-        <!-- Кнопка: уже подписан / проверить -->
-        <button id="btn-check-sub" onclick="checkSubAndClose()" class="w-full glass py-3.5 rounded-xl font-bold text-white border border-white/15 active:scale-95 transition-all relative z-10" data-i18n="sub_btn_check">Я уже подписан — проверить</button>
+        <!-- ═══════════════════════════════════════════ -->
+        <!-- ЗАДАЧА 2: Пригласи 3 друзей               -->
+        <!-- ═══════════════════════════════════════════ -->
+        <div class="flex items-center gap-3 bg-black/30 p-3.5 rounded-2xl border border-white/[0.08] mb-2 relative z-10">
+            <div id="csm-share-indicator" class="w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all duration-300 bg-white/[0.08] border border-white/15"></div>
+            <div class="flex-1 min-w-0">
+                <div class="font-bold text-white text-sm leading-tight" data-i18n="share_ref_task_title">Пригласи 3 друзей</div>
+                <div id="csm-share-dots" class="flex items-center gap-1.5 mt-1.5"></div>
+            </div>
+            <span id="csm-share-counter" class="text-sm font-black text-white/40 shrink-0">0/3</span>
+        </div>
+        <!-- Кнопка задачи 2 -->
+        <div id="csm-share-btns" class="mb-5 relative z-10">
+            <button id="btn-do-share-ref" onclick="doShareRef()" class="w-full bg-gradient-to-r from-violet-600 to-purple-600 py-3 rounded-xl font-bold text-white active:scale-95 transition-all shadow-[0_0_16px_rgba(139,92,246,0.35)] border border-white/10 flex items-center justify-center gap-2 text-sm">
+                <span>✈️</span>
+                <span data-i18n="share_ref_btn">Поделиться ссылкой</span>
+            </button>
+        </div>
+
+        <!-- Закрыть -->
+        <button onclick="closeModal('channel-sub-modal')" class="w-full py-2 rounded-xl font-semibold text-white/30 text-xs hover:text-white/50 transition-colors relative z-10" data-i18n="cancel">Закрыть</button>
     </div>
 </div>
 

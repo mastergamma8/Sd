@@ -514,4 +514,14 @@ async def init_rocket_games_table():
             )
         """)
 
+        # ── Ежедневный счётчик шеринга реферальной ссылки ─────────────────────
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS daily_ref_shares (
+                tg_id       BIGINT  NOT NULL,
+                share_date  TEXT    NOT NULL,
+                share_count INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (tg_id, share_date)
+            )
+        """)
+
         await db.commit()

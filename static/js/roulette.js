@@ -317,6 +317,11 @@ async function spinRoulette() {
             _rstripStartIdle();   // спин не состоялся — возобновляем idle
             return;
         }
+        if (typeof handleNotSharedRef === 'function' && handleNotSharedRef(data)) {
+            btn.disabled = false;
+            _rstripStartIdle();
+            return;
+        }
         if (data.status !== 'ok') {
             showNotify(data.detail || 'Error!', 'error');
             btn.disabled = false;

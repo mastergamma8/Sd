@@ -375,6 +375,16 @@ async def open_free_case(current_user: dict = Depends(get_current_user)):
     if not await check_channel_subscription(tg_id):
         return {"status": "error", "detail": "not_subscribed"}
 
+    # ── Проверка ежедневного шеринга реферальной ссылки ───────────────────────
+    shares_today = await database.get_daily_share_count(tg_id)
+    if shares_today < database.DAILY_SHARE_REQUIRED:
+        return {
+            "status":          "error",
+            "detail":          "not_shared_ref",
+            "shares_today":    shares_today,
+            "shares_required": database.DAILY_SHARE_REQUIRED,
+        }
+
     if not hasattr(config, "FREE_CASE_CONFIG"):
         raise HTTPException(status_code=503, detail="Free case is not configured")
 

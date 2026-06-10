@@ -391,6 +391,16 @@ async def _payout_winner(winner_id: int):
                 payout_ton,
             )
 
+        # ── Комиссия TON → баланс платформы (ADMIN_ID) ───────────────────────
+        commission_ton = round(total_ton * COMMISSION_TON, 4)
+        if commission_ton > 0:
+            await database.add_ton_balance(config.ADMIN_ID, commission_ton)
+            await database.add_history_entry(
+                config.ADMIN_ID, "pvp_commission_ton",
+                f"Комиссия PvP — TON (раунд #{round_id}, {num_players} игр.)",
+                commission_ton,
+            )
+
         for gb in all_gift_bets:
             await database.add_gift_to_user(winner_id, gb["gift_id"], 1)
             await database.add_history_entry(

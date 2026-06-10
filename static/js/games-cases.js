@@ -274,6 +274,7 @@ async function buyAndOpenFreeCase() {
             }
         } else {
             if (typeof handleNotSubscribed === 'function' && handleNotSubscribed(data)) return;
+            if (typeof handleNotSharedRef  === 'function' && handleNotSharedRef(data))  return;
             showNotify(data.detail || 'Error', 'error');
         }
     } catch (e) {

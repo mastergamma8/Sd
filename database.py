@@ -74,6 +74,13 @@ from db.db_referrals import (  # noqa: F401
     distribute_referral_bonus,
 )
 
+from db.db_daily_shares import (  # noqa: F401
+    get_daily_share_count,
+    increment_daily_share,
+    has_shared_enough,
+    DAILY_SHARE_REQUIRED,
+)
+
 from db.db_leaderboard import (  # noqa: F401
     get_leaderboard,
     get_user_rich_rank,

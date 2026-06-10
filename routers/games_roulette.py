@@ -116,6 +116,16 @@ async def spin_roulette(data: SpinData, current_user: dict = Depends(get_current
     if not await check_channel_subscription(tg_id):
         return {"status": "error", "detail": "not_subscribed"}
 
+    # ── Проверка ежедневного шеринга реферальной ссылки ───────────────────────
+    shares_today = await database.get_daily_share_count(tg_id)
+    if shares_today < database.DAILY_SHARE_REQUIRED:
+        return {
+            "status":       "error",
+            "detail":       "not_shared_ref",
+            "shares_today": shares_today,
+            "shares_required": database.DAILY_SHARE_REQUIRED,
+        }
+
     now      = int(time.time())
     currency = config.ROULETTE_CONFIG.get("currency", "donuts")
     cost     = config.ROULETTE_CONFIG["cost"]
@@ -273,4 +283,21 @@ def _build_spin_response(win_index, win_item, updated_user, updated_gifts):
         "user_gifts":   updated_gifts,
         "can_free_now": False,
         "currency":     config.ROULETTE_CONFIG.get("currency", "donuts"),
+    }
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ЭНДПОИНТ ШЕРИНГА РЕФЕРАЛЬНОЙ ССЫЛКИ
+# Вызывается с клиента при каждом нажатии кнопки «Поделиться».
+# Инкрементирует ежедневный счётчик и возвращает актуальный прогресс.
+# ─────────────────────────────────────────────────────────────────────────────
+
+@router.post("/ref_share")
+async def record_ref_share(current_user: dict = Depends(get_current_user)):
+    tg_id        = current_user["id"]
+    new_count    = await database.increment_daily_share(tg_id)
+    return {
+        "status":          "ok",
+        "shares_today":    new_count,
+        "shares_required": database.DAILY_SHARE_REQUIRED,
+        "enough":          new_count >= database.DAILY_SHARE_REQUIRED,
     }
