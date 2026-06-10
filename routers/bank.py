@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 import config
 import database
+from routers.gifts import _fetch_ton_to_stars_rate
 from handlers.models import AdminBankTopup
 from handlers.security import get_current_user
 
@@ -33,30 +34,38 @@ async def bank_status(current_user: dict = Depends(get_current_user)):
     bank     = await database.get_bank()
     day      = await database.get_bank_day_stats()
     earnings = await database.get_bank_earnings_summary()
-    rate     = config.DONUTS_TO_STARS_RATE
+    ton_rate = await _fetch_ton_to_stars_rate()      # 1 TON → Stars (живой курс)
+    d2t      = config.DONUT_TO_TON_RATE              # 1 пончик = 0.1 TON
 
     stars_bal  = bank.get("stars_balance", 0)
     donuts_bal = bank.get("donuts_balance", 0)
     gift_bal   = bank.get("gift_value_balance", 0)
-    total_liq  = stars_bal + donuts_bal * rate + gift_bal
+    ton_bal    = round(donuts_bal * d2t, 4)          # пончики → TON
+    total_liq  = stars_bal + int(donuts_bal * d2t * ton_rate) + gift_bal
 
     stars_dep   = bank.get("stars_deposited", 0)
     stars_paid  = bank.get("stars_paid_out", 0)
     donuts_dep  = bank.get("donuts_deposited", 0)
     donuts_paid = bank.get("donuts_paid_out", 0)
     gift_paid   = bank.get("gift_value_paid_out", 0)
+    ton_dep     = round(donuts_dep  * d2t, 4)
+    ton_paid    = round(donuts_paid * d2t, 4)
+
+    day_ton_dep  = round(day["donuts_deposited"] * d2t, 4)
+    day_ton_paid = round(day["donuts_paid_out"]  * d2t, 4)
 
     return {
         "exchange_rate": {
-            "donuts_to_stars": rate,
-            "note": f"1 donut = {rate} stars (bank value)",
+            "ton_to_stars": ton_rate,
+            "donut_to_ton": d2t,
+            "note": f"1 TON = {ton_rate} stars | 1 donut = {d2t} TON",
         },
         "liquidity": {
-            "stars":           stars_bal,
-            "donuts":          donuts_bal,
-            "donuts_in_stars": donuts_bal * rate,
-            "gift_value":      gift_bal,
-            "total_in_stars":  total_liq,
+            "stars":          stars_bal,
+            "ton":            ton_bal,
+            "ton_in_stars":   int(ton_bal * ton_rate),
+            "gift_value":     gift_bal,
+            "total_in_stars": total_liq,
         },
         "today": {
             "date":             day["day_date"],
@@ -67,10 +76,10 @@ async def bank_status(current_user: dict = Depends(get_current_user)):
             "rtp_percent":      _safe_rtp(day["paid_out_value"], day["deposited_value"]),
             "stars_deposited":  day["stars_deposited"],
             "stars_paid_out":   day["stars_paid_out"],
-            "donuts_deposited":      day["donuts_deposited"],
-            "donuts_paid_out":       day["donuts_paid_out"],
-            "gift_value_deposited":  day.get("gift_value_deposited", 0),
-            "gift_value_paid_out":   day.get("gift_value_paid_out", 0),
+            "ton_deposited":    day_ton_dep,
+            "ton_paid_out":     day_ton_paid,
+            "gift_value_deposited": day.get("gift_value_deposited", 0),
+            "gift_value_paid_out":  day.get("gift_value_paid_out", 0),
         },
         "total": {
             "games_count": earnings["games_count"],
@@ -84,9 +93,9 @@ async def bank_status(current_user: dict = Depends(get_current_user)):
             "paid_out":    stars_paid,
             "rtp_percent": _safe_rtp(stars_paid, stars_dep),
         },
-        "donuts": {
-            "deposited":   donuts_dep,
-            "paid_out":    donuts_paid,
+        "ton": {
+            "deposited":   ton_dep,
+            "paid_out":    ton_paid,
             "rtp_percent": _safe_rtp(donuts_paid, donuts_dep),
         },
         "gifts": {
@@ -162,18 +171,19 @@ async def bank_topup(data: AdminBankTopup, current_user: dict = Depends(get_curr
     else:
         await database.bank_add_stars(data.amount)
 
-    bank  = await database.get_bank()
-    rate  = config.DONUTS_TO_STARS_RATE
+    bank     = await database.get_bank()
+    d2t      = config.DONUT_TO_TON_RATE
+    ton_rate = await _fetch_ton_to_stars_rate()
     total_liq = (
         bank.get("stars_balance", 0)
-        + bank.get("donuts_balance", 0) * rate
+        + int(bank.get("donuts_balance", 0) * d2t * ton_rate)
         + bank.get("gift_value_balance", 0)
     )
     return {
-        "status":             "ok",
-        "asset_type":         data.asset_type,
-        "added":              data.amount,
-        "new_stars_balance":  bank.get("stars_balance", 0),
-        "new_donuts_balance": bank.get("donuts_balance", 0),
-        "total_liquidity":    total_liq,
+        "status":            "ok",
+        "asset_type":        data.asset_type,
+        "added":             data.amount,
+        "new_stars_balance": bank.get("stars_balance", 0),
+        "new_ton_balance":   round(bank.get("donuts_balance", 0) * d2t, 4),
+        "total_liquidity":   total_liq,
     }

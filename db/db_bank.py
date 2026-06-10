@@ -2,8 +2,9 @@
 # Глобальный банк: хранение ликвидности, RTP-статистика, выплаты.
 #
 # Универсальная единица стоимости (value) = 1 звезда.
-# Курс: 1 пончик = config.DONUTS_TO_STARS_RATE звёзд.
-# Все пончиковые суммы конвертируются в stars-value при записи
+# Курс: 1 пончик = 0.1 TON, 1 TON = живой курс (get_cached_ton_to_stars_rate).
+# Все пончиковые суммы конвертируются в stars-value через цепочку
+# donuts × DONUT_TO_TON_RATE × get_cached_ton_to_stars_rate() при записи
 # в total_deposited_value / total_paid_out_value и при проверках
 # платёжеспособности (bank_can_payout, bank_get_max_payout).
 # Сами балансы (stars_balance, donuts_balance) хранятся в родных единицах.
@@ -146,14 +147,13 @@ async def get_bank() -> dict:
 
 
 def _bank_liquidity(bank: dict) -> int:
-    """Суммарная ликвидность банка в stars-value."""
+    """Суммарная ликвидность банка в stars-value. Отрицательные балансы считаются нулём."""
     import config as _cfg
-    rate = _cfg.DONUTS_TO_STARS_RATE
-    return (
-        bank.get("stars_balance", 0)
-        + bank.get("donuts_balance", 0) * rate
-        + bank.get("gift_value_balance", 0)
-    )
+    ton_rate   = _cfg.DONUT_TO_TON_RATE * _cfg.get_cached_ton_to_stars_rate()
+    stars_bal  = max(0, bank.get("stars_balance",      0))
+    donuts_bal = max(0, bank.get("donuts_balance",     0))
+    gift_bal   = max(0, bank.get("gift_value_balance", 0))
+    return stars_bal + int(donuts_bal * ton_rate) + gift_bal
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -303,9 +303,10 @@ async def bank_deposit(gross_bet: int, house_edge: float,
     async with aiosqlite.connect(DB_NAME) as db:
         if deposited_col is not None:
             import config as _cfg
-            rate        = _cfg.DONUTS_TO_STARS_RATE if asset_type == "donuts" else 1
-            gross_bet_v = gross_bet         * rate
-            edge_v      = house_edge_amount * rate
+            ton_rate    = _cfg.DONUT_TO_TON_RATE * _cfg.get_cached_ton_to_stars_rate()
+            rate        = ton_rate if asset_type == "donuts" else 1
+            gross_bet_v = int(gross_bet         * rate)
+            edge_v      = int(house_edge_amount * rate)
 
             await db.execute(f"""
                 UPDATE system_bank SET
@@ -366,8 +367,11 @@ async def bank_deposit(gross_bet: int, house_edge: float,
         ) as cursor:
             row = await cursor.fetchone()
             import config as _cfg
-            rate = _cfg.DONUTS_TO_STARS_RATE
-            new_balance = (row[0] + row[1] * rate + row[2]) if row else 0
+            ton_rate = _cfg.DONUT_TO_TON_RATE * _cfg.get_cached_ton_to_stars_rate()
+            if row:
+                new_balance = int(max(0, row[0]) + max(0, row[1]) * ton_rate + max(0, row[2]))
+            else:
+                new_balance = 0
 
         await db.commit()
 
@@ -387,15 +391,16 @@ async def bank_can_payout(amount: int, asset_type: str = "stars") -> bool:
     """Проверяет, может ли банк выплатить заданную сумму."""
     import config as _cfg
     bank = await get_bank()
-    asset_bal = {
-        "stars":      bank.get("stars_balance", 0),
-        "donuts":     bank.get("donuts_balance", 0),
+    asset_bal = max(0, {
+        "stars":      bank.get("stars_balance",      0),
+        "donuts":     bank.get("donuts_balance",     0),
         "gift_value": bank.get("gift_value_balance", 0),
-    }.get(asset_type, 0)
+    }.get(asset_type, 0))
 
     if asset_bal >= amount:
         return True
-    rate = _cfg.DONUTS_TO_STARS_RATE if asset_type == "donuts" else 1
+    ton_rate = _cfg.DONUT_TO_TON_RATE * _cfg.get_cached_ton_to_stars_rate()
+    rate = ton_rate if asset_type == "donuts" else 1
     return _bank_liquidity(bank) >= amount * rate
 
 
@@ -433,16 +438,18 @@ async def bank_payout(amount: int, asset_type: str = "stars") -> bool:
             if not row:
                 await db.rollback()
                 return False
-            stars_bal, donuts_bal, gift_bal = row[0], row[1], row[2]
+            stars_bal  = max(0, row[0])
+            donuts_bal = max(0, row[1])
+            gift_bal   = max(0, row[2])
 
         import config as _cfg
-        rate = _cfg.DONUTS_TO_STARS_RATE
-        total_liquidity = stars_bal + donuts_bal * rate + gift_bal
+        ton_rate = _cfg.DONUT_TO_TON_RATE * _cfg.get_cached_ton_to_stars_rate()
+        total_liquidity = stars_bal + int(donuts_bal * ton_rate) + gift_bal
 
         # Переводим требуемую сумму в stars-value, чтобы сравнивать с total_liquidity
         # корректно для любого asset_type. Без этого пончиковая выплата сравнивалась
         # бы с суммарной ликвидностью в звёздах без конвертации — критическая ошибка.
-        required_liquidity = amount * (rate if asset_type == "donuts" else 1)
+        required_liquidity = int(amount * (ton_rate if asset_type == "donuts" else 1))
         if total_liquidity < required_liquidity:
             await db.rollback()
             return False
@@ -453,10 +460,10 @@ async def bank_payout(amount: int, asset_type: str = "stars") -> bool:
 
         extra_updates = []
         if remainder > 0:
-            remainder_in_stars = remainder * (rate if asset_type == "donuts" else 1)
+            remainder_in_stars = int(remainder * (ton_rate if asset_type == "donuts" else 1))
             other_assets = [
                 ("stars_balance",      "stars_paid_out",      stars_bal,  1),
-                ("donuts_balance",     "donuts_paid_out",     donuts_bal, rate),
+                ("donuts_balance",     "donuts_paid_out",     donuts_bal, ton_rate),
                 ("gift_value_balance", "gift_value_paid_out", gift_bal,   1),
             ]
             other_available = [
@@ -491,8 +498,8 @@ async def bank_payout(amount: int, asset_type: str = "stars") -> bool:
                     WHERE id = 1
                 """, (deduct, deduct, int(time.time())))
 
-        payout_rate = _cfg.DONUTS_TO_STARS_RATE if asset_type == "donuts" else 1
-        amount_v    = amount * payout_rate
+        payout_rate = _cfg.DONUT_TO_TON_RATE * _cfg.get_cached_ton_to_stars_rate() if asset_type == "donuts" else 1
+        amount_v    = int(amount * payout_rate)
 
         await db.execute(f"""
             UPDATE system_bank SET
@@ -532,8 +539,8 @@ async def bank_get_max_payout(asset_type: str = "stars") -> int:
     bank      = await get_bank()
     liq_stars = _bank_liquidity(bank)
     if asset_type == "donuts":
-        rate = _cfg.DONUTS_TO_STARS_RATE
-        return liq_stars // rate if rate > 0 else 0
+        ton_rate = _cfg.DONUT_TO_TON_RATE * _cfg.get_cached_ton_to_stars_rate()
+        return int(liq_stars / ton_rate) if ton_rate > 0 else 0
     return liq_stars
 
 
@@ -574,9 +581,10 @@ async def deduct_and_deposit_atomic(
         deposited_col = "stars_deposited"
         day_dep_col   = "stars_deposited"
 
-    rate        = _cfg.DONUTS_TO_STARS_RATE if asset_type == "donuts" else 1
-    gross_bet_v = gross_bet         * rate
-    edge_v      = house_edge_amount * rate
+    ton_rate    = _cfg.DONUT_TO_TON_RATE * _cfg.get_cached_ton_to_stars_rate()
+    rate        = ton_rate if asset_type == "donuts" else 1
+    gross_bet_v = int(gross_bet         * rate)
+    edge_v      = int(house_edge_amount * rate)
     today       = _today_utc()
     now         = int(time.time())
 
@@ -641,10 +649,10 @@ async def bank_add_stars(amount: int):
 
 
 async def bank_add_donuts(amount: int):
-    """Пополнение банка пончиками (администратором). Конвертируется в stars-value."""
+    """Пополнение банка пончиками (администратором). Конвертируется в stars-value через TON."""
     import config as _cfg
-    rate  = _cfg.DONUTS_TO_STARS_RATE
-    value = amount * rate
+    ton_rate = _cfg.DONUT_TO_TON_RATE * _cfg.get_cached_ton_to_stars_rate()
+    value    = int(amount * ton_rate)
     async with aiosqlite.connect(DB_NAME) as db:
         await db.execute("""
             UPDATE system_bank SET
@@ -683,11 +691,11 @@ async def bank_record_pvp_game(
         payout_stars     — выплачено победителю звёздами
         payout_donuts    — выплачено победителю пончиками
         payout_gift_value— стоимость подарков, переданных победителю, в stars-value
-        rate             — курс пончик→звёзды; по умолчанию config.DONUTS_TO_STARS_RATE
+        rate             — курс пончик→звёзды через TON; по умолчанию живой курс get_cached_ton_to_stars_rate
     """
     import config as _cfg
     if rate is None or rate <= 0:
-        rate = _cfg.DONUTS_TO_STARS_RATE
+        rate = _cfg.DONUT_TO_TON_RATE * _cfg.get_cached_ton_to_stars_rate()
 
     # Конвертируем всё в универсальные единицы (stars-value)
     gross_v = total_stars + int(total_donuts * rate) + total_gift_value

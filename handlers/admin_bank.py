@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 
 import config
 import database
+from routers.gifts import _fetch_ton_to_stars_rate
 from .admin_constants import (
     E_DONUT, E_STAR, E_STOP, E_CHECK,
     E_MONEY, E_BANK, E_DROP, E_BOX, E_CHART,
@@ -109,14 +110,16 @@ def register(dp: Dispatcher, bot: Bot):
         top3     = await database.get_top_active_today(limit=3)
         earnings = await database.get_bank_earnings_summary()
 
-        rate = config.DONUTS_TO_STARS_RATE
+        d2t      = config.DONUT_TO_TON_RATE
+        ton_rate = await _fetch_ton_to_stars_rate()
 
         # ── Ликвидность ───────────────────────────────────────────────────────
-        stars_bal       = bank.get("stars_balance", 0)
-        donuts_bal      = bank.get("donuts_balance", 0)
-        gift_bal        = bank.get("gift_value_balance", 0)
-        donuts_in_stars = donuts_bal * rate
-        total_liq       = stars_bal + donuts_in_stars + gift_bal
+        stars_bal    = bank.get("stars_balance", 0)
+        donuts_bal   = bank.get("donuts_balance", 0)
+        gift_bal     = bank.get("gift_value_balance", 0)
+        ton_bal      = round(donuts_bal * d2t, 4)
+        ton_in_stars = int(ton_bal * ton_rate)
+        total_liq    = stars_bal + ton_in_stars + gift_bal
 
         # ── Сегодня ───────────────────────────────────────────────────────────
         day_dep   = day["deposited_value"]
@@ -136,11 +139,14 @@ def register(dp: Dispatcher, bot: Bot):
         stars_paid  = bank.get("stars_paid_out", 0)
         donuts_dep  = bank.get("donuts_deposited", 0)
         donuts_paid = bank.get("donuts_paid_out", 0)
-        gift_dep    = bank.get("gift_value_balance", 0)  # нет отдельного gift_deposited в system_bank
+        ton_dep     = round(donuts_dep  * d2t, 4)
+        ton_paid    = round(donuts_paid * d2t, 4)
+        gift_dep    = bank.get("gift_value_balance", 0)
         gift_paid   = bank.get("gift_value_paid_out", 0)
-        # Из дневной статистики — подарки теперь пишутся отдельно
         day_gift_dep  = day.get("gift_value_deposited", 0)
         day_gift_paid = day.get("gift_value_paid_out", 0)
+        day_ton_dep   = round(day["donuts_deposited"] * d2t, 4)
+        day_ton_paid  = round(day["donuts_paid_out"]  * d2t, 4)
 
         # ── Топ-3 активных сегодня ────────────────────────────────────────────
         top_lines = []
@@ -158,15 +164,15 @@ def register(dp: Dispatcher, bot: Bot):
 
         text = (
             f"<b>{E_BANK} Глобальный Банк — Полная статистика</b>\n"
-            f"<i>Курс: 1 {E_DONUT} = {rate} {E_STAR}</i>\n"
+            f"<i>Курс: 1 TON = {ton_rate} {E_STAR} | 1 {E_DONUT} = {d2t} TON</i>\n"
             f"\n"
 
             # ── Ликвидность
             f"<b>{E_DROP} Ликвидность</b>\n"
-            f"  {E_STAR} Звёзды:      <b>{_fmt(stars_bal)}</b>\n"
-            f"  {E_DONUT} Пончики:     <b>{_fmt(donuts_bal)}</b>  (≈ {_fmt(donuts_in_stars)} {E_STAR})\n"
-            f"  {E_GIFT} Подарки:     <b>{_fmt(gift_bal)}</b>\n"
-            f"  {E_BOX} Итого:       <b>{_fmt(total_liq)} {E_STAR}</b>\n"
+            f"  {E_STAR} Звёзды:  <b>{_fmt(stars_bal)}</b>\n"
+            f"  💎 TON:     <b>{ton_bal}</b>  (≈ {_fmt(ton_in_stars)} {E_STAR})\n"
+            f"  {E_GIFT} Подарки: <b>{_fmt(gift_bal)}</b>\n"
+            f"  {E_BOX} Итого:   <b>{_fmt(total_liq)} {E_STAR}</b>\n"
             f"\n"
 
             # ── Сегодня
@@ -198,10 +204,14 @@ def register(dp: Dispatcher, bot: Bot):
             f"Выплачено: <b>{_fmt(stars_paid)}</b>  ·  "
             f"RTP: <b>{_rtp(stars_paid, stars_dep)}</b>\n"
             f"\n"
-            f"<b>{E_DONUT} Пончики</b>\n"
-            f"  Принято: <b>{_fmt(donuts_dep)}</b>  ·  "
-            f"Выплачено: <b>{_fmt(donuts_paid)}</b>  ·  "
+            f"<b>💎 TON</b>\n"
+            f"  Принято: <b>{ton_dep}</b>  ·  "
+            f"Выплачено: <b>{ton_paid}</b>  ·  "
             f"RTP: <b>{_rtp(donuts_paid, donuts_dep)}</b>\n"
+            f"\n"
+            f"<b>💎 TON сегодня</b>\n"
+            f"  Принято: <b>{day_ton_dep}</b>  ·  "
+            f"Выплачено: <b>{day_ton_paid}</b>\n"
             f"\n"
             f"<b>{E_GIFT} Подарки (1 gift_value = 1 {E_STAR})</b>\n"
             f"  Принято: <b>{_fmt(gift_dep)}</b>  ·  "
@@ -257,7 +267,9 @@ def register(dp: Dispatcher, bot: Bot):
         don_dep  = day["donuts_deposited"]
         don_paid = day["donuts_paid_out"]
 
-        rate = config.DONUTS_TO_STARS_RATE
+        d2t = config.DONUT_TO_TON_RATE
+        ton_dep_day  = round(don_dep  * d2t, 4)
+        ton_paid_day = round(don_paid * d2t, 4)
 
         if dep == 0 and games == 0:
             note = "\n<i>Данных за этот день нет.</i>"
@@ -276,8 +288,8 @@ def register(dp: Dispatcher, bot: Bot):
             f"<b>{E_STAR} Звёзды</b>\n"
             f"  Ставок: <b>{_fmt(s_dep)}</b>  ·  Выплат: <b>{_fmt(s_paid)}</b>  ·  RTP: <b>{_rtp(s_paid, s_dep)}</b>\n"
             f"\n"
-            f"<b>{E_DONUT} Пончики</b>\n"
-            f"  Ставок: <b>{_fmt(don_dep)}</b>  ·  Выплат: <b>{_fmt(don_paid)}</b>  ·  RTP: <b>{_rtp(don_paid, don_dep)}</b>\n"
+            f"<b>💎 TON</b>\n"
+            f"  Ставок: <b>{ton_dep_day}</b>  ·  Выплат: <b>{ton_paid_day}</b>  ·  RTP: <b>{_rtp(don_paid, don_dep)}</b>\n"
             f"\n"
             f"<b>{E_GIFT} Подарки</b>\n"
             f"  Ставок: <b>{_fmt(day.get('gift_value_deposited', 0))}</b>  ·  "
@@ -338,19 +350,20 @@ def register(dp: Dispatcher, bot: Bot):
             await database.bank_add_stars(amount)
             label = f"{_fmt(amount)} {E_STAR} звёзд"
 
-        bank  = await database.get_bank()
-        _rate = config.DONUTS_TO_STARS_RATE
+        bank     = await database.get_bank()
+        d2t      = config.DONUT_TO_TON_RATE
+        ton_rate = await _fetch_ton_to_stars_rate()
+        ton_bal  = round(bank.get("donuts_balance", 0) * d2t, 4)
         total_liq = (
             bank.get("stars_balance", 0)
-            + bank.get("donuts_balance", 0) * _rate
+            + int(ton_bal * ton_rate)
             + bank.get("gift_value_balance", 0)
         )
 
         await message.answer(
             f"{E_CHECK} Банк пополнен на <b>{label}</b>.\n\n"
-            f"{E_STAR} Звёзды:  <b>{_fmt(bank.get('stars_balance', 0))}</b>\n"
-            f"{E_DONUT} Пончики: <b>{_fmt(bank.get('donuts_balance', 0))}</b>"
-            f"  (≈ <b>{_fmt(bank.get('donuts_balance', 0) * _rate)}</b> {E_STAR})\n"
-            f"{E_BOX} Итого:   <b>{_fmt(total_liq)} {E_STAR}</b>",
+            f"{E_STAR} Звёзды: <b>{_fmt(bank.get('stars_balance', 0))}</b>\n"
+            f"💎 TON:    <b>{ton_bal}</b>  (≈ <b>{_fmt(int(ton_bal * ton_rate))}</b> {E_STAR})\n"
+            f"{E_BOX} Итого:  <b>{_fmt(total_liq)} {E_STAR}</b>",
             parse_mode="HTML",
         )

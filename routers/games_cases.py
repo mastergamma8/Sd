@@ -5,6 +5,7 @@ import time
 import config
 import database
 from handlers.tg_gifts import get_gift_def, get_gift_value, is_real_tg_gift
+from routers.gifts import _fetch_ton_to_stars_rate
 from handlers.models import ActionData
 from handlers.security import get_current_user, check_channel_subscription
 from utils.chance_engine import roll_with_pity, is_jackpot, COOLDOWN_START
@@ -18,25 +19,32 @@ CASE_HOUSE_EDGE    = 0.15
 
 # ─── Вспомогательные функции ──────────────────────────────────────────────────
 
-def _get_item_value_stars(item: dict) -> int:
-    donut_rate = config.DONUTS_TO_STARS_RATE    # 1 пончик → Stars
-    ton_rate   = config.TON_TO_STARS_FALLBACK   # 1 TON → Stars (для подарков, цены в TON)
+def _get_item_value_stars(item: dict, ton_rate: float | None = None) -> int:
+    if ton_rate is None:
+        ton_rate = config.get_cached_ton_to_stars_rate()
 
     if item["type"] == "stars":
         return item.get("amount", 0)
 
     if item["type"] == "donuts":
-        return item.get("amount", 0) * donut_rate
+        # 1 пончик = 0.1 TON → конвертируем через TON: пончики × DONUT_TO_TON_RATE × TON_TO_STARS_FALLBACK
+        return int(item.get("amount", 0) * config.DONUT_TO_TON_RATE * ton_rate)
 
     if item["type"] == "gift":
-        return get_gift_value(item.get("gift_id")) * ton_rate
+        gift_id = item.get("gift_id")
+        # TG_GIFTS хранят required_value уже в звёздах — умножение не нужно.
+        # BASE_GIFTS / MAIN_GIFTS хранят value/required_value в пончиках →
+        #   конвертируем через цепочку: пончики × DONUT_TO_TON_RATE × TON_TO_STARS_FALLBACK.
+        if gift_id in getattr(config, "TG_GIFTS", {}):
+            return int(config.TG_GIFTS[gift_id].get("required_value", 0) or 0)
+        return int(get_gift_value(gift_id) * ton_rate)
 
     return 0
 
 
 # Оставляем старую функцию как алиас для обратной совместимости
-def _get_item_value(item: dict) -> int:
-    return _get_item_value_stars(item)
+def _get_item_value(item: dict, ton_rate: float | None = None) -> int:
+    return _get_item_value_stars(item, ton_rate)
 
 
 def _roll_item(items: list) -> dict:
@@ -56,7 +64,7 @@ def _roll_item(items: list) -> dict:
     return items[0]
 
 
-async def _roll_item_pity(items: list, currency: str, tg_id: int, case_id, price: int) -> dict:
+async def _roll_item_pity(items: list, currency: str, tg_id: int, case_id, price: int, ton_rate: float | None = None) -> dict:
     """
     Взвешенный ролл с системой пити и банковскими ограничениями.
 
@@ -67,12 +75,15 @@ async def _roll_item_pity(items: list, currency: str, tg_id: int, case_id, price
     """
     game_key = f"case_{case_id}"
 
+    if ton_rate is None:
+        ton_rate = config.get_cached_ton_to_stars_rate()
+
     # ── Банковский фильтр ────────────────────────────────────────────────────
     if currency == "stars":
         bank_balance = await database.bank_get_max_payout()
-        affordable   = [i for i in items if _get_item_value_stars(i) <= bank_balance]
+        affordable   = [i for i in items if _get_item_value_stars(i, ton_rate) <= bank_balance]
         if not affordable:
-            return min(items, key=lambda i: _get_item_value_stars(i))
+            return min(items, key=lambda i: _get_item_value_stars(i, ton_rate))
     else:
         affordable = items
 
@@ -81,7 +92,7 @@ async def _roll_item_pity(items: list, currency: str, tg_id: int, case_id, price
 
     win_item = roll_with_pity(
         items          = affordable,
-        get_value      = _get_item_value_stars,
+        get_value      = lambda i: _get_item_value_stars(i, ton_rate),
         cost           = price,
         pity_count     = pity_count,
         cooldown_count = cooldown_count,
@@ -175,13 +186,14 @@ async def open_case(data: ActionData, current_user: dict = Depends(get_current_u
         f"Case opened: '{case['name']}' [case_id:{case_id}]", -price)
 
     # ── Ролл с пити ───────────────────────────────────────────────────────────
-    win_item  = await _roll_item_pity(case["items"], currency, tg_id, case_id, price)
-    win_value = _get_item_value_stars(win_item)
+    ton_rate  = await _fetch_ton_to_stars_rate()
+    win_item  = await _roll_item_pity(case["items"], currency, tg_id, case_id, price, ton_rate)
+    win_value = _get_item_value_stars(win_item, ton_rate)
 
     if win_value > 0:
         if win_item["type"] == "gift":
             payout_type   = "gift_value"
-            payout_amount = _get_item_value_stars(win_item)
+            payout_amount = _get_item_value_stars(win_item, ton_rate)
         else:
             payout_type   = win_item["type"]
             payout_amount = win_item.get("amount", 0)
@@ -189,11 +201,11 @@ async def open_case(data: ActionData, current_user: dict = Depends(get_current_u
         paid = await database.bank_payout(payout_amount, asset_type=payout_type)
         if not paid:
             bank_max         = await database.bank_get_max_payout(asset_type=currency)
-            affordable_items = [i for i in case["items"] if _get_item_value_stars(i) <= bank_max]
+            affordable_items = [i for i in case["items"] if _get_item_value_stars(i, ton_rate) <= bank_max]
 
             if affordable_items:
-                win_item  = min(affordable_items, key=lambda i: _get_item_value_stars(i))
-                win_value = _get_item_value_stars(win_item)
+                win_item  = min(affordable_items, key=lambda i: _get_item_value_stars(i, ton_rate))
+                win_value = _get_item_value_stars(win_item, ton_rate)
                 if win_item["type"] == "gift":
                     fallback_payout_type   = "gift_value"
                     fallback_payout_amount = win_value
@@ -270,13 +282,14 @@ async def open_promo_case(data: ActionData, current_user: dict = Depends(get_cur
     )
 
     # Промо-кейс тоже участвует в пити: игроку интересно получить хорошие вещи
-    win_item  = await _roll_item_pity(case["items"], currency, tg_id, case_id, case["price"])
-    win_value = _get_item_value_stars(win_item)
+    ton_rate  = await _fetch_ton_to_stars_rate()
+    win_item  = await _roll_item_pity(case["items"], currency, tg_id, case_id, case["price"], ton_rate)
+    win_value = _get_item_value_stars(win_item, ton_rate)
 
     if win_value > 0:
         if win_item["type"] == "gift":
             payout_type   = "gift_value"
-            payout_amount = _get_item_value_stars(win_item)
+            payout_amount = _get_item_value_stars(win_item, ton_rate)
         else:
             payout_type   = win_item["type"]
             payout_amount = win_item.get("amount", 0)
@@ -284,11 +297,11 @@ async def open_promo_case(data: ActionData, current_user: dict = Depends(get_cur
         paid = await database.bank_payout(payout_amount, asset_type=payout_type)
         if not paid:
             bank_max         = await database.bank_get_max_payout(asset_type=currency)
-            affordable_items = [i for i in case["items"] if _get_item_value_stars(i) <= bank_max]
+            affordable_items = [i for i in case["items"] if _get_item_value_stars(i, ton_rate) <= bank_max]
 
             if affordable_items:
-                win_item  = min(affordable_items, key=lambda i: _get_item_value_stars(i))
-                win_value = _get_item_value_stars(win_item)
+                win_item  = min(affordable_items, key=lambda i: _get_item_value_stars(i, ton_rate))
+                win_value = _get_item_value_stars(win_item, ton_rate)
                 if win_item["type"] == "gift":
                     fallback_payout_type   = "gift_value"
                     fallback_payout_amount = win_value

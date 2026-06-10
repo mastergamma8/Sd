@@ -112,6 +112,23 @@ async def get_live_donuts_to_stars_rate() -> float:
 
     return DONUTS_TO_STARS_RATE
 
+
+def get_cached_ton_to_stars_rate() -> float:
+    """Возвращает закэшированный курс Stars за 1 TON (sync, без HTTP).
+
+    Читает тот же кэш что и get_live_donuts_to_stars_rate().
+    Пока кэш не прогрет — возвращает TON_TO_STARS_FALLBACK.
+    Кэш автоматически прогревается первым вызовом любого эндпоинта
+    который использует get_live_donuts_to_stars_rate / _fetch_ton_to_stars_rate.
+    """
+    now = time.time()
+    r  = _ton_stars_live_cache.get("rate", 0.0)
+    ts = _ton_stars_live_cache.get("ts",   0.0)
+    if r > 0 and (now - ts) < _TON_STARS_LIVE_CACHE_TTL:
+        # кэш хранит donuts→stars; конвертируем в TON→stars
+        return r / DONUT_TO_TON_RATE
+    return TON_TO_STARS_FALLBACK
+
 # Комиссия за вывод подарка в звездах
 WITHDRAW_FEE_STARS = 25
 

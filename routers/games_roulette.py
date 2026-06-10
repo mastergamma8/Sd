@@ -6,6 +6,7 @@ import asyncio
 import config
 import database
 from handlers.tg_gifts import get_gift_def, get_gift_value, is_real_tg_gift
+from routers.gifts import _fetch_ton_to_stars_rate
 from handlers.models import SpinData
 from handlers.security import get_current_user, check_channel_subscription
 from utils.chance_engine import roll_with_pity, is_jackpot, COOLDOWN_START
@@ -17,13 +18,22 @@ ROULETTE_HOUSE_EDGE = 0.15
 ROULETTE_GAME_KEY   = "roulette"
 
 
-def _get_item_value(item: dict) -> int:
+def _get_item_value(item: dict, ton_rate: float | None = None) -> int:
+    if ton_rate is None:
+        ton_rate = config.get_cached_ton_to_stars_rate()
     if item["type"] == "stars":
         return item.get("amount", 0)
     if item["type"] == "donuts":
-        return item.get("amount", 0)
+        # 1 пончик = 0.1 TON → конвертируем через TON: пончики × DONUT_TO_TON_RATE × TON_TO_STARS_FALLBACK
+        return int(item.get("amount", 0) * config.DONUT_TO_TON_RATE * ton_rate)
     if item["type"] == "gift":
-        return get_gift_value(item.get("gift_id")) * config.TON_TO_STARS_FALLBACK
+        gift_id = item.get("gift_id")
+        # TG_GIFTS: required_value уже в звёздах — умножение не нужно.
+        # BASE_GIFTS / MAIN_GIFTS: value/required_value в пончиках →
+        #   конвертируем через цепочку: пончики × DONUT_TO_TON_RATE × TON_TO_STARS_FALLBACK.
+        if gift_id in getattr(config, "TG_GIFTS", {}):
+            return int(config.TG_GIFTS[gift_id].get("required_value", 0) or 0)
+        return int(get_gift_value(gift_id) * ton_rate)
     return 0
 
 
@@ -44,25 +54,27 @@ def _roll_item(items: list) -> tuple[int, dict]:
     return 0, items[0]
 
 
-async def _roll_item_pity(items: list, currency: str, tg_id: int, cost: int) -> tuple[int, dict]:
+async def _roll_item_pity(items: list, currency: str, tg_id: int, cost: int, ton_rate: float | None = None) -> tuple[int, dict]:
     """Взвешенный ролл с системой пити и банковскими ограничениями."""
+    if ton_rate is None:
+        ton_rate = config.get_cached_ton_to_stars_rate()
     bank_liquidity = await database.bank_get_max_payout()
-    affordable     = [item for item in items if _get_item_value(item) <= bank_liquidity]
+    affordable     = [item for item in items if _get_item_value(item, ton_rate) <= bank_liquidity]
     if not affordable:
-        cheapest = min(items, key=_get_item_value)
+        cheapest = min(items, key=lambda i: _get_item_value(i, ton_rate))
         return items.index(cheapest), cheapest
 
     pity_count, cooldown_count = await db_pity.get_pity(tg_id, ROULETTE_GAME_KEY)
 
     win_item = roll_with_pity(
         items          = affordable,
-        get_value      = _get_item_value,
+        get_value      = lambda i: _get_item_value(i, ton_rate),
         cost           = cost,
         pity_count     = pity_count,
         cooldown_count = cooldown_count,
     )
 
-    if is_jackpot(win_item, _get_item_value, cost):
+    if is_jackpot(win_item, lambda i: _get_item_value(i, ton_rate), cost):
         await db_pity.on_jackpot(tg_id, ROULETTE_GAME_KEY, cooldown_start=COOLDOWN_START)
     else:
         await db_pity.on_no_jackpot(tg_id, ROULETTE_GAME_KEY)
@@ -107,6 +119,7 @@ async def spin_roulette(data: SpinData, current_user: dict = Depends(get_current
     now      = int(time.time())
     currency = config.ROULETTE_CONFIG.get("currency", "donuts")
     cost     = config.ROULETTE_CONFIG["cost"]
+    ton_rate = await _fetch_ton_to_stars_rate()
 
     # ── 1. Атомарная проверка бесплатного спина ───────────────────────────────
     # claim_free_spin_atomic проверяет кулдаун через WHERE-условие в БД,
@@ -143,7 +156,7 @@ async def spin_roulette(data: SpinData, current_user: dict = Depends(get_current
         )
         win_item = items[win_index]
     else:
-        win_index, win_item = await _roll_item_pity(items, currency, tg_id, cost)
+        win_index, win_item = await _roll_item_pity(items, currency, tg_id, cost, ton_rate)
 
     # ── 4. Начисление приза ───────────────────────────────────────────────────
     # Единый путь выполнения без ранних return — get_user_data вызывается
@@ -183,10 +196,10 @@ async def spin_roulette(data: SpinData, current_user: dict = Depends(get_current
         if not can_free:
             paid = await database.bank_payout(prize_value, asset_type="stars")
             if not paid:
-                fallback    = min(items, key=_get_item_value)
+                fallback    = min(items, key=lambda i: _get_item_value(i, ton_rate))
                 win_item    = fallback
                 win_index   = items.index(fallback)
-                prize_value = max(_get_item_value(fallback), 1)
+                prize_value = max(_get_item_value(fallback, ton_rate), 1)
                 await database.add_stars_to_user(tg_id, prize_value)
                 await database.add_history_entry(
                     tg_id, "roulette_win_stars",
