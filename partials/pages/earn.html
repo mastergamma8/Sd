@@ -61,15 +61,21 @@
                 </div>
             </div>
 
-            <!-- Кнопка клейма -->
-            <button
-                id="btn-claim-referral"
-                onclick="claimReferralEarnings()"
-                class="w-full btn-primary py-3.5 rounded-xl font-bold text-white active:scale-95 transition-transform disabled:opacity-40 disabled:pointer-events-none"
-                data-i18n="btn_claim_ref"
-                disabled
-            >Забрать</button>
-            <p class="text-xs text-white/30 text-center mt-2" data-i18n="ref_claim_hint">TON от 1 • Звёзды от 100</p>
+            <!-- Кнопки клейма -->
+            <div class="flex gap-2">
+                <button
+                    id="btn-claim-ton"
+                    onclick="claimReferralTon()"
+                    class="flex-1 btn-primary py-3.5 rounded-xl font-bold text-white active:scale-95 transition-transform disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center gap-2"
+                    disabled
+                ><img src="/gifts/ton.png" class="w-4 h-4 object-contain"><span data-i18n="btn_claim_ton">Забрать TON</span></button>
+                <button
+                    id="btn-claim-stars"
+                    onclick="claimReferralStars()"
+                    class="flex-1 py-3.5 rounded-xl font-bold text-yellow-300 active:scale-95 transition-transform disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center gap-2 bg-yellow-500/20 border border-yellow-400/30"
+                    disabled
+                ><img src="/gifts/stars.png" class="w-4 h-4 object-contain"><span data-i18n="btn_claim_stars">Забрать ⭐</span></button>
+            </div>
         </div>
 
         <h4 class="text-md font-bold text-white mb-3" data-i18n="your_refs">Ваши приглашенные</h4>

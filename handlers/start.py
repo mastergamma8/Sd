@@ -48,14 +48,16 @@ def register(dp: Dispatcher, bot: Bot):
                 nft_param = arg[len("nft_"):]   # "gallery", "pack_42", "painting_7_1" …
 
         try:
-            await database.upsert_user(
+            is_new_user = await database.upsert_user(
                 tg_id=user_id,
                 username=message.from_user.username or "",
                 first_name=message.from_user.first_name or "Без имени",
                 photo_url=""
             )
 
-            if referrer_id:
+            # Реферал засчитывается только при первой регистрации.
+            # Если пользователь уже существует в приложении — приглашение игнорируется.
+            if referrer_id and is_new_user:
                 await database.set_referrer(user_id, referrer_id)
 
             webapp_url = config.WEBAPP_URL
@@ -112,7 +114,7 @@ def register(dp: Dispatcher, bot: Bot):
                 text = "🖼 Открой NFT Галерею — лимитированные картины и коллекции!"
             else:
                 text = "Привет! Нажми на кнопку ниже, чтобы открыть приложение." 
-            if referrer_id and referrer_id != user_id:
+            if referrer_id and referrer_id != user_id and is_new_user:
                 text += f"\n\n{E_PARTY} Вы перешли по пригласительной ссылке!"
 
             await message.answer(text, reply_markup=markup, parse_mode="HTML")

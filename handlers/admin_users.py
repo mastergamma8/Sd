@@ -1,8 +1,5 @@
 # handlers/admin_users.py
-# Commands: /genfakeusers, /delfakeusers, /addtester, /deltester, /testers
-import random
-import time
-
+# Commands: /addtester, /deltester, /testers, /fixbalances
 from db import db_async as aiosqlite
 from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
@@ -11,156 +8,109 @@ from aiogram.types import Message
 import config
 import database
 from db.db_core import DB_NAME
-from .admin_constants import E_STOP, E_CHECK, E_CROSS, E_TIME
+from .admin_constants import E_STOP, E_CHECK, E_CROSS, E_TIME, E_DONUT
 
 
 def register(dp: Dispatcher, bot: Bot):
 
-    # ── /genfakeusers ──────────────────────────────────────────────────────────
+    # ── /fixbalances ───────────────────────────────────────────────────────────
+    # Разовая миграция балансов пончиков (заменяет migrate_donut_balances.py).
+    #
+    # До:    balance хранился как TON-эквивалент (FLOAT, напр. 0.1, 0.5, 1.5)
+    # После: balance хранится как целые пончики (1 пончик = 0.1 TON),
+    #        т.е. старый 0.1 → 1, 0.5 → 5, 1.5 → 15.
+    #
+    # Формула: new_balance = ROUND(old_balance * 10)
+    # ⚠️ Одноразовая операция — повторный запуск снова умножит балансы на 10.
 
-    FAKE_NAMES = [
-        "Алексей", "Мария", "Дмитрий", "Анна", "Сергей", "Екатерина",
-        "Иван", "Ольга", "Андрей", "Наталья", "Михаил", "Татьяна",
-        "Николай", "Юлия", "Артём", "Елена", "Кирилл", "Ирина",
-        "Владимир", "Светлана", "Павел", "Ксения", "Роман", "Виктория",
-        "Денис", "Людмила", "Евгений", "Дарья", "Антон", "Полина",
-        "Максим", "Валерия", "Тимур", "Алина", "Глеб", "Вероника",
-        "Илья", "Маргарита", "Руслан", "Кристина", "Степан", "Диана",
-        "Константин", "Надежда", "Юрий", "Милана", "Геннадий", "Таисия",
-        "Борис", "Регина",
-    ]
-    AVATARS = [f"https://i.pravatar.cc/150?img={i}" for i in range(1, 71)]
-    _FAKE_TG_ID_START = 9_000_000_000
-
-    # Типы трат, которые видны в лидерборде «Транжиры»
-    _FAKE_SPEND_TYPES = [
-        "case_paid_stars",
-        "roulette_paid_stars",
-        "rocket_lose_stars",
-        "case_paid_donuts",
-        "roulette_paid_donuts",
-        "rocket_lose_donuts",
-        "claim_gift",
-    ]
-
-    @dp.message(Command("genfakeusers"))
-    async def cmd_gen_fake_users(message: Message):
+    @dp.message(Command("fixbalances"))
+    async def cmd_fix_balances(message: Message):
         if message.from_user.id != config.ADMIN_ID:
             await message.answer(f"{E_STOP} У вас нет прав.", parse_mode="HTML")
             return
 
-        await message.answer(
-            f"{E_TIME} Генерирую 100 фейковых пользователей...", parse_mode="HTML"
-        )
-
-        now      = int(time.time())
-        week_ago = now - 6 * 86400
-
-        async with aiosqlite.connect(DB_NAME) as db:
-            for i in range(100):
-                tg_id    = _FAKE_TG_ID_START + i
-                name     = random.choice(FAKE_NAMES) + f"_{i + 1}"
-                username = f"fake_user_{i + 1}"
-                avatar   = random.choice(AVATARS)
-                balance  = random.randint(10, 50_000)
-
-                await db.execute(
-                    """
-                    INSERT INTO users (
-                        tg_id, username, first_name, photo_url,
-                        balance, stars, last_free_spin, notified_free_spin,
-                        last_gift_withdraw, notified_gift_withdraw,
-                        last_gift_claim, notified_gift_claim,
-                        last_free_case, notified_free_case
-                    )
-                    VALUES (?, ?, ?, ?, ?, 0, 0, 1, 0, 1, 0, 1, 0, 1)
-                    ON CONFLICT(tg_id) DO UPDATE SET
-                        username=excluded.username,
-                        first_name=excluded.first_name,
-                        photo_url=excluded.photo_url,
-                        balance=excluded.balance
-                    """,
-                    (tg_id, username, name, avatar, balance),
-                )
-
-                # ── Траты для лидерборда «Транжиры» ──────────────────────────
-                # Каждый фейк делает от 1 до 5 транзакций трат за текущую неделю
-                num_spends = random.randint(1, 5)
-                for _ in range(num_spends):
-                    spend_type = random.choice(_FAKE_SPEND_TYPES)
-                    amount     = -random.randint(5, 500)  # отрицательное = трата
-                    ts         = random.randint(week_ago, now)
-                    await db.execute(
-                        """
-                        INSERT INTO user_history
-                            (user_id, action_type, description, amount, created_at)
-                        VALUES (?, ?, ?, ?, ?)
-                        """,
-                        (tg_id, spend_type, f"Фейк: {spend_type}", amount, ts),
-                    )
-
-                # ── Ракета для лидерборда «Сорвиголовы» ─────────────────────
-                if random.random() < 0.7:
-                    multiplier = round(random.uniform(1.2, 50.0), 2)
-                    ts = random.randint(week_ago, now)
-                    await db.execute(
-                        """
-                        INSERT INTO user_history
-                            (user_id, action_type, description, amount, created_at)
-                        VALUES (?, 'rocket_win_fake', ?, ?, ?)
-                        """,
-                        (tg_id, f"Ракета: x{multiplier}", int(multiplier * 100), ts),
-                    )
-
-                # ── Кейс для лидерборда «Счастливчики» ──────────────────────
-                if random.random() < 0.6:
-                    ratio_x100 = random.randint(110, 2000)
-                    await db.execute(
-                        """
-                        INSERT INTO user_history
-                            (user_id, action_type, description, amount, created_at)
-                        VALUES (?, 'case_lucky_ratio', 'Фейк: кейс', ?, ?)
-                        """,
-                        (tg_id, ratio_x100, random.randint(week_ago, now)),
-                    )
-
-            await db.commit()
-
-        await message.answer(
-            f"{E_CHECK} <b>Готово!</b>\n\n"
-            f"Создано <b>100 фейковых пользователей</b>"
-            f" (tg_id {_FAKE_TG_ID_START}–{_FAKE_TG_ID_START + 99}).\n"
-            "Данные добавлены во все три таблицы лидеров.\n\n"
-            "<i>Для удаления фейков используйте /delfakeusers</i>",
-            parse_mode="HTML",
-        )
-
-    # ── /delfakeusers ──────────────────────────────────────────────────────────
-
-    @dp.message(Command("delfakeusers"))
-    async def cmd_del_fake_users(message: Message):
-        if message.from_user.id != config.ADMIN_ID:
-            await message.answer(f"{E_STOP} У вас нет прав.", parse_mode="HTML")
-            return
-
-        fake_end = _FAKE_TG_ID_START + 99
-
-        async with aiosqlite.connect(DB_NAME) as db:
-            await db.execute(
-                "DELETE FROM user_history WHERE user_id BETWEEN ? AND ?",
-                (_FAKE_TG_ID_START, fake_end),
+        args = message.text.split()
+        if len(args) < 2 or args[1].lower() != "confirm":
+            await message.answer(
+                f"{E_TIME} <b>Миграция балансов {E_DONUT}</b>\n\n"
+                "Пересчитывает <code>balance</code> у всех пользователей: "
+                "из старого формата (TON-эквивалент) в новый "
+                f"(целые пончики, 1 {E_DONUT} = 0.1 TON):\n\n"
+                "<code>new_balance = ROUND(old_balance * 10)</code>\n"
+                "Например: 0.1 → 1, 0.5 → 5, 1.5 → 15.\n\n"
+                f"{E_STOP} Это <b>одноразовая</b> операция. Повторный запуск "
+                "снова умножит все балансы на 10 и испортит данные.\n\n"
+                "Для запуска подтвердите:\n"
+                "<code>/fixbalances confirm</code>",
+                parse_mode="HTML",
             )
+            return
+
+        await message.answer(f"{E_TIME} Выполняю миграцию балансов...", parse_mode="HTML")
+
+        async with aiosqlite.connect(DB_NAME) as db:
+            # Статистика до миграции
+            async with db.execute(
+                "SELECT COUNT(*), SUM(balance), MAX(balance) FROM users WHERE balance > 0"
+            ) as cur:
+                before = await cur.fetchone()
+
+            # Сама миграция: new_balance = ROUND(old_balance * 10).
+            # Приводим к numeric — у PostgreSQL нет ROUND(double precision),
+            # а balance хранится как FLOAT8.
             result = await db.execute(
-                "DELETE FROM users WHERE tg_id BETWEEN ? AND ?",
-                (_FAKE_TG_ID_START, fake_end),
+                "UPDATE users SET balance = ROUND((balance * 10)::numeric) "
+                "WHERE balance IS NOT NULL"
             )
-            deleted = result.rowcount
+            updated = result.rowcount
             await db.commit()
 
-        await message.answer(
-            f"{E_CHECK} Удалено <b>{deleted}</b> фейковых пользователей и их история.",
-            parse_mode="HTML",
-        )
+            # Статистика после миграции
+            async with db.execute(
+                "SELECT COUNT(*), SUM(balance), MAX(balance) FROM users WHERE balance > 0"
+            ) as cur:
+                after = await cur.fetchone()
+
+            # Проверка: не осталось ли дробных балансов
+            async with db.execute(
+                "SELECT COUNT(*) FROM users WHERE balance != FLOOR(balance)"
+            ) as cur:
+                frac = await cur.fetchone()
+
+        before_count = before[0] or 0
+        before_sum   = before[1] or 0.0
+        before_max   = before[2] or 0.0
+
+        after_count = after[0] or 0
+        after_sum   = int(after[1] or 0)
+        after_max   = int(after[2] or 0)
+
+        frac_count = frac[0] or 0
+
+        lines = [
+            f"{E_CHECK} <b>Миграция балансов завершена</b>",
+            f"<i>Строк обновлено: {updated}</i>",
+            "",
+            "<b>До:</b>",
+            f"  Пользователей с балансом &gt; 0: <b>{before_count}</b>",
+            f"  Сумма всех балансов: <b>{before_sum:.4f}</b>",
+            f"  Максимальный баланс: <b>{before_max:.4f}</b>",
+            "",
+            "<b>После:</b>",
+            f"  Пользователей с балансом &gt; 0: <b>{after_count}</b>",
+            f"  Сумма всех балансов: <b>{after_sum}</b> {E_DONUT}",
+            f"  Максимальный баланс: <b>{after_max}</b> {E_DONUT}",
+            "",
+        ]
+
+        if frac_count == 0:
+            lines.append(f"{E_CHECK} Все балансы целые. Миграция успешна.")
+        else:
+            lines.append(
+                f"{E_CROSS} Осталось <b>{frac_count}</b> пользователей с дробными балансами."
+            )
+
+        await message.answer("\n".join(lines), parse_mode="HTML")
 
     # ── /addtester ─────────────────────────────────────────────────────────────
 

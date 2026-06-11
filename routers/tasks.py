@@ -123,45 +123,50 @@ async def check_task(data: TaskCheckData, current_user: dict = Depends(get_curre
         }
 
 
-@router.post("/claim_referral")
-async def claim_referral(current_user: dict = Depends(get_current_user)):
-    """
-    Переводит накопленные реферальные TON и/или звёзды на основной баланс.
-
-    TON    — минимум 1 TON для клейма.
-    Звёзды — минимум 100 ⭐ для клейма.
-    После успешного клейма накопительные счета обнуляются.
-    """
+@router.post("/claim_referral_ton")
+async def claim_referral_ton(current_user: dict = Depends(get_current_user)):
+    """Переводит накопленный реферальный TON на основной ton_balance. Минимум 1 TON."""
     tg_id = current_user["id"]
 
-    claimed_ton   = await database.claim_ref_ton(tg_id)
-    claimed_stars = await database.claim_ref_stars(tg_id)
+    claimed_ton = await database.claim_ref_ton(tg_id)
+    if claimed_ton == 0:
+        raise HTTPException(status_code=400, detail="Недостаточно TON (минимум 1)")
 
-    if claimed_ton == 0 and claimed_stars == 0:
-        raise HTTPException(
-            status_code=400,
-            detail="Недостаточно для получения: TON (минимум 1), Звёзды (минимум 100)"
-        )
-
-    if claimed_ton > 0:
-        await database.add_history_entry(
-            tg_id, "ref_claim_ton",
-            f"Получение реферального TON: {claimed_ton} TON",
-            claimed_ton
-        )
-    if claimed_stars > 0:
-        await database.add_history_entry(
-            tg_id, "ref_claim_stars",
-            f"Получение реферальных звёзд: {claimed_stars} ⭐",
-            claimed_stars
-        )
+    await database.add_history_entry(
+        tg_id, "ref_claim_ton",
+        f"Получение реферального TON: {claimed_ton} TON",
+        claimed_ton
+    )
 
     user_data = await database.get_user_data(tg_id)
     return {
         "status":           "ok",
         "claimed_ton":      claimed_ton,
-        "claimed_stars":    claimed_stars,
         "ton_balance":      user_data.get("ton_balance", 0),
+        "ref_ton_earned":   user_data.get("ref_ton_earned", 0),
+        "ref_stars_earned": user_data.get("ref_stars_earned", 0),
+    }
+
+
+@router.post("/claim_referral_stars")
+async def claim_referral_stars(current_user: dict = Depends(get_current_user)):
+    """Переводит накопленные реферальные звёзды на основной баланс stars. Минимум 100 ⭐."""
+    tg_id = current_user["id"]
+
+    claimed_stars = await database.claim_ref_stars(tg_id)
+    if claimed_stars == 0:
+        raise HTTPException(status_code=400, detail="Недостаточно звёзд (минимум 100)")
+
+    await database.add_history_entry(
+        tg_id, "ref_claim_stars",
+        f"Получение реферальных звёзд: {claimed_stars} ⭐",
+        claimed_stars
+    )
+
+    user_data = await database.get_user_data(tg_id)
+    return {
+        "status":           "ok",
+        "claimed_stars":    claimed_stars,
         "stars":            user_data.get("stars", 0),
         "ref_ton_earned":   user_data.get("ref_ton_earned", 0),
         "ref_stars_earned": user_data.get("ref_stars_earned", 0),

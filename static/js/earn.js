@@ -42,19 +42,18 @@ function shareRefLink() {
     tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(i18n[currentLang].share_text)}`);
 }
 
-// Обновляет блок накопленных реферальных заработков и состояние кнопки
+// Обновляет блок накопленных реферальных заработков и состояние кнопок
 function updateRefEarningsUI(refTon, refStars) {
-    const tonEl   = document.getElementById('ref-ton-earned');
-    const starsEl = document.getElementById('ref-stars-earned');
-    const btn     = document.getElementById('btn-claim-referral');
+    const tonEl    = document.getElementById('ref-ton-earned');
+    const starsEl  = document.getElementById('ref-stars-earned');
+    const btnTon   = document.getElementById('btn-claim-ton');
+    const btnStars = document.getElementById('btn-claim-stars');
 
     if (tonEl)   tonEl.textContent   = parseFloat(refTon   || 0).toFixed(4);
     if (starsEl) starsEl.textContent = parseInt(refStars || 0);
 
-    const canClaim = parseFloat(refTon || 0) >= 1 || parseInt(refStars || 0) >= 100;
-    if (btn) {
-        btn.disabled = !canClaim;
-    }
+    if (btnTon)   btnTon.disabled   = parseFloat(refTon   || 0) < 1;
+    if (btnStars) btnStars.disabled = parseInt(refStars || 0) < 100;
 }
 
 async function loadEarnData() {
@@ -151,13 +150,15 @@ async function checkTask(taskId) {
     }
 }
 
-async function claimReferralEarnings() {
+async function claimReferralTon() {
     vibrate('medium');
-    const btn = document.getElementById('btn-claim-referral');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳...'; }
+    const btn = document.getElementById('btn-claim-ton');
+    const span = btn?.querySelector('span');
+    if (btn) btn.disabled = true;
+    if (span) span.textContent = '⏳...';
 
     try {
-        const res = await fetch('/api/claim_referral', {
+        const res = await fetch('/api/claim_referral_ton', {
             method: 'POST',
             headers: getApiHeaders(),
         });
@@ -165,39 +166,57 @@ async function claimReferralEarnings() {
 
         if (data.status === 'ok') {
             vibrate('heavy');
-
-            // Обновляем локальные балансы
             if (data.ton_balance !== undefined && typeof myTonBalance !== 'undefined') {
                 myTonBalance = data.ton_balance;
             }
+            updateRefEarningsUI(data.ref_ton_earned || 0, data.ref_stars_earned || 0);
+            if (typeof updateUI === 'function') updateUI();
+            showNotify(`+${parseFloat(data.claimed_ton).toFixed(4)} TON получено!`, 'success');
+        } else {
+            showNotify(data.detail || i18n[currentLang]?.err_check || 'Ошибка', 'error');
+            if (btn) btn.disabled = false;
+        }
+    } catch(e) {
+        console.error('claimReferralTon:', e);
+        showNotify(i18n[currentLang]?.err_conn_srv || 'Ошибка соединения', 'error');
+        if (btn) btn.disabled = false;
+    } finally {
+        if (span) span.textContent = i18n[currentLang]?.btn_claim_ton || 'Забрать TON';
+    }
+}
+
+async function claimReferralStars() {
+    vibrate('medium');
+    const btn = document.getElementById('btn-claim-stars');
+    const span = btn?.querySelector('span');
+    if (btn) btn.disabled = true;
+    if (span) span.textContent = '⏳...';
+
+    try {
+        const res = await fetch('/api/claim_referral_stars', {
+            method: 'POST',
+            headers: getApiHeaders(),
+        });
+        const data = await res.json();
+
+        if (data.status === 'ok') {
+            vibrate('heavy');
             if (data.stars !== undefined && typeof myStars !== 'undefined') {
                 myStars = data.stars;
             }
-
-            // Сбрасываем накопленные заработки в UI
             updateRefEarningsUI(data.ref_ton_earned || 0, data.ref_stars_earned || 0);
-
             if (typeof updateUI === 'function') updateUI();
-
-            // Уведомление
-            let msg = '';
-            if (data.claimed_ton > 0 && data.claimed_stars > 0) {
-                msg = `+${parseFloat(data.claimed_ton).toFixed(4)} TON и +${data.claimed_stars} ⭐ получено!`;
-            } else if (data.claimed_ton > 0) {
-                msg = `+${parseFloat(data.claimed_ton).toFixed(4)} TON получено!`;
-            } else {
-                msg = `+${data.claimed_stars} ⭐ получено!`;
-            }
-            showNotify(msg, 'success');
+            showNotify(`+${data.claimed_stars} ⭐ получено!`, 'success');
         } else {
             showNotify(data.detail || i18n[currentLang]?.err_check || 'Ошибка', 'error');
-            // Восстанавливаем кнопку если была ошибка
-            if (btn) { btn.disabled = false; btn.textContent = i18n[currentLang]?.btn_claim_ref || 'Забрать'; }
+            if (btn) btn.disabled = false;
         }
     } catch(e) {
-        console.error('claimReferralEarnings:', e);
+        console.error('claimReferralStars:', e);
         showNotify(i18n[currentLang]?.err_conn_srv || 'Ошибка соединения', 'error');
-        if (btn) { btn.disabled = false; btn.textContent = i18n[currentLang]?.btn_claim_ref || 'Забрать'; }
+        if (btn) btn.disabled = false;
+    } finally {
+        if (span) span.textContent = i18n[currentLang]?.btn_claim_stars || 'Забрать ⭐';
     }
 }
 
@@ -210,4 +229,5 @@ window.shareRefLink          = shareRefLink;
 window.openTaskUrl           = openTaskUrl;
 window.checkTask             = checkTask;
 window.loadEarnData          = loadEarnData;
-window.claimReferralEarnings = claimReferralEarnings;
+window.claimReferralTon      = claimReferralTon;
+window.claimReferralStars    = claimReferralStars;

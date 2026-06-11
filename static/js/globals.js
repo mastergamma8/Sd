@@ -87,6 +87,7 @@ function updateUI() {
 // =====================================================
 const BOTTOM_SHEET_IDS = [
     'add-gift-modal',
+    'get-donuts-modal',
     'sort-modal',
     'history-modal',
     'withdraw-requirements-modal',
@@ -439,7 +440,7 @@ window.toggleDemoMode = toggleDemoMode;
 // ИНИЦИАЛИЗАЦИЯ "ШТОРОК" (ЗАКРЫТИЕ СВАЙПОМ / КЛИК ВНЕ)
 // =====================================================
 function initBottomSheets() {
-    const bottomSheets = ['add-gift-modal', 'sort-modal', 'history-modal', 'pvp-history-modal', 'withdraw-requirements-modal', 'channel-sub-modal', 'settings-modal', 'shop-buy-modal', 'ton-wallet-modal', 'ton-deposit-modal', 'ton-withdraw-modal'];
+    const bottomSheets = ['add-gift-modal', 'get-donuts-modal', 'sort-modal', 'history-modal', 'pvp-history-modal', 'withdraw-requirements-modal', 'channel-sub-modal', 'settings-modal', 'shop-buy-modal', 'ton-wallet-modal', 'ton-deposit-modal', 'ton-withdraw-modal'];
 
     // Функция поиска скроллируемого родителя, чтобы не перехватывать скролл контента
     function getScrollableParent(el, limitNode) {

@@ -9,8 +9,16 @@ from db.db_core import DB_NAME, GIFT_CLAIM_COOLDOWN, GIFT_WITHDRAW_COOLDOWN
 # ОСНОВНЫЕ ФУНКЦИИ ПОЛЬЗОВАТЕЛЕЙ
 # ==========================================
 
-async def upsert_user(tg_id: int, username: str, first_name: str, photo_url: str):
+async def upsert_user(tg_id: int, username: str, first_name: str, photo_url: str) -> bool:
+    """Создаёт или обновляет пользователя.
+    Возвращает True если пользователь зарегистрировался впервые, False если уже существовал.
+    """
     async with aiosqlite.connect(DB_NAME) as db:
+        # Проверяем, существует ли пользователь ДО upsert
+        async with db.execute("SELECT 1 FROM users WHERE tg_id = ?", (tg_id,)) as cursor:
+            existing = await cursor.fetchone()
+        is_new = existing is None
+
         await db.execute("""
             INSERT INTO users (
                 tg_id, username, first_name, photo_url,
@@ -26,6 +34,8 @@ async def upsert_user(tg_id: int, username: str, first_name: str, photo_url: str
                 photo_url=excluded.photo_url
         """, (tg_id, username, first_name, photo_url))
         await db.commit()
+
+        return is_new
 
 async def get_user_profile(user_id: int):
     async with aiosqlite.connect(DB_NAME) as db:

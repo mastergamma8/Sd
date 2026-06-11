@@ -14,8 +14,8 @@
 #   admin_send.py       — /send, /cancel  (с поддержкой кнопок)
 #   admin_promos.py     — /addpromo, /promos, /delpromo
 #   admin_features.py   — /hide, /show, /featurestatus, /maintenance
-#   admin_users.py      — /genfakeusers, /delfakeusers, /addtester,
-#                         /deltester, /testers, /setexchangerate
+#   admin_users.py      — /addtester, /deltester, /testers,
+#                         /fixbalances, /setexchangerate
 
 from aiogram import Bot, Dispatcher
 

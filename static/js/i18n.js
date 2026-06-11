@@ -33,6 +33,8 @@ const i18n = {
             how_to_step1: 'Выберите любой NFT-подарок в Telegram',
             how_to_step2: 'Отправьте его на аккаунт <span onclick="tg.openTelegramLink(\'https://t.me/SpaceDonutGifts\')" class="text-blue-400 cursor-pointer font-bold underline decoration-blue-400/50 underline-offset-2">@SpaceDonutGifts</span>',
             how_to_step3: 'Подарки автоматически конвертируются в пончики <img src="/gifts/dount.png" class="w-5 h-5 inline-block align-middle object-contain drop-shadow-md"> для вашего баланса!',
+            how_to_step3_gift: 'Подарок автоматически появится в вашем профиле!',
+            how_to_add_gift: 'Как добавить подарок?',
             understood: 'Понятно', you: 'Вы',
             no_gifts_yet: 'У вас пока нет подарков.<br><span class="inline-flex items-center gap-1 mt-1">Копите <img src="/gifts/dount.png" class="w-4 h-4 object-contain"> чтобы получить подарок!</span>',
             click: 'Нажми', win: 'Победа!', take_prize: 'Забрать приз!',
@@ -74,8 +76,8 @@ const i18n = {
             ref_earned_stars: 'Звёзды заработано',
             ref_min_ton: 'Минимум для получения: 1 TON',
             ref_min_stars: 'Минимум для получения: 100 звёзд',
-            btn_claim_ref: 'Забрать',
-            ref_claim_hint: 'TON от 1 • Звёзды от 100',
+            btn_claim_ton: 'Забрать',
+            btn_claim_stars: 'Забрать',
 
             // КЕЙСЫ
             games_title: 'Игры',
@@ -359,6 +361,7 @@ const i18n = {
             // ДОПОЛНИТЕЛЬНЫЕ СТРОКИ ДЛЯ СПОСОБОВ ПОЛУЧЕНИЯ ПОНЧИКОВ
             how_to_get_donuts_title: 'Как получить пончики?',
             how_to_get_donuts_subtitle: 'Собирай пончики, чтобы разблокировать этот подарок! Доступные способы получения:',
+            get_donuts_intro: 'Собирай пончики и разблокируй подарки! Доступные способы:',
             donut_way_tasks_title: 'Выполняй задания',
             donut_way_tasks_desc: 'Простые задания и социальные активности принесут тебе горы пончиков',
             donut_way_cases_title: 'Открывай кейсы',
@@ -398,6 +401,8 @@ const i18n = {
             how_to_step1: 'Select any NFT gift in Telegram',
             how_to_step2: 'Send it to the account <span onclick="tg.openTelegramLink(\'https://t.me/SpaceDonutGifts\')" class="text-blue-400 cursor-pointer font-bold underline decoration-blue-400/50 underline-offset-2">@SpaceDonutGifts</span>',
             how_to_step3: 'Gifts are automatically converted to donuts <img src="/gifts/dount.png" class="w-5 h-5 inline-block align-middle object-contain drop-shadow-md"> for your balance!',
+            how_to_step3_gift: 'The gift will automatically appear in your profile!',
+            how_to_add_gift: 'How to add a gift?',
             understood: 'Understood', you: 'You',
             no_gifts_yet: 'You have no gifts yet.<br><span class="inline-flex items-center gap-1 mt-1">Collect <img src="/gifts/dount.png" class="w-4 h-4 object-contain"> to get a gift!</span>',
             click: 'Click', win: 'Victory!', take_prize: 'Take prize!',
@@ -439,8 +444,8 @@ const i18n = {
             ref_earned_stars: 'Stars earned',
             ref_min_ton: 'Minimum to claim: 1 TON',
             ref_min_stars: 'Minimum to claim: 100 stars',
-            btn_claim_ref: 'Claim',
-            ref_claim_hint: 'TON from 1 • Stars from 100',
+            btn_claim_ton: 'Claim',
+            btn_claim_stars: 'Claim',
 
             // CASES
             games_title: 'Games',
@@ -724,6 +729,7 @@ const i18n = {
             // ENGLISH ADDITIONAL STRINGS FOR DONUT WAYS
             how_to_get_donuts_title: 'How to get donuts?',
             how_to_get_donuts_subtitle: 'Collect donuts to unlock this gift! Available ways to get them:',
+            get_donuts_intro: 'Collect donuts and unlock gifts! Available ways:',
             donut_way_tasks_title: 'Complete Tasks',
             donut_way_tasks_desc: 'Simple tasks and social activities will earn you heaps of donuts',
             donut_way_cases_title: 'Open Cases',
