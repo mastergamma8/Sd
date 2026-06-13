@@ -158,6 +158,7 @@ pvp_round: Dict[str, Any] = {
     "finished_end":  0.0,
     "players":       {},          # {user_id: {name, avatar, color, bets: [...]}}
     "winner_id":     None,
+    "live_rate":     0.0,         # курс TON→Stars на момент определения победителя
     "last_game":     None,
     "best_game":     None,
     "_color_idx":    0,
@@ -321,11 +322,13 @@ async def _determine_winner() -> Optional[int]:
     return random.choices(ids, weights=ws, k=1)[0]
 
 
-async def _payout_winner(winner_id: int):
+async def _payout_winner(winner_id: int, live_rate: float = 0.0):
     """Начисляет победителю весь банк минус комиссия и переносит подарки.
     Записывает историю ставок для ВСЕХ участников и историю выигрыша для победителя.
-    Сохраняет round_id, last_game и best_game в БД после завершения раунда."""
+    Сохраняет round_id, last_game и best_game в БД после завершения раунда.
+    live_rate — курс TON→Stars на момент определения победителя (0 = fallback)."""
     try:
+        rate = live_rate if live_rate > 0 else config.TON_TO_STARS_FALLBACK
         players = pvp_round["players"]
         if winner_id not in players:
             return
@@ -413,7 +416,7 @@ async def _payout_winner(winner_id: int):
         gifts_value_stars = sum(b.get("value_stars", 1) for b in all_gift_bets)
         total_value_stars = (
             int(payout_stars)
-            + int(payout_ton * config.TON_TO_STARS_FALLBACK)
+            + int(payout_ton * rate)
             + int(gifts_value_stars * (1 - COMMISSION_STARS))
         )
         # Проверяем анонимность победителя — перезаписываем имя/аватар
@@ -651,6 +654,7 @@ async def pvp_round_manager():
 
                             pvp_round["winner_id"]        = winner_id
                             pvp_round["state"]            = "rolling"
+                            pvp_round["live_rate"]        = live_rate
                             pvp_round["rolling_end"]      = time.time() + ROLLING_DURATION
                             pvp_round["rolling_start_ts"] = time.time()
                             pvp_round["ball_seed"]        = ball_seed
@@ -673,7 +677,10 @@ async def pvp_round_manager():
                             pvp_round["state"]        = "finished"
                             pvp_round["finished_end"] = time.time() + FINISHED_DURATION
                             if pvp_round["winner_id"]:
-                                asyncio.create_task(_payout_winner(pvp_round["winner_id"]))
+                                asyncio.create_task(_payout_winner(
+                                    pvp_round["winner_id"],
+                                    live_rate=pvp_round.get("live_rate", 0.0),
+                                ))
                             # Сохраняем состояние finished сразу — _payout_winner
                             # дополнит запись last_game/best_game асинхронно.
                             await database.save_pvp_round_state(
@@ -699,6 +706,7 @@ async def pvp_round_manager():
                             pvp_round["ball_target_y"] = 50.0
                             pvp_round["players"]       = {}
                             pvp_round["winner_id"]     = None
+                            pvp_round["live_rate"]     = 0.0
                             pvp_round["first_bet_at"]  = 0.0
                             pvp_round["_color_idx"]    = 0
                             # ИСПРАВЛЕНИЕ: сохраняем инкрементированный round_id сразу

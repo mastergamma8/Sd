@@ -12,6 +12,7 @@ GET  /api/ton/withdraw/history — история выводов пользов�
 """
 
 import logging
+import re
 import secrets
 import time
 import httpx
@@ -27,6 +28,9 @@ from db import db_ton
 from handlers.security import get_current_user
 
 logger = logging.getLogger(__name__)
+
+# Валидный TON-адрес: base64url (EQ/UQ + 46 символов) или raw (0:hex64)
+_TON_ADDR_RE = re.compile(r'^(EQ|UQ)[A-Za-z0-9\-_]{46}$|^0:[0-9a-fA-F]{64}$')
 
 # Премиум-эмодзи TON (emoji-id 5424912684078348533)
 _E_TON  = '<tg-emoji emoji-id="5424912684078348533">💎</tg-emoji>'
@@ -261,13 +265,12 @@ async def verify_deposit(
         if not tx_hash:
             continue
 
-        # Защита от двойного зачисления
-        already_credited = await db_ton.is_tx_already_credited(tx_hash)
-        if already_credited:
+        # Атомарная защита от двойного зачисления:
+        # confirm_deposit возвращает True только если статус сменился pending→confirmed
+        # (rowcount > 0). Второй параллельный вызов получит False и не зачислит деньги.
+        credited = await db_ton.confirm_deposit(session["id"], amount, tx_hash)
+        if not credited:
             raise HTTPException(409, "Эта транзакция уже была зачислена.")
-
-        # Подтверждаем депозит в БД
-        await db_ton.confirm_deposit(session["id"], amount, tx_hash)
 
         # Начисляем на TON-баланс (отдельный от пончиков)
         await database.add_ton_balance(user_id, amount)
@@ -355,7 +358,7 @@ async def save_wallet(
     addr = data.wallet_address.strip()
     if not addr:
         raise HTTPException(400, "Пустой адрес кошелька")
-    if not (addr.startswith(("EQ", "UQ", "0:")) or len(addr) >= 48):
+    if not _TON_ADDR_RE.match(addr):
         raise HTTPException(400, "Неверный формат TON-адреса")
 
     await db_ton.save_user_wallet(current_user["id"], addr)
@@ -397,23 +400,21 @@ async def withdraw_ton(
     if not to_address:
         raise HTTPException(400, "Сначала подключите TON-кошелёк")
 
-    last_withdraw = await db_ton.get_last_withdrawal_time(user_id)
-    if last_withdraw:
-        elapsed  = int(time.time()) - last_withdraw
-        cooldown = config.TON_WITHDRAW_COOLDOWN
-        if elapsed < cooldown:
-            wait_min = (cooldown - elapsed) // 60
-            raise HTTPException(429, f"Следующий вывод доступен через {wait_min} мин.")
-
     # ── 2. Атомарное списание ton_balance ───────────────────────────────────────
     deducted = await database.deduct_ton_balance(user_id, amount_ton)
     if not deducted:
         raise HTTPException(400, "Недостаточно TON на балансе")
 
-    # ── 3. Создаём запись в БД ────────────────────────────────────────────────
-    withdrawal_id = await db_ton.create_withdrawal_record(
-        user_id, to_address, amount_ton, fee
+    # ── 3. Атомарная проверка кулдауна + создание записи (один SQL-блок) ────────
+    # BEGIN IMMEDIATE внутри check_cooldown_and_create_withdrawal гарантирует,
+    # что два параллельных запроса не пройдут проверку кулдауна одновременно.
+    ok, withdrawal_id, wait_msg = await db_ton.check_cooldown_and_create_withdrawal(
+        user_id, to_address, amount_ton, fee, config.TON_WITHDRAW_COOLDOWN
     )
+    if not ok:
+        # Кулдаун не прошёл — возвращаем списанный баланс
+        await database.add_ton_balance(user_id, amount_ton)
+        raise HTTPException(429, wait_msg)
 
     # ── 4. Отправляем TON в блокчейн ──────────────────────────────────────────
     try:

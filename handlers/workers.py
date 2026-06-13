@@ -296,3 +296,61 @@ async def leaderboard_season_reset_worker(bot):
 
         logging.info("[LeaderboardWorker] раздача призов завершена, жду следующего сброса")
         await asyncio.sleep(60)  # небольшая пауза чтобы не выдавать дважды
+
+
+async def auction_finalization_worker(bot: Bot):
+    """Фоновый воркер: каждую минуту завершает просроченные аукционы,
+    начисляет звёзды продавцам и отправляет уведомления победителям/продавцам.
+
+    Без этой задачи аукционы завершались бы только при открытии вкладки
+    аукционов каким-либо пользователем (lazy-finalization в auction_list).
+    """
+    from db import db_nft_market
+    from db.db_history import add_history_entry
+    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+
+    markup = InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(
+            text="🎨 Открыть галерею",
+            web_app=WebAppInfo(url=config.WEBAPP_URL),
+        )
+    ]])
+
+    while True:
+        await asyncio.sleep(60)
+        try:
+            finalized = await db_nft_market.get_and_clear_finalized_auctions()
+            for f in finalized:
+                if f["winner_id"]:
+                    try:
+                        await add_history_entry(
+                            f["winner_id"], "nft_auction_won",
+                            f"Выиграна картина «{f['title']}» на аукционе за {f['final_price']} ⭐",
+                            f["final_price"], ref_id=f["auction_id"],
+                        )
+                        await add_history_entry(
+                            f["seller_id"], "nft_auction_sold",
+                            f"Картина «{f['title']}» продана на аукционе за {f['final_price']} ⭐",
+                            f["final_price"], ref_id=f["auction_id"],
+                        )
+                        await bot.send_message(
+                            f["winner_id"],
+                            f"🏆 <b>Вы выиграли аукцион!</b>\n\n"
+                            f"Картина «{f['title']}» теперь в вашей коллекции.\n"
+                            f"Финальная ставка: <b>{f['final_price']} ⭐</b>",
+                            parse_mode="HTML", reply_markup=markup,
+                        )
+                        await bot.send_message(
+                            f["seller_id"],
+                            f"🎨 <b>Аукцион завершён!</b>\n\n"
+                            f"«{f['title']}» продана за <b>{f['final_price']} ⭐</b>\n"
+                            f"Звёзды уже начислены на ваш баланс.",
+                            parse_mode="HTML", reply_markup=markup,
+                        )
+                    except Exception as e:
+                        logging.warning(f"[AuctionWorker] уведомление не отправлено: {e}")
+                else:
+                    # Аукцион без ставок — просто завершился
+                    logging.info(f"[AuctionWorker] аукцион #{f['auction_id']} закрыт без победителя")
+        except Exception as e:
+            logging.error(f"[AuctionWorker] ошибка финализации: {e}")

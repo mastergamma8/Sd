@@ -22,7 +22,7 @@ async function nftLoadGallery(userId = null) {
     if (!grid) return;
 
     grid.innerHTML = nftLoadingHTML();
-    collectors.innerHTML = '';
+    if (collectors) collectors.innerHTML = '';
     empty.classList.add('hidden');
 
     if (userId === null) {
@@ -52,7 +52,7 @@ async function nftLoadGallery(userId = null) {
     } else {
         backBtn.classList.remove('hidden');
         subtitle.textContent = nftT('user_gallery_subtitle');
-        collectors.innerHTML = '';
+        if (collectors) collectors.innerHTML = '';
 
         try {
             const res  = await fetch(`/api/nft/gallery/${userId}`, { headers: getApiHeaders() });
@@ -172,7 +172,7 @@ function nftGalleryCardHTML(p, isOwner) {
                  class="art-img"
                  onerror="this.src='https://via.placeholder.com/300x300?text=NFT'">
             <div class="absolute inset-0 z-10"
-                 style="background:linear-gradient(to bottom,transparent 25%,rgba(10,7,4,0.98) 100%);"></div>
+                 style="background:linear-gradient(to bottom,transparent 25%,rgba(10,7,4,0.98) 100%);pointer-events:none;"></div>
             ${myBadge}${statusBadge}${shareBtn}
             <div class="absolute bottom-3 left-3 right-3 z-20">
                 <p class="text-white font-bold text-xs truncate leading-tight">
@@ -519,7 +519,7 @@ async function nftOpenUserGalleryPage(userId, name) {
 
         content.innerHTML = headerHtml + gridHtml;
     } catch (e) {
-        content.innerHTML += `<div class="text-center py-8 text-red-400/60 text-sm">${nftT('load_error')}</div>`;
+        content.innerHTML = `<div class="text-center py-8 text-red-400/60 text-sm">${nftT('load_error')}</div>`;
     }
 }
 

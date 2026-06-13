@@ -230,7 +230,7 @@ function nftPackCardHTML(pack) {
             <img src="${escapeHtml(cover)}" alt="${escapeHtml(pack.name)}"
                  class="art-img"
                  onerror="this.src='https://via.placeholder.com/400x208?text=Pack'">
-            <div class="absolute inset-0 z-10" style="background:linear-gradient(to bottom,rgba(10,7,4,0.05) 0%,rgba(10,7,4,0.90) 100%);"></div>
+            <div class="absolute inset-0 z-10" style="background:linear-gradient(to bottom,rgba(10,7,4,0.05) 0%,rgba(10,7,4,0.90) 100%);pointer-events:none;"></div>
             <div class="absolute top-3 left-3 z-20 px-2.5 py-1 rounded-xl text-[10px] font-black"
                  style="background:rgba(252,211,77,0.95);color:#0a0704;">${nftT('pack_badge')} · ${count} ${countWord}</div>
             <div class="absolute bottom-3 left-4 right-4 z-20">
@@ -442,7 +442,7 @@ function nftArchivedPackCardHTML(pack) {
             <img src="${escapeHtml(cover)}" alt="${escapeHtml(pack.name)}"
                  class="art-img grayscale"
                  onerror="this.src='https://via.placeholder.com/400x208?text=Pack'">
-            <div class="absolute inset-0 z-10" style="background:linear-gradient(to bottom,rgba(10,7,4,0.1) 0%,rgba(10,7,4,0.92) 100%);"></div>
+            <div class="absolute inset-0 z-10" style="background:linear-gradient(to bottom,rgba(10,7,4,0.1) 0%,rgba(10,7,4,0.92) 100%);pointer-events:none;"></div>
             <div class="absolute top-3 left-3 px-2.5 py-1 rounded-xl text-[10px] font-black"
                  style="background:rgba(100,100,100,0.7);color:#ccc;">${nftT('archive_pack_badge', { n: count, word: countWord })}</div>
             <div class="absolute bottom-3 left-4 right-4">

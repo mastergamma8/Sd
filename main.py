@@ -173,6 +173,7 @@ async def lifespan(app: FastAPI):
             free_case_reminder_worker,
             price_update_worker,
             leaderboard_season_reset_worker,
+            auction_finalization_worker,
         )
 
         setup_main()
@@ -185,6 +186,7 @@ async def lifespan(app: FastAPI):
         asyncio.create_task(free_case_reminder_worker(main_bot))
         asyncio.create_task(price_update_worker())
         asyncio.create_task(leaderboard_season_reset_worker(main_bot))
+        asyncio.create_task(auction_finalization_worker(main_bot))
 
         # Синхронизация исторических подарков: подхватывает все подарки,
         # отправленные на @SpaceDonutGifts до активации business_message хэндлера.

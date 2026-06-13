@@ -54,18 +54,26 @@ async def get_confirmed_deposit(user_id: int, memo: str) -> dict | None:
             return dict(row) if row else None
 
 
-async def confirm_deposit(deposit_id: int, actual_amount: float, tx_hash: str) -> None:
-    """Переводит депозит в статус 'confirmed'. Идемпотентно — безопасно вызывать повторно."""
-    async with aiosqlite.connect(DB_NAME) as db:
-        await db.execute(
-            """
-            UPDATE ton_deposits
-            SET status = 'confirmed', actual_amount = ?, tx_hash = ?, confirmed_at = ?
-            WHERE id = ? AND status = 'pending'
-            """,
-            (actual_amount, tx_hash, int(time.time()), deposit_id)
-        )
-        await db.commit()
+async def confirm_deposit(deposit_id: int, actual_amount: float, tx_hash: str) -> bool:
+    """Переводит депозит в статус 'confirmed'.
+    Возвращает True если запись обновлена (т.е. это первое подтверждение),
+    False — если депозит уже был подтверждён (race condition, двойной вызов).
+    UNIQUE индекс на tx_hash даёт дополнительную защиту на уровне БД."""
+    try:
+        async with aiosqlite.connect(DB_NAME) as db:
+            cur = await db.execute(
+                """
+                UPDATE ton_deposits
+                SET status = 'confirmed', actual_amount = ?, tx_hash = ?, confirmed_at = ?
+                WHERE id = ? AND status = 'pending'
+                """,
+                (actual_amount, tx_hash, int(time.time()), deposit_id)
+            )
+            await db.commit()
+            return cur.rowcount > 0
+    except aiosqlite.IntegrityError:
+        # UNIQUE-конфликт на tx_hash: этот хэш уже записан в другой строке — двойное зачисление
+        return False
 
 
 async def is_tx_already_credited(tx_hash: str) -> bool:
@@ -149,27 +157,57 @@ async def get_last_withdrawal_time(user_id: int) -> int:
             return row[0] if row else 0
 
 
-async def create_withdrawal_record(
+async def check_cooldown_and_create_withdrawal(
     user_id: int,
     to_address: str,
     amount_ton: float,
     fee_ton: float,
-) -> int:
+    cooldown: int,
+) -> tuple[bool, int | None, str | None]:
+    """Атомарно проверяет кулдаун и создаёт запись о выводе в одной транзакции.
+
+    Возвращает (ok, withdrawal_id, wait_msg):
+      - (True,  id,   None)       — кулдаун прошёл, запись создана
+      - (False, None, wait_msg)   — кулдаун не прошёл, запись не создана
     """
-    Вставляет запись о выводе в статусе 'pending'.
-    Возвращает id записи.
-    """
+    now = int(time.time())
     async with aiosqlite.connect(DB_NAME) as db:
-        async with db.execute(
-            """
-            INSERT INTO ton_withdrawals (user_id, to_address, amount_ton, fee_ton, status, created_at)
-            VALUES (?, ?, ?, ?, 'pending', ?) RETURNING id
-            """,
-            (user_id, to_address, amount_ton, fee_ton, int(time.time()))
-        ) as cur:
-            row = await cur.fetchone()
+        await db.execute("BEGIN IMMEDIATE")
+        try:
+            # Проверяем кулдаун внутри блокировки
+            async with db.execute(
+                """
+                SELECT created_at FROM ton_withdrawals
+                WHERE user_id = ? AND status = 'sent'
+                ORDER BY created_at DESC LIMIT 1
+                """,
+                (user_id,)
+            ) as cur:
+                row = await cur.fetchone()
+                last_ts = row[0] if row else 0
+
+            elapsed = now - last_ts
+            if last_ts and elapsed < cooldown:
+                await db.commit()
+                wait_min = (cooldown - elapsed) // 60
+                return False, None, f"Следующий вывод доступен через {wait_min} мин."
+
+            # Кулдаун пройден — создаём запись
+            async with db.execute(
+                """
+                INSERT INTO ton_withdrawals (user_id, to_address, amount_ton, fee_ton, status, created_at)
+                VALUES (?, ?, ?, ?, 'pending', ?) RETURNING id
+                """,
+                (user_id, to_address, amount_ton, fee_ton, now)
+            ) as cur:
+                row = await cur.fetchone()
+                withdrawal_id = row[0] if row else None
+
             await db.commit()
-            return row["id"]
+            return True, withdrawal_id, None
+        except Exception:
+            await db.rollback()
+            raise
 
 
 async def mark_withdrawal_sent(withdrawal_id: int, boc: str) -> None:

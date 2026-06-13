@@ -428,7 +428,7 @@ async def init_rocket_games_table():
             "CREATE INDEX IF NOT EXISTS idx_ton_deposits_memo ON ton_deposits (memo)"
         )
         await db.execute(
-            "CREATE INDEX IF NOT EXISTS idx_ton_deposits_hash ON ton_deposits (tx_hash)"
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_ton_deposits_hash ON ton_deposits (tx_hash) WHERE tx_hash IS NOT NULL"
         )
 
         # ── TON: выводы ───────────────────────────────────────────────────────

@@ -19,6 +19,7 @@ from pydantic import BaseModel
 
 from db import db_nft
 from db.db_history import add_history_entry
+from db.db_users import get_user_profile
 from handlers.security import get_current_user
 
 router = APIRouter(prefix="/api/nft", tags=["nft"])
@@ -129,7 +130,9 @@ async def nft_gallery_user(
     current_user: dict = Depends(get_current_user),
 ):
     gallery = await db_nft.get_user_gallery(user_id)
-    return {"gallery": gallery, "user_id": user_id}
+    profile = await get_user_profile(user_id)
+    display_name = profile.get("first_name") or profile.get("username") or f"User {user_id}"
+    return {"gallery": gallery, "user_id": user_id, "display_name": display_name}
 
 
 @router.get("/galleries")

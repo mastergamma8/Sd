@@ -333,7 +333,7 @@ async function openTonDepositModal() {
 function closeTonDepositModal() {
     closeModal('ton-deposit-modal');
     if (depositPollInterval) {
-        clearInterval(depositPollInterval);
+        clearTimeout(depositPollInterval);
         depositPollInterval = null;
     }
     currentDepositMemo = null; // ← очищаем memo при закрытии
@@ -359,7 +359,7 @@ async function _buildCommentPayload(text) {
 async function startTonDeposit() {
     // Остановить предыдущий цикл, если он ещё активен (двойной клик и т.п.)
     if (depositPollInterval) {
-        clearInterval(depositPollInterval);
+        clearTimeout(depositPollInterval);
         depositPollInterval = null;
     }
     const amountInput = document.getElementById('ton-deposit-amount');
@@ -444,11 +444,11 @@ async function startTonDeposit() {
 
         currentDepositMemo = memo;
         if (statusEl) statusEl.textContent = t('ton_deposit_waiting', 'Ожидаем подтверждения транзакции...');
-        depositPollInterval = setInterval(_pollDepositStatus, 5000);
+        depositPollInterval = setTimeout(_pollDepositStatus, 5000);
 
     } catch (err) {
         if (depositPollInterval) {
-            clearInterval(depositPollInterval);
+            clearTimeout(depositPollInterval);
             depositPollInterval = null;
         }
 
@@ -491,7 +491,7 @@ async function _pollDepositStatus() {
         const data = await resp.json();
 
         if (data.status === 'confirmed') {
-            clearInterval(depositPollInterval);
+            clearTimeout(depositPollInterval);
             depositPollInterval = null;
             currentDepositMemo  = null;
 
@@ -515,13 +515,17 @@ async function _pollDepositStatus() {
             // Гонка: если Poll A уже подтвердил депозит и обнулил currentDepositMemo,
             // Poll B не должен показывать ошибку.
             if (!currentDepositMemo) return;
-            clearInterval(depositPollInterval);
+            clearTimeout(depositPollInterval);
             depositPollInterval = null;
             showNotify(data.detail || 'Ошибка депозита', 'error');
         }
         // status === 'pending' — просто ждём дальше
     } catch (err) {
         console.warn('[TON poll]', err);
+    }
+    // Следующий вызов только после завершения текущего (рекурсивный setTimeout вместо setInterval)
+    if (currentDepositMemo) {
+        depositPollInterval = setTimeout(_pollDepositStatus, 5000);
     }
 }
 

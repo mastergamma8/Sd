@@ -331,27 +331,31 @@ async def place_bet(data: BetRequest, current_user: dict = Depends(get_current_u
 
     async with _lock:
         if rocket_round["state"] != "waiting" or tg_id in rocket_round["bets"]:
-            # Вернуть деньги если раунд уже начался
-            if CURRENCY == "stars":
-                await database.add_stars_to_user(tg_id, bet)
-            else:
-                await database.add_points_to_user(tg_id, bet)
-            raise HTTPException(400, "Раунд уже начался, ставка возвращена")
+            refund_needed = True
+        else:
+            auto_co = max(0.0, float(data.auto_cashout)) if data.auto_cashout else 0.0
+            settings = await database.get_user_settings(tg_id)
+            display_name   = "Anonim" if settings["is_anonymous"] else (current_user.get("first_name") or current_user.get("username") or "Игрок")
+            display_avatar = "/static/img/anon.svg" if settings["is_anonymous"] else current_user.get("photo_url", "")
+            rocket_round["bets"][tg_id] = {
+                "user_id":      tg_id,
+                "name":         display_name,
+                "avatar":       display_avatar,
+                "bet":          bet,
+                "currency":     CURRENCY,
+                "auto_cashout": auto_co,
+                "status":       "active",
+                "cashout_mult": None,
+            }
+            refund_needed = False
 
-        auto_co = max(0.0, float(data.auto_cashout)) if data.auto_cashout else 0.0
-        settings = await database.get_user_settings(tg_id)
-        display_name   = "Anonim" if settings["is_anonymous"] else (current_user.get("first_name") or current_user.get("username") or "Игрок")
-        display_avatar = "/static/img/anon.svg" if settings["is_anonymous"] else current_user.get("photo_url", "")
-        rocket_round["bets"][tg_id] = {
-            "user_id":      tg_id,
-            "name":         display_name,
-            "avatar":       display_avatar,
-            "bet":          bet,
-            "currency":     CURRENCY,
-            "auto_cashout": auto_co,
-            "status":       "active",
-            "cashout_mult": None,
-        }
+    # Возврат выполняется вне лока — не блокирует другие операции
+    if refund_needed:
+        if CURRENCY == "stars":
+            await database.add_stars_to_user(tg_id, bet)
+        else:
+            await database.add_points_to_user(tg_id, bet)
+        raise HTTPException(400, "Раунд уже начался, ставка возвращена")
 
     updated = await database.get_user_data(tg_id)
     return {"status": "ok", "balance": updated["balance"], "stars": updated["stars"]}

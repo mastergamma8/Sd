@@ -200,7 +200,7 @@ async def open_case(data: ActionData, current_user: dict = Depends(get_current_u
 
         paid = await database.bank_payout(payout_amount, asset_type=payout_type)
         if not paid:
-            bank_max         = await database.bank_get_max_payout(asset_type=currency)
+            bank_max         = await database.bank_get_max_payout()  # всегда в звёздах — _get_item_value_stars тоже возвращает звёзды
             affordable_items = [i for i in case["items"] if _get_item_value_stars(i, ton_rate) <= bank_max]
 
             if affordable_items:
@@ -296,7 +296,7 @@ async def open_promo_case(data: ActionData, current_user: dict = Depends(get_cur
 
         paid = await database.bank_payout(payout_amount, asset_type=payout_type)
         if not paid:
-            bank_max         = await database.bank_get_max_payout(asset_type=currency)
+            bank_max         = await database.bank_get_max_payout()  # всегда в звёздах — _get_item_value_stars тоже возвращает звёзды
             affordable_items = [i for i in case["items"] if _get_item_value_stars(i, ton_rate) <= bank_max]
 
             if affordable_items:
