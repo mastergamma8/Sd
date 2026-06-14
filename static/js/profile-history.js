@@ -97,6 +97,11 @@ const HISTORY_ICONS = {
     // ── TON wallet ───────────────────────────────────────────────────────────
     ton_deposit:           { icon: '💎', color: 'ton',    sign: '+' },
     ton_withdraw:          { icon: '💎', color: 'ton',    sign: '-' },
+
+    // ── Всё или ничего ───────────────────────────────────────────────────────
+    allornone_paid:        { icon: '🎯', color: 'red',    sign: '-' },
+    allornone_win_gift:    { icon: '🎁', color: 'green',  sign: null },
+    allornone_win_tg_gift: { icon: '🎁', color: 'green',  sign: null },
 };
 
 /** Action types that are internal / should never surface in the UI. */
@@ -123,6 +128,19 @@ const STAR_AMOUNT_TYPES = new Set([
     'shop_buy_stars',
     // Season prizes
     'season_prize_stars',
+    // All or Nothing — ставка в звёздах
+    'allornone_paid',
+]);
+
+/** Action types denominated in donuts (uses donuts.png icon). */
+const DONUT_AMOUNT_TYPES = new Set([
+    'roulette_win_donuts', 'roulette_paid_donuts', 'roulette_paid',
+    'case_win_donuts', 'case_paid_donuts',
+    'rocket_win_donuts', 'rocket_lose_donuts',
+    'pvp_bet_donuts', 'pvp_win_donuts', 'pvp_refund_donuts',
+    'promo_donuts', 'task_reward', 'referral_bonus',
+    'shop_buy_donuts', 'exchange_gift_donuts',
+    'season_prize_donuts', 'claim_gift',
 ]);
 
 /** Action types denominated in TON (uses ton.png icon with 4-decimal formatting). */
@@ -167,17 +185,17 @@ const HISTORY_LABELS = {
         pvp_win_ton:          'Победа в Space PvP — TON',
         pvp_win_gift:         'Победа в Space PvP — подарок',
         pvp_refund_stars:     'Возврат ставки PvP — звёзды',
-        pvp_refund_donuts:    'Возврат ставки PvP — TON',
+        pvp_refund_donuts:    'Возврат ставки PvP — пончики',
         pvp_refund_ton:       'Возврат ставки PvP — TON',
         pvp_refund_gift:      'Возврат подарка PvP',
 
-        promo_donuts:         'Промокод — TON',
+        promo_donuts:         'Промокод — пончики',
         promo_stars:          'Промокод — звёзды',
         claim_gift:           'Получение NFT-подарка',
         withdraw_gift:        'Вывод NFT-подарка',
         withdraw_tg_gift:     'Вывод Telegram-подарка',
         exchange_tg_gift:     'Обмен Telegram-подарка',
-        exchange_gift_donuts: 'Обмен NFT-подарка на TON',
+        exchange_gift_donuts: 'Обмен NFT-подарка на пончики',
         exchange_gift_stars:  'Обмен NFT-подарка на звёзды',
         task_reward:          'Награда за задание',
         task_reward_stars:    'Награда за задание',
@@ -193,6 +211,10 @@ const HISTORY_LABELS = {
         // TON
         ton_deposit:          'Пополнение TON',
         ton_withdraw:         'Вывод TON',
+        // Всё или ничего
+        allornone_paid:        'Ставка в игре «Всё или ничего»',
+        allornone_win_gift:    'Выигрыш в игре «Всё или ничего»',
+        allornone_win_tg_gift: 'Выигрыш TG-подарка «Всё или ничего»',
     },
     en: {
         topup_stars:          'Balance top-up',
@@ -230,17 +252,17 @@ const HISTORY_LABELS = {
         pvp_win_ton:          'Space PvP win — TON',
         pvp_win_gift:         'Space PvP win — gift',
         pvp_refund_stars:     'PvP bet refunded — stars',
-        pvp_refund_donuts:    'PvP bet refunded — TON',
+        pvp_refund_donuts:    'PvP bet refunded — donuts',
         pvp_refund_ton:       'PvP bet refunded — TON',
         pvp_refund_gift:      'PvP gift refunded',
 
-        promo_donuts:         'Promo code — TON',
+        promo_donuts:         'Promo code — donuts',
         promo_stars:          'Promo code — stars',
         claim_gift:           'NFT gift claimed',
         withdraw_gift:        'NFT Gift withdrawn',
         withdraw_tg_gift:     'Telegram gift withdrawn',
         exchange_tg_gift:     'Telegram gift exchanged',
-        exchange_gift_donuts: 'NFT gift exchanged for TON',
+        exchange_gift_donuts: 'NFT gift exchanged for donuts',
         exchange_gift_stars:  'NFT gift exchanged for stars',
         task_reward:          'Task reward',
         task_reward_stars:    'Task reward',
@@ -256,6 +278,10 @@ const HISTORY_LABELS = {
         // TON
         ton_deposit:          'TON deposit',
         ton_withdraw:         'TON withdrawal',
+        // All or Nothing
+        allornone_paid:        'All or Nothing — bet',
+        allornone_win_gift:    'All or Nothing — gift won',
+        allornone_win_tg_gift: 'All or Nothing — TG gift won',
     }
 };
 
@@ -305,7 +331,7 @@ function getHistoryGiftPhoto(entry) {
     if (entry.action_type === 'admin_add_stars') return '/gifts/stars.png';
 
     // Season leaderboard prizes — resolve icon by prize type
-    if (entry.action_type === 'season_prize_donuts') return '/gifts/ton.png';
+    if (entry.action_type === 'season_prize_donuts') return '/gifts/donuts.png';
     if (entry.action_type === 'season_prize_stars')  return '/gifts/stars.png';
     if ((entry.action_type === 'season_prize_gift' || entry.action_type === 'season_prize_tg_gift') && entry.description) {
         const m = entry.description.match(/\[gift_id:([^\]]+)\]/);
@@ -314,6 +340,18 @@ function getHistoryGiftPhoto(entry) {
             if (giftDef && giftDef.photo) return giftDef.photo;
         }
     }
+
+    // All or Nothing — win events show the gift photo
+    const aonGiftTypes = new Set(['allornone_win_gift', 'allornone_win_tg_gift']);
+    if (aonGiftTypes.has(entry.action_type) && entry.description) {
+        const aonMatch = entry.description.match(/\[gift_id:([^\]]+)\]/);
+        if (aonMatch) {
+            const giftDef = getGiftDefinitionById(Number(aonMatch[1])) || getGiftDefinitionById(aonMatch[1]);
+            if (giftDef && giftDef.photo) return giftDef.photo;
+        }
+    }
+    // All or Nothing — paid entry always shows the game banner
+    if (entry.action_type === 'allornone_paid') return '/gifts/allgame.png';
 
     // PvP general events (non-gift) — use pvp.png banner image
     const pvpBannerTypes = new Set(['pvp_bet_stars', 'pvp_bet_donuts', 'pvp_bet_ton',
@@ -372,9 +410,12 @@ function getHistoryGiftPhoto(entry) {
 function _buildAmountHtml(entry, meta) {
     const useStars    = STAR_AMOUNT_TYPES.has(entry.action_type);
     const useTon      = TON_AMOUNT_TYPES.has(entry.action_type);
-    const currencyUrl = useStars ? '/gifts/stars.png' : '/gifts/ton.png';
+    const useDonuts   = DONUT_AMOUNT_TYPES.has(entry.action_type);
+    const currencyUrl = useStars  ? '/gifts/stars.png'
+                      : useDonuts ? '/gifts/donuts.png'
+                      : '/gifts/ton.png';
     const rawAbs      = Math.abs(entry.amount);
-    // For donut-denominated amounts use formatBalance so fractions render correctly
+    // For donut/star amounts show integer; TON uses 4 decimal places
     const absAmount   = useStars ? rawAbs : formatBalance(rawAbs);
 
     // TON-denominated entries — show amount with up to 4 significant decimal places
@@ -501,6 +542,19 @@ function _buildEntryTitle(entry) {
         if (addrMatch) {
             const shortAddr = addrMatch[1] + '...';
             return (currentLang === 'ru' ? `Вывод TON → ${shortAddr}` : `TON withdrawal → ${shortAddr}`);
+        }
+    }
+
+    // All or Nothing — append gift name from description
+    const aonTypes = new Set(['allornone_paid', 'allornone_win_gift', 'allornone_win_tg_gift']);
+    if (aonTypes.has(entry.action_type) && entry.description) {
+        const giftNameMatch = entry.description.match(/подарок: ([^[]+?)(?:\s*\[|$)/)
+                           || entry.description.match(/выигрыш: ([^[]+?)(?:\s*\[|$)/);
+        if (giftNameMatch && giftNameMatch[1].trim()) {
+            const giftName = giftNameMatch[1].trim();
+            title = entry.action_type === 'allornone_paid'
+                ? (currentLang === 'ru' ? `Ставка: ${giftName}` : `Bet: ${giftName}`)
+                : (currentLang === 'ru' ? `Выигрыш: ${giftName}` : `Won: ${giftName}`);
         }
     }
 

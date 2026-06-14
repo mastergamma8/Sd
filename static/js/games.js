@@ -79,6 +79,17 @@ function resetGamesView() {
         anyOpen = true;
     }
 
+    // Всё или ничего
+    const aonView = document.getElementById('games-allornone-view');
+    if (aonView && !aonView.classList.contains('hidden')) {
+        if (typeof closeAllOrNoneGame === 'function') {
+            closeAllOrNoneGame();
+        } else {
+            aonView.classList.add('hidden');
+        }
+        anyOpen = true;
+    }
+
     // Показываем главный экран, если что-то было закрыто
     if (anyOpen) {
         const mainView = document.getElementById('games-main-view');

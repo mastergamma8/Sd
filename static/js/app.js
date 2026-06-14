@@ -81,6 +81,12 @@ function applyFeatureFlags(flags) {
         pvpBanner.style.display = flags.pvp === false ? 'none' : '';
     }
 
+    // Всё или ничего — баннер в разделе Игры
+    const aonBanner = document.getElementById('game-banner-allornone');
+    if (aonBanner) {
+        aonBanner.style.display = flags.allornone === false ? 'none' : '';
+    }
+
     // Отдельные кейсы — прячем конкретные карточки после рендера
     // (вызывается снова после renderCasesList)
     applyCaseFlags(flags);

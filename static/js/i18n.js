@@ -369,7 +369,29 @@ const i18n = {
             donut_way_wheel_title: 'Вращай рулетку',
             donut_way_wheel_desc: 'Испытай удачу каждый день и забирай пончики',
             donut_way_shop_title: 'Загляни в магазин',
-            donut_way_shop_desc: 'Выгодно приобретай паки пончиков во вкладке «Магазин»'
+            donut_way_shop_desc: 'Выгодно приобретай паки пончиков во вкладке «Магазин»',
+
+            // ВСЁ ИЛИ НИЧЕГО
+            aon_title: 'Всё или ничего',
+            aon_desc: 'Выбери подарок и испытай удачу!',
+            aon_demo: 'Демо',
+            aon_choose_gift: 'Выберите подарок',
+            aon_select_gift: 'Выберите подарок...',
+            aon_gift_value: '— стоимость',
+            aon_chance_label: 'Шанс выигрыша',
+            aon_max_chance: 'Макс. 50%',
+            aon_cost_label: 'Стоимость попытки',
+            aon_your_balance: 'Ваш баланс',
+            aon_select_first: 'Сначала выберите подарок',
+            aon_spin_btn: 'Раскрутить за',
+            aon_nothing: 'Ничего',
+            aon_lose: 'Не повезло...',
+            aon_try_again: 'Попробуй ещё раз!',
+            aon_added_to_inventory: 'Подарок добавлен в инвентарь',
+            aon_hint: 'Выбери подарок, установи шанс от 1% до 50% — чем выше шанс, тем дороже попытка. Выигрышный подарок отправляется в инвентарь.',
+            aon_loading_price: 'Получаем цену...',
+            hist_allornone_paid: 'Игра «Всё или ничего»',
+            hist_allornone_win: 'Выигрыш в «Всё или ничего»'
         },
         en: {
             maintenance_title: '🔧 Under Maintenance',
@@ -737,7 +759,29 @@ const i18n = {
             donut_way_wheel_title: 'Spin Roulette',
             donut_way_wheel_desc: 'Try your luck every day and win sweet donuts',
             donut_way_shop_title: 'Visit Shop',
-            donut_way_shop_desc: 'Buy lucrative donut packs in the "Shop" tab'
+            donut_way_shop_desc: 'Buy lucrative donut packs in the "Shop" tab',
+
+            // ALL OR NOTHING
+            aon_title: 'All or Nothing',
+            aon_desc: 'Choose a gift and test your luck!',
+            aon_demo: 'Demo',
+            aon_choose_gift: 'Choose a gift',
+            aon_select_gift: 'Select a gift...',
+            aon_gift_value: '— value',
+            aon_chance_label: 'Win chance',
+            aon_max_chance: 'Max 50%',
+            aon_cost_label: 'Attempt cost',
+            aon_your_balance: 'Your balance',
+            aon_select_first: 'Select a gift first',
+            aon_spin_btn: 'Spin for',
+            aon_nothing: 'Nothing',
+            aon_lose: 'No luck...',
+            aon_try_again: 'Try again!',
+            aon_added_to_inventory: 'Gift added to inventory',
+            aon_hint: 'Choose a gift, set your chance from 1% to 50% — the higher the chance, the more expensive the attempt. The winning gift goes to your inventory.',
+            aon_loading_price: 'Fetching price...',
+            hist_allornone_paid: 'All or Nothing game',
+            hist_allornone_win: 'Win in All or Nothing'
         }
 };
 

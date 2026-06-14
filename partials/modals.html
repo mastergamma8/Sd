@@ -448,6 +448,116 @@
     </div>
 </div>
 
+<!-- ══════════════════════════════════════════════════════════
+     МОДАЛЬНОЕ ОКНО: ВСЁ ИЛИ НИЧЕГО — АНИМАЦИЯ РУЛЕТКИ
+     ══════════════════════════════════════════════════════════ -->
+<div id="aon-anim-modal" class="fixed inset-0 bg-black/95 hidden flex-col items-center justify-center z-[100] backdrop-blur-md">
+    <div class="absolute inset-0 bg-stars-moving opacity-30 pointer-events-none"></div>
+    <div class="absolute top-0 left-0 w-full h-40 bg-gradient-to-b from-yellow-700/20 to-transparent pointer-events-none"></div>
+    <div class="absolute bottom-0 left-0 w-full h-40 bg-gradient-to-t from-amber-700/10 to-transparent pointer-events-none"></div>
+    <div id="aon-anim-flash" class="absolute inset-0 bg-white opacity-0 pointer-events-none transition-opacity duration-200 z-20"></div>
+
+    <!-- DEMO BADGE -->
+    <div id="aon-anim-demo-badge" class="absolute top-5 left-1/2 -translate-x-1/2 z-30 hidden"
+         style="display:none">
+        <span class="bg-purple-600/80 border border-purple-400/60 text-purple-200 text-[10px] font-black px-3 py-1 rounded-full tracking-widest uppercase">DEMO</span>
+    </div>
+
+    <!-- ── ФАЗА ВРАЩЕНИЯ ─────────────────────────────────── -->
+    <div id="aon-anim-slot" class="w-full flex flex-col items-center px-4 z-10">
+        <div class="mb-6 text-center">
+            <p class="text-white/40 text-xs uppercase tracking-widest font-bold" data-i18n="aon_title">Всё или ничего</p>
+            <h3 id="aon-anim-gift-name" class="text-white font-extrabold text-xl mt-1 glow-text truncate max-w-xs mx-auto"></h3>
+        </div>
+
+        <div class="relative w-full" style="max-width:420px;">
+            <!-- Боковые затухания -->
+            <div class="absolute left-0 top-0 h-full w-14 z-10 pointer-events-none"
+                 style="background:linear-gradient(to right,rgba(2,6,23,0.97),transparent);"></div>
+            <div class="absolute right-0 top-0 h-full w-14 z-10 pointer-events-none"
+                 style="background:linear-gradient(to left,rgba(2,6,23,0.97),transparent);"></div>
+
+            <!-- Центральный маркер -->
+            <div class="absolute left-1/2 -translate-x-1/2 top-0 h-full z-20 pointer-events-none" style="width:106px;">
+                <div class="absolute inset-0 rounded-xl"
+                     style="border:2px solid rgba(250,204,21,0.9);
+                            box-shadow:0 0 20px rgba(250,204,21,0.5),inset 0 0 16px rgba(250,204,21,0.08);"></div>
+                <!-- стрелка сверху -->
+                <div class="absolute -top-2.5 left-1/2 -translate-x-1/2 w-0 h-0"
+                     style="border-left:7px solid transparent;border-right:7px solid transparent;
+                            border-top:9px solid rgba(250,204,21,0.95);
+                            filter:drop-shadow(0 0 4px rgba(250,204,21,0.9));"></div>
+                <!-- стрелка снизу -->
+                <div class="absolute -bottom-2.5 left-1/2 -translate-x-1/2 w-0 h-0"
+                     style="border-left:7px solid transparent;border-right:7px solid transparent;
+                            border-bottom:9px solid rgba(250,204,21,0.95);
+                            filter:drop-shadow(0 0 4px rgba(250,204,21,0.9));"></div>
+            </div>
+
+            <!-- Лента -->
+            <div class="overflow-hidden rounded-2xl border border-white/8"
+                 style="height:116px;background:rgba(0,0,0,0.5);">
+                <div id="aon-anim-track" class="flex items-center will-change-transform"
+                     style="height:100%;padding:0 12px;gap:10px;"></div>
+            </div>
+        </div>
+
+        <!-- Прогресс-бар -->
+        <div class="mt-5 w-full max-w-xs h-1 bg-white/10 rounded-full overflow-hidden">
+            <div id="aon-anim-progress" class="h-full rounded-full"
+                 style="width:0%;background:linear-gradient(to right,#ca8a04,#eab308);
+                        box-shadow:0 0 8px rgba(234,179,8,0.8);transition:width 0.1s linear;"></div>
+        </div>
+        <p id="aon-anim-label"
+           class="text-white/30 text-xs mt-2 tracking-widest uppercase font-bold"
+           data-i18n="case_spinning">Вращается...</p>
+    </div>
+
+    <!-- ── ФАЗА РЕЗУЛЬТАТА: ПОБЕДА ────────────────────────── -->
+    <div id="aon-anim-win" class="hidden w-full flex-col items-center px-6 z-10 text-center">
+        <div class="mb-5">
+            <div class="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r
+                        from-yellow-300 via-amber-400 to-orange-400 tracking-widest uppercase"
+                 data-i18n="win">Победа!</div>
+        </div>
+        <div class="relative mb-5">
+            <div class="absolute inset-0 rounded-full blur-[40px] opacity-55 scale-125"
+                 style="background:radial-gradient(circle,#f59e0b,transparent);"></div>
+            <div class="w-36 h-36 rounded-full border-2 border-amber-400/70 flex items-center
+                        justify-center relative"
+                 style="background:radial-gradient(circle,rgba(245,158,11,0.15),rgba(0,0,0,0.7));
+                        box-shadow:0 0 50px rgba(245,158,11,0.45);">
+                <div class="absolute inset-0 rounded-full bg-amber-500/20 animate-ping opacity-25"></div>
+                <img id="aon-anim-result-img" src="" class="w-24 h-24 object-contain relative z-10"
+                     style="filter:drop-shadow(0 10px 25px rgba(0,0,0,0.9));">
+            </div>
+        </div>
+        <p id="aon-anim-result-name" class="text-2xl font-bold text-white mb-1 glow-text"></p>
+        <p class="text-sm text-amber-300/55 font-medium mb-1 uppercase tracking-widest"
+           data-i18n="type_gift">Подарок</p>
+        <p class="text-white/40 text-sm mb-6" data-i18n="aon_added_to_inventory">Добавлен в инвентарь</p>
+        <button onclick="closeAonAnimation()"
+                class="w-full max-w-xs py-4 rounded-2xl font-extrabold text-white text-lg
+                       active:scale-95 transition-transform"
+                style="background:linear-gradient(135deg,#ca8a04,#eab308);
+                       box-shadow:0 0 28px rgba(234,179,8,0.55);"
+                data-i18n="take_prize_case">Забрать!</button>
+    </div>
+
+    <!-- ── ФАЗА РЕЗУЛЬТАТА: ПРОИГРЫШ ─────────────────────── -->
+    <div id="aon-anim-lose" class="hidden w-full flex-col items-center px-6 z-10 text-center">
+        <div class="text-7xl mb-5">😔</div>
+        <div class="text-4xl font-black text-white/55 mb-3" data-i18n="aon_lose">Не повезло...</div>
+        <p class="text-white/35 text-base mb-10" data-i18n="aon_try_again">Попробуй ещё раз!</p>
+        <button onclick="closeAonAnimation()"
+                class="w-full max-w-xs py-4 rounded-2xl font-extrabold text-white text-lg
+                       active:scale-95 transition-transform glass border border-white/20"
+                data-i18n="cancel">Закрыть</button>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+
 <div id="case-animation-modal" class="fixed inset-0 bg-black/95 hidden flex-col items-center justify-center z-[100] backdrop-blur-md">
     <div class="absolute inset-0 bg-stars-moving opacity-30 pointer-events-none"></div>
     <div class="absolute top-0 left-0 w-full h-40 bg-gradient-to-b from-indigo-600/20 to-transparent pointer-events-none"></div>
