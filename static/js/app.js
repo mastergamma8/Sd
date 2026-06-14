@@ -87,6 +87,12 @@ function applyFeatureFlags(flags) {
         aonBanner.style.display = flags.allornone === false ? 'none' : '';
     }
 
+    // NFT Галерея — кнопка в навигации
+    const nftNav = document.getElementById('nav-nft');
+    if (nftNav) {
+        nftNav.style.display = flags.nft === false ? 'none' : '';
+    }
+
     // Отдельные кейсы — прячем конкретные карточки после рендера
     // (вызывается снова после renderCasesList)
     applyCaseFlags(flags);

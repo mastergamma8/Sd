@@ -20,7 +20,11 @@
             <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-20 pointer-events-none"></div>
             <!-- Огонь на фоне -->
             <div class="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-blue-500/20 to-transparent blur-xl pointer-events-none"></div>
-
+            <!-- Пульсирующая метка LIVE -->
+            <div class="absolute top-3 right-3 z-20 flex items-center gap-1 bg-rose-500/80 px-2 py-0.5 rounded-full">
+                <div class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></div>
+                <span class="text-[9px] font-black text-white tracking-wider">LIVE</span>
+            </div>
             <div class="flex items-center gap-4 relative z-10">
                 <img src="/gifts/raketa.png" class="w-[100px] h-[100px] object-contain drop-shadow-[0_0_15px_rgba(59,130,246,0.8)] group-hover:-translate-y-1 transition-transform" onerror="this.src='https://via.placeholder.com/56?text=🚀'">
                 <div>

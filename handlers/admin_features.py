@@ -16,6 +16,7 @@ SECTION_LABELS = {
     "rocket":        "Ракета",
     "limited_gifts": "TG Подарки / Лимитированные подарки",
     "pvp":           "PvP Арена",
+    "nft":           "NFT Галерея",
 }
 
 # Псевдонимы, которые пользователь может ввести вместо ключа
@@ -25,6 +26,8 @@ _ALIAS_MAP = {
     "tgshop":       "limited_gifts",
     "pvp":          "pvp",
     "mines":        "pvp",  # legacy alias
+    "nftgallery":   "nft",
+    "gallery":      "nft",
 }
 
 
@@ -69,7 +72,8 @@ def register(dp: Dispatcher, bot: Bot):
                 "<code>/hide case 3</code> — кейс с ID 3\n"
                 "<code>/hide rocket</code> — ракета\n"
                 "<code>/hide limitedgifts</code> — раздел лимит. подарков\n"
-                "<code>/hide pvp</code> — PvP Арена\n\n"
+                "<code>/hide pvp</code> — PvP Арена\n"
+                "<code>/hide nft</code> — NFT Галерея\n\n"
                 "<b>Магазин — разделы:</b>\n"
                 f"{sections_hint}\n\n"
                 "<b>Магазин — конкретный товар:</b>\n"
@@ -141,7 +145,7 @@ def register(dp: Dispatcher, bot: Bot):
         if section not in SECTION_LABELS:
             await message.answer(
                 f"{E_CROSS} Неизвестный раздел: <b>{section}</b>\n\n"
-                "Доступные разделы: roulette, cases, case &lt;id&gt;, rocket, limitedgifts, pvp\n"
+                "Доступные разделы: roulette, cases, case &lt;id&gt;, rocket, limitedgifts, pvp, nft\n"
                 "Для магазина: shop_section &lt;id&gt;, shop_item &lt;item_id&gt;",
                 parse_mode="HTML",
             )
@@ -173,6 +177,7 @@ def register(dp: Dispatcher, bot: Bot):
                 "<code>/show rocket</code>\n"
                 "<code>/show limitedgifts</code>\n"
                 "<code>/show pvp</code>\n"
+                "<code>/show nft</code>\n"
                 "<code>/show shop_section &lt;id&gt;</code>\n"
                 "<code>/show shop_item &lt;item_id&gt;</code>",
                 parse_mode="HTML",
@@ -257,6 +262,7 @@ def register(dp: Dispatcher, bot: Bot):
             f"  {flag_icon(flags.get('rocket', True))}  Ракета",
             f"  {flag_icon(flags.get('limited_gifts', True))}  TG Подарки / Лимит. подарки",
             f"  {flag_icon(flags.get('pvp', True))}  PvP Арена",
+            f"  {flag_icon(flags.get('nft', True))}  NFT Галерея",
         ]
 
         # Отдельные кейсы

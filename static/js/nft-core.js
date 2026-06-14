@@ -20,6 +20,9 @@ let nftShareContext = { type: 'gallery' };
 // ─── Открытие / Закрытие секции ───────────────────────────────────────────────
 
 function openNFTSection() {
+    // Если NFT-галерея скрыта администратором — тихо блокируем (тестеры проходят, т.к. их флаг = true)
+    if (window._featureFlags && window._featureFlags.nft === false) return;
+
     vibrate('medium');
 
     const section    = document.getElementById('nft-section');

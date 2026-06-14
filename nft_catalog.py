@@ -38,7 +38,7 @@ PAINTINGS = [
         "image_url":    "https://images.unsplash.com/photo-1465101162946-4377e57745c3?w=800",
         "price":        50,
         "total_supply": 100,
-        "is_active":    True,
+        "is_active":    False,
         "author":       "Space_Donut",
     },
 
@@ -49,7 +49,7 @@ PAINTINGS = [
         "image_url":    "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=800",
         "price":        50,
         "total_supply": 20,
-        "is_active":    True,
+        "is_active":    False,
         "author":       "Space_Donut",
     },
 
@@ -61,35 +61,34 @@ PAINTINGS = [
 PACKS = [
 
     {
-        "id":               "space_collection",  # ← стабильный ключ, не менять
-        "name":             "Space Collection hs",
-        "description":      "Коллекция из 3 космических работ. Каждая картина имеет свой лимит.",
+        "id":               "classic_collection",  # ← стабильный ключ, не менять
+        "name":             "Classic Collection",
+        "description":      "Коллекция из 3 классических работ. Каждая картина имеет свой лимит.",
         "cover_image_url":  "",
         "paintings": [
             {
                 "id":           "scream",        # ← стабильный ключ, не менять
                 "title":        "Scream",
-                "description":  "Цветение сакуры в стиле цифровой живописи.",
+                "description":  "Цифровая интерпретация культового шедевра Эдварда Мунка. Символ эмоций, тревоги и силы человеческого самовыражения. Лимитированный NFT-экземпляр.",
                 "image_url":    "/paintings/scream.png",
-                "price":        150,
-                "total_supply": 5,
+                "price":        50,
+                "total_supply": 50,
                 "is_active":    True,
             },
             {
                 "id":           "starry_night",  # ← стабильный ключ, не менять
                 "title":        "Starry Night",
-                "description":  "Культовый персонаж в уникальном исполнении.",
+                "description":  "NFT-версия легендарной «Звёздной ночи» Винсента Ван Гога. Бесконечное движение космоса и магия ночного неба в цифровом формате.",
                 "image_url":    "/paintings/starrynight.png",
-                "price":        101,
-                "total_supply": 3,
+                "price":        100,                    "total_supply": 20,
                 "is_active":    True,
             },
             {
                 "id":           "mona_lisa",     # ← стабильный ключ, не менять
                 "title":        "Mona Lisa",
-                "description":  "Летнее настроение в каждом пикселе.",
+                "description":  "Коллекционный NFT по мотивам бессмертного произведения Леонардо да Винчи. Символ искусства, загадки и культурного наследия.",
                 "image_url":    "/paintings/monalisa.png",
-                "price":        102,
+                "price":        200,
                 "total_supply": 10,
                 "is_active":    True,
             },

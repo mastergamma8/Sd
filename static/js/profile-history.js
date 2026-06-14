@@ -351,7 +351,7 @@ function getHistoryGiftPhoto(entry) {
         }
     }
     // All or Nothing — paid entry always shows the game banner
-    if (entry.action_type === 'allornone_paid') return '/gifts/allgame.png';
+    if (entry.action_type === 'allornone_paid') return '/gifts/allgamesm.png';
 
     // PvP general events (non-gift) — use pvp.png banner image
     const pvpBannerTypes = new Set(['pvp_bet_stars', 'pvp_bet_donuts', 'pvp_bet_ton',
